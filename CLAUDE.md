@@ -49,9 +49,25 @@ app/
 - `expo-image` with `source="sf:name"` for SF Symbols, not `expo-symbols` or vector icons
 - `process.env.EXPO_OS` instead of `Platform.OS`
 - `React.use` instead of `React.useContext`
-- Inline styles over `StyleSheet.create` unless styles are reused
 - `ScrollView` with `contentInsetAdjustmentBehavior="automatic"` instead of `SafeAreaView`
 - `react-native-reanimated` (v4) and `react-native-gesture-handler` are available
+
+### Components & Styling
+
+**heroui-native is the default component library** — always use it before building custom components.
+
+**`uniwind` (Tailwind via `className`) is the primary styling approach** — do not use `StyleSheet.create`.
+
+heroui-native styling rules:
+- `className` is the go-to for all styling on heroui-native components
+- `style` prop takes precedence over `className` when both are provided (use for overrides)
+- Some properties are animated by reanimated and override `className` — hover over `className` in the IDE to see which props are occupied
+- To override animated styles: use the `animation` prop on components that support it
+- To fully disable animated styles and apply your own: use `isAnimatedStyleActive={false}`
+
+### Dependency Notes
+
+`react-native-worklets` is pinned to `0.7.2` in both `dependencies` and `resolutions`. Do not change this — heroui-native ships `0.5.1` internally and the `resolutions` field forces `0.7.2` everywhere to match the compiled native binary.
 
 ### React Compiler
 
