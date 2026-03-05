@@ -1,3 +1,4 @@
+import { ProjectsProvider } from "@/contexts/projects-context";
 import { TimerProvider } from "@/contexts/timer-context";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
@@ -17,11 +18,13 @@ export default function RootLayout() {
       <HeroUINativeProvider>
         <KeyboardProvider>
           <ThemeProvider value={DarkTheme}>
-            <TimerProvider>
-              <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              </Stack>
-            </TimerProvider>
+            <ProjectsProvider>
+              <TimerProvider>
+                <Stack>
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                </Stack>
+              </TimerProvider>
+            </ProjectsProvider>
             <StatusBar style="light" />
           </ThemeProvider>
         </KeyboardProvider>

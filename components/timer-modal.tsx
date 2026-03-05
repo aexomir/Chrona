@@ -1,4 +1,4 @@
-import { PROJECTS } from "@/constants/projects";
+import { ProjectsContext } from "@/contexts/projects-context";
 import { TimerContext } from "@/contexts/timer-context";
 import { Image } from "expo-image";
 import { Button, Input, PortalHost, Select } from "heroui-native";
@@ -31,15 +31,16 @@ type TimerModalProps = {
 };
 
 export function TimerModal({ isVisible, onClose }: TimerModalProps) {
+  const { projects } = React.use(ProjectsContext)!;
   const {
     isTracking,
     title,
-    project,
+    projectId,
     elapsedSeconds,
     startTimer,
     stopTimer,
     updateTitle,
-    updateProject,
+    updateProjectId,
   } = React.use(TimerContext)!;
 
   const [taskTitle, setTaskTitle] = useState("");
@@ -50,16 +51,14 @@ export function TimerModal({ isVisible, onClose }: TimerModalProps) {
   useEffect(() => {
     if (isVisible && isTracking) {
       setTaskTitle(title);
-      setSelectedProject(
-        project ? { value: project.id, label: project.name } : undefined
-      );
+      const proj = projects.find((p) => p.id === projectId);
+      setSelectedProject(proj ? { value: proj.id, label: proj.name } : undefined);
     }
   }, [isVisible, isTracking]);
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
-    const proj = PROJECTS.find((p) => p.id === selectedProject?.value);
-    startTimer(taskTitle.trim(), proj);
+    startTimer(taskTitle.trim(), selectedProject?.value);
     setTaskTitle("");
     setSelectedProject(undefined);
     onClose();
@@ -72,11 +71,10 @@ export function TimerModal({ isVisible, onClose }: TimerModalProps) {
 
   const handleProjectChange = (v: SelectOption | undefined) => {
     setSelectedProject(v);
-    const proj = v ? (PROJECTS.find((p) => p.id === v.value) ?? null) : null;
-    updateProject(proj);
+    updateProjectId(v?.value ?? null);
   };
 
-  const selProj = PROJECTS.find((p) => p.id === selectedProject?.value);
+  const selProj = projects.find((p) => p.id === selectedProject?.value);
 
   return (
     <Modal
@@ -146,7 +144,7 @@ export function TimerModal({ isVisible, onClose }: TimerModalProps) {
                 <Select.Overlay />
                 <Select.Content presentation="popover" width="trigger">
                   <Select.ListLabel>Select a project</Select.ListLabel>
-                  {PROJECTS.map((p) => (
+                  {projects.map((p) => (
                     <Select.Item key={p.id} value={p.id} label={p.name}>
                       <View className="flex-row items-center gap-3 flex-1">
                         <Image
@@ -197,7 +195,7 @@ export function TimerModal({ isVisible, onClose }: TimerModalProps) {
                 <Select.Overlay />
                 <Select.Content presentation="popover" width="trigger">
                   <Select.ListLabel>Select a project</Select.ListLabel>
-                  {PROJECTS.map((p) => (
+                  {projects.map((p) => (
                     <Select.Item key={p.id} value={p.id} label={p.name}>
                       <View className="flex-row items-center gap-3 flex-1">
                         <Image

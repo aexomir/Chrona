@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { ListGroup, Separator } from "heroui-native";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -46,6 +47,8 @@ function QuestionSuffix() {
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -129,12 +132,12 @@ export default function SettingsScreen() {
 
         <Separator className="mx-4" />
 
-        <ListGroup.Item onPress={() => {}}>
+        <ListGroup.Item onPress={() => router.push("/projects")}>
           <ListGroup.ItemPrefix>
-            <IconSquare icon="tag.fill" color="#a855f7" />
+            <IconSquare icon="folder.fill" color="#a855f7" />
           </ListGroup.ItemPrefix>
           <ListGroup.ItemContent>
-            <ListGroup.ItemTitle>App Categories</ListGroup.ItemTitle>
+            <ListGroup.ItemTitle>Projects</ListGroup.ItemTitle>
           </ListGroup.ItemContent>
           <ListGroup.ItemSuffix>
             <ChevronSuffix />

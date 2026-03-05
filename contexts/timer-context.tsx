@@ -1,15 +1,14 @@
 import { createContext, useEffect, useRef, useState } from "react";
-import { type Project } from "@/constants/projects";
 
 type TimerContextType = {
   isTracking: boolean;
   title: string;
-  project: Project | null;
+  projectId: string | null;
   elapsedSeconds: number;
-  startTimer: (title: string, project?: Project) => void;
+  startTimer: (title: string, projectId?: string) => void;
   stopTimer: () => void;
   updateTitle: (title: string) => void;
-  updateProject: (project: Project | null) => void;
+  updateProjectId: (projectId: string | null) => void;
 };
 
 export const TimerContext = createContext<TimerContextType | null>(null);
@@ -17,13 +16,13 @@ export const TimerContext = createContext<TimerContextType | null>(null);
 export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [isTracking, setIsTracking] = useState(false);
   const [title, setTitle] = useState("");
-  const [project, setProject] = useState<Project | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const startTimer = (newTitle: string, newProject?: Project) => {
+  const startTimer = (newTitle: string, newProjectId?: string) => {
     setTitle(newTitle);
-    setProject(newProject ?? null);
+    setProjectId(newProjectId ?? null);
     setElapsedSeconds(0);
     setIsTracking(true);
 
@@ -33,7 +32,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateTitle = (newTitle: string) => setTitle(newTitle);
-  const updateProject = (newProject: Project | null) => setProject(newProject);
+  const updateProjectId = (newProjectId: string | null) => setProjectId(newProjectId);
 
   const stopTimer = () => {
     if (intervalRef.current) {
@@ -42,7 +41,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }
     setIsTracking(false);
     setTitle("");
-    setProject(null);
+    setProjectId(null);
     setElapsedSeconds(0);
   };
 
@@ -58,12 +57,12 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     <TimerContext value={{
       isTracking,
       title,
-      project,
+      projectId,
       elapsedSeconds,
       startTimer,
       stopTimer,
       updateTitle,
-      updateProject,
+      updateProjectId,
     }}>
       {children}
     </TimerContext>
