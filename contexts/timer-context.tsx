@@ -8,6 +8,8 @@ type TimerContextType = {
   elapsedSeconds: number;
   startTimer: (title: string, project?: Project) => void;
   stopTimer: () => void;
+  updateTitle: (title: string) => void;
+  updateProject: (project: Project | null) => void;
 };
 
 export const TimerContext = createContext<TimerContextType | null>(null);
@@ -29,6 +31,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       setElapsedSeconds((s) => s + 1);
     }, 1000);
   };
+
+  const updateTitle = (newTitle: string) => setTitle(newTitle);
+  const updateProject = (newProject: Project | null) => setProject(newProject);
 
   const stopTimer = () => {
     if (intervalRef.current) {
@@ -57,6 +62,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       elapsedSeconds,
       startTimer,
       stopTimer,
+      updateTitle,
+      updateProject,
     }}>
       {children}
     </TimerContext>

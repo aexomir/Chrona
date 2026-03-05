@@ -2,7 +2,7 @@ import { PROJECTS } from "@/constants/projects";
 import { TimerContext } from "@/contexts/timer-context";
 import { Image } from "expo-image";
 import { Button, Input, PortalHost, Select } from "heroui-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -31,12 +31,30 @@ type TimerModalProps = {
 };
 
 export function TimerModal({ isVisible, onClose }: TimerModalProps) {
-  const { isTracking, title, project, elapsedSeconds, startTimer, stopTimer } =
-    React.use(TimerContext)!;
+  const {
+    isTracking,
+    title,
+    project,
+    elapsedSeconds,
+    startTimer,
+    stopTimer,
+    updateTitle,
+    updateProject,
+  } = React.use(TimerContext)!;
 
   const [taskTitle, setTaskTitle] = useState("");
   const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>();
   const insets = useSafeAreaInsets();
+
+  // When opening while tracking, pre-fill fields from current session
+  useEffect(() => {
+    if (isVisible && isTracking) {
+      setTaskTitle(title);
+      setSelectedProject(
+        project ? { value: project.id, label: project.name } : undefined
+      );
+    }
+  }, [isVisible, isTracking]);
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
@@ -50,6 +68,12 @@ export function TimerModal({ isVisible, onClose }: TimerModalProps) {
   const handleStop = () => {
     stopTimer();
     onClose();
+  };
+
+  const handleProjectChange = (v: SelectOption | undefined) => {
+    setSelectedProject(v);
+    const proj = v ? (PROJECTS.find((p) => p.id === v.value) ?? null) : null;
+    updateProject(proj);
   };
 
   const selProj = PROJECTS.find((p) => p.id === selectedProject?.value);
@@ -78,34 +102,65 @@ export function TimerModal({ isVisible, onClose }: TimerModalProps) {
         </View>
 
         {isTracking ? (
-          <View className="flex-1 justify-center px-6 gap-8">
-            {/* Timer display — neumorphic card */}
+          <View className="flex-1 justify-center px-6 gap-5">
+            {/* Timer display */}
             <View
-              className="items-center justify-center rounded-3xl py-10 gap-3 bg-[#1a1a1c]"
+              className="items-center justify-center rounded-3xl py-8 bg-[#1a1a1c]"
               style={styles.card}
             >
-              <Text className="text-neutral-500 text-sm uppercase tracking-widest">
+              <Text className="text-neutral-500 text-xs uppercase tracking-widest mb-2">
                 elapsed
               </Text>
               <Text className="text-white text-7xl font-mono font-bold">
                 {formatTime(elapsedSeconds)}
               </Text>
-              <Text className="text-neutral-400 text-base text-center" numberOfLines={2}>
-                {title}
-              </Text>
-              {project && (
-                <View className="flex-row items-center gap-2 mt-1">
-                  <Image
-                    source={`sf:${project.icon}`}
-                    style={[styles.icon14, { tintColor: project.color }]}
-                  />
-                  {/* color is dynamic — inline unavoidable */}
-                  <Text style={{ color: project.color }} className="text-sm font-medium">
-                    {project.name}
-                  </Text>
-                </View>
-              )}
             </View>
+
+            {/* Editable fields */}
+            <Input
+              placeholder="What are you working on?"
+              value={taskTitle}
+              onChangeText={setTaskTitle}
+              onBlur={() => { if (taskTitle.trim()) updateTitle(taskTitle.trim()); }}
+              onSubmitEditing={() => { if (taskTitle.trim()) updateTitle(taskTitle.trim()); }}
+              returnKeyType="done"
+            />
+
+            <Select
+              value={selectedProject}
+              onValueChange={(v) => handleProjectChange(v as SelectOption | undefined)}
+            >
+              <Select.Trigger>
+                <View className="flex-row items-center gap-2 flex-1">
+                  {selProj && (
+                    <Image
+                      source={`sf:${selProj.icon}`}
+                      style={[styles.icon16, { tintColor: selProj.color }]}
+                    />
+                  )}
+                  <Select.Value placeholder="Project (optional)" />
+                </View>
+                <Select.TriggerIndicator />
+              </Select.Trigger>
+              <Select.Portal hostName="timer-modal">
+                <Select.Overlay />
+                <Select.Content presentation="popover" width="trigger">
+                  <Select.ListLabel>Select a project</Select.ListLabel>
+                  {PROJECTS.map((p) => (
+                    <Select.Item key={p.id} value={p.id} label={p.name}>
+                      <View className="flex-row items-center gap-3 flex-1">
+                        <Image
+                          source={`sf:${p.icon}`}
+                          style={[styles.icon18, { tintColor: p.color }]}
+                        />
+                        <Select.ItemLabel />
+                      </View>
+                      <Select.ItemIndicator />
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Portal>
+            </Select>
 
             <Button variant="danger" onPress={handleStop}>
               <Button.Label>Stop Timer</Button.Label>
@@ -179,14 +234,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 6, height: 6 },
     shadowOpacity: 0.6,
     shadowRadius: 12,
-  },
-  icon13: {
-    width: 13,
-    height: 13,
-  },
-  icon14: {
-    width: 14,
-    height: 14,
   },
   icon16: {
     width: 16,
