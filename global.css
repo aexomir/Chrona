@@ -4,3 +4,10 @@
 @import "heroui-native/styles";
 
 @source './node_modules/heroui-native/lib';
+
+@theme static {
+  --color-accent-hover: color-mix(in oklab, var(--color-accent) 90%, var(--color-accent-foreground) 10%);
+  --color-default-hover: color-mix(in oklab, var(--color-default) 96%, var(--color-default-foreground) 4%);
+  --color-danger-hover: color-mix(in oklab, var(--color-danger) 90%, var(--color-danger-foreground) 10%);
+  --color-danger-soft-hover: color-mix(in oklab, var(--color-danger-soft) 90%, var(--color-danger-soft-foreground) 10%);
+}

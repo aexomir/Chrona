@@ -1,8 +1,12 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { TimerBar } from "@/components/timer-bar";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
 
 export default function TabLayout() {
   return (
     <NativeTabs minimizeBehavior="onScrollDown">
+      <NativeTabs.BottomAccessory>
+        <TimerBar />
+      </NativeTabs.BottomAccessory>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" md="dashboard" />
         <NativeTabs.Trigger.Label>Dashboard</NativeTabs.Trigger.Label>
