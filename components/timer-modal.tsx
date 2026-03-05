@@ -1,5 +1,5 @@
-import { ProjectsContext } from "@/contexts/projects-context";
 import { TimerContext } from "@/contexts/timer-context";
+import { useProjects } from "@/stores/projects-store";
 import { Image } from "expo-image";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import React, { useEffect, useState } from "react";
@@ -31,7 +31,7 @@ type TimerModalProps = {
 };
 
 export function TimerModal({ isVisible, onClose }: TimerModalProps) {
-  const { projects } = React.use(ProjectsContext)!;
+  const { projects } = useProjects();
   const {
     isTracking,
     title,

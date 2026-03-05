@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
-import { ProjectsContext } from "@/contexts/projects-context";
+import { useProjects } from "@/stores/projects-store";
 import { ListGroup, Separator } from "heroui-native";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Modal,
@@ -40,8 +40,7 @@ const PROJECT_ICONS = [
 ];
 
 export default function ProjectsScreen() {
-  const { projects, addProject, updateProject, removeProject } =
-    React.use(ProjectsContext)!;
+  const { projects, addProject, updateProject, removeProject } = useProjects();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);

@@ -1,6 +1,6 @@
 import { TimerModal } from "@/components/timer-modal";
-import { ProjectsContext } from "@/contexts/projects-context";
 import { TimerContext } from "@/contexts/timer-context";
+import { useProjects } from "@/stores/projects-store";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import React, { useState } from "react";
@@ -18,7 +18,7 @@ function formatTime(seconds: number): string {
 
 export function TimerBar() {
   const { isTracking, title, projectId, elapsedSeconds } = React.use(TimerContext)!;
-  const { projects } = React.use(ProjectsContext)!;
+  const { projects } = useProjects();
   const project = projects.find((p) => p.id === projectId) ?? null;
   const [isModalVisible, setIsModalVisible] = useState(false);
 
