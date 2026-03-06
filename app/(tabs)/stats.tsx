@@ -485,6 +485,53 @@ function EmptyState() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  compactTitleContainer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  compactTitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  compactTitleSecondary: {
+    color: "rgba(255,255,255,0.45)",
+    fontWeight: "400",
+  },
+  pillContainer: {
+    flexDirection: "row",
+    position: "relative",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+  pillIndicator: {
+    position: "absolute",
+    top: 3,
+    bottom: 3,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 10,
+  },
+  pillButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 9,
+  },
+  pillButtonText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+});
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function StatsScreen() {
@@ -628,46 +675,39 @@ export default function StatsScreen() {
         </ScrollView>
       </ScrollShadow>
 
-      {/* Fixed blur header — rendered above ScrollShadow */}
-      <BlurView
-        intensity={80}
-        tint="systemUltraThinMaterialDark"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          paddingTop: insets.top,
-        }}
-      >
+      {/* Fixed header — rendered above ScrollShadow */}
+      <View className="absolute top-0 left-0 right-0 bg-black" style={{ paddingTop: insets.top }}>
+        {/* Scroll shadow gradient */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              height: 1,
+              pointerEvents: "none",
+              opacity: interpolate(scrollY.value, [0, 40], [0, 1], Extrapolation.CLAMP),
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0)"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{ flex: 1, height: 20 }}
+          />
+        </Animated.View>
+
         <View style={{ height: 56, paddingHorizontal: 16 }}>
-          {/* Compact title (fades in when scrolled) */}
+          {/* Compact title */}
           <Animated.View
             style={[
-              {
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                left: 0,
-                right: 0,
-                justifyContent: "center",
-                alignItems: "center",
-              },
+              styles.compactTitleContainer,
               compactAnimStyle,
             ]}
             pointerEvents="none"
           >
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.85)",
-                fontSize: 15,
-                fontWeight: "600",
-              }}
-            >
+            <Text style={styles.compactTitle}>
               Stats{" "}
-              <Text
-                style={{ color: "rgba(255,255,255,0.45)", fontWeight: "400" }}
-              >
+              <Text style={styles.compactTitleSecondary}>
                 · {activeLabel}
               </Text>
             </Text>
@@ -675,33 +715,15 @@ export default function StatsScreen() {
 
           {/* Expanded pill selector (fades out when scrolled) */}
           <Animated.View style={[pillAnimStyle, { paddingVertical: 10 }]}>
-            <View
-              style={{
-                flexDirection: "row",
-                position: "relative",
-                backgroundColor: "rgba(255,255,255,0.07)",
-                borderRadius: 14,
-                borderWidth: 0.5,
-                borderColor: "rgba(255,255,255,0.14)",
-              }}
-            >
+            <View style={styles.pillContainer}>
               <Animated.View
-                style={[
-                  {
-                    position: "absolute",
-                    top: 3,
-                    bottom: 3,
-                    backgroundColor: "rgba(255,255,255,0.92)",
-                    borderRadius: 10,
-                  },
-                  indicatorStyle,
-                ]}
+                style={[styles.pillIndicator, indicatorStyle]}
                 pointerEvents="none"
               />
               {TIMEFRAMES.map((tf, idx) => (
                 <Pressable
                   key={tf.value}
-                  style={{ flex: 1, alignItems: "center", paddingVertical: 9 }}
+                  style={styles.pillButton}
                   onLayout={(e) => {
                     pillLayouts.current[idx] = {
                       x: e.nativeEvent.layout.x,
@@ -718,12 +740,13 @@ export default function StatsScreen() {
                   }}
                 >
                   <Text
-                    style={{
-                      color:
-                        activeIndex === idx ? "#000" : "rgba(255,255,255,0.45)",
-                      fontSize: 13,
-                      fontWeight: "500",
-                    }}
+                    style={[
+                      styles.pillButtonText,
+                      {
+                        color:
+                          activeIndex === idx ? "#000" : "rgba(255,255,255,0.45)",
+                      },
+                    ]}
                   >
                     {tf.label}
                   </Text>
@@ -732,7 +755,7 @@ export default function StatsScreen() {
             </View>
           </Animated.View>
         </View>
-      </BlurView>
+      </View>
     </View>
   );
 }
