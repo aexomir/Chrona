@@ -1,8 +1,11 @@
+import { type Session, useSessionsStore } from "@/stores/sessions-store";
+import { useProjects } from "@/stores/projects-store";
+import { useTimerStore } from "@/stores/timer-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
-import { Stack } from "expo-router";
-import { Fragment, useRef, useState } from "react";
+import { router, Stack } from "expo-router";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -38,18 +41,8 @@ function getWeekDays(weekStart: Date): Date[] {
 }
 
 const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 function formatDate(d: Date) {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
@@ -61,20 +54,26 @@ function isSameDay(a: Date, b: Date) {
     a.getDate() === b.getDate()
   );
 }
+function formatTime24(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+function formatDuration(seconds: number): string {
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
 
 const DAY_ABBREVS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// Strip layout constants (must match className values below)
-const CIRCLE_SIZE = 36; // w-9
-const STRIP_PT = 12; // pt-3
-const ABBREV_H = 16; // text-xs line height
-const GAP = 8; // gap-2
+const CIRCLE_SIZE = 36;
+const STRIP_PT = 12;
+const ABBREV_H = 16;
+const GAP = 8;
 const CIRCLE_TOP = STRIP_PT + ABBREV_H + GAP;
-
 const CIRCLE_EASING = Easing.out(Easing.cubic);
 const CIRCLE_DURATION = 240;
 
-// Pure helper — explicit width arg, no closure over stripWidthRef
 function circleXForIndexInWidth(idx: number, width: number): number {
   const cw = (width - 6) / 7;
   return idx * (cw + 1) + (cw - CIRCLE_SIZE) / 2;
@@ -90,6 +89,107 @@ function DatePill({ date }: { date: Date }) {
   );
 }
 
+function SessionRow({ session }: { session: Session }) {
+  const { projects } = useProjects();
+  const project = session.projectId
+    ? projects.find((p) => p.id === session.projectId)
+    : null;
+
+  return (
+    <View className="flex-row items-start gap-2">
+      <View className="w-14 items-end pt-3.5">
+        <Text className="text-zinc-500 text-xs tabular-nums">
+          {formatTime24(new Date(session.startTime))}
+        </Text>
+      </View>
+      <View className="items-center pt-[18px]">
+        <View className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+      </View>
+      <View className="flex-1 bg-zinc-900 rounded-2xl px-4 py-3 gap-1">
+        <View className="flex-row items-start justify-between gap-2">
+          <Text
+            className="text-white text-base font-semibold flex-1"
+            numberOfLines={1}
+          >
+            {session.title}
+          </Text>
+          <View className="bg-zinc-800 rounded-full px-2 py-0.5 mt-0.5">
+            <Text className="text-zinc-300 text-xs font-medium">
+              {formatDuration(session.duration)}
+            </Text>
+          </View>
+        </View>
+        {project && (
+          <View className="flex-row items-center gap-1.5">
+            <Image
+              source={`sf:${project.icon}`}
+              style={{ width: 11, height: 11, tintColor: project.color }}
+            />
+            <Text className="text-zinc-500 text-xs">{project.name}</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function LiveSessionRow({ startTimestamp }: { startTimestamp: string }) {
+  const { title, projectId } = useTimerStore();
+  const { projects } = useProjects();
+  const project = projectId ? projects.find((p) => p.id === projectId) : null;
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const tick = () =>
+      setElapsed(
+        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000)
+      );
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startTimestamp]);
+
+  return (
+    <Pressable onPress={() => router.push("/timer")}>
+      <View className="flex-row items-start gap-2">
+        <View className="w-14 items-end pt-3.5">
+          <Text className="text-zinc-500 text-xs tabular-nums">
+            {formatTime24(new Date(startTimestamp))}
+          </Text>
+        </View>
+        <View className="items-center pt-[18px]">
+          <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        </View>
+        <View className="flex-1 bg-zinc-900 rounded-2xl px-4 py-3 gap-1 border border-red-500/30">
+          <View className="flex-row items-start justify-between gap-2">
+            <Text
+              className="text-white text-base font-semibold flex-1"
+              numberOfLines={1}
+            >
+              {title || "Untitled"}
+            </Text>
+            <View className="flex-row items-center gap-1.5 mt-0.5">
+              <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <Text className="text-red-400 text-xs font-mono">
+                {formatDuration(elapsed)}
+              </Text>
+            </View>
+          </View>
+          {project && (
+            <View className="flex-row items-center gap-1.5">
+              <Image
+                source={`sf:${project.icon}`}
+                style={{ width: 11, height: 11, tintColor: project.color }}
+              />
+              <Text className="text-zinc-500 text-xs">{project.name}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function TimelineScreen() {
@@ -98,8 +198,37 @@ export default function TimelineScreen() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
 
+  const { isTracking, startTimestamp } = useTimerStore();
+  const { sessions } = useSessionsStore();
+
   const weekStart = getWeekStart(today, weekOffset);
   const weekDays = getWeekDays(weekStart);
+
+  // Filter to selected day, sort ascending
+  const daySessions = sessions
+    .filter((s) => isSameDay(new Date(s.startTime), selectedDate))
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+  const liveInDay =
+    isTracking &&
+    startTimestamp &&
+    isSameDay(new Date(startTimestamp), selectedDate);
+
+  // Merge live timer into sorted list by startTimestamp
+  type Item =
+    | { kind: "session"; session: Session; startTime: number }
+    | { kind: "live"; startTime: number };
+
+  const items: Item[] = [
+    ...daySessions.map((s) => ({
+      kind: "session" as const,
+      session: s,
+      startTime: new Date(s.startTime).getTime(),
+    })),
+    ...(liveInDay
+      ? [{ kind: "live" as const, startTime: new Date(startTimestamp!).getTime() }]
+      : []),
+  ].sort((a, b) => a.startTime - b.startTime);
 
   // Reanimated — circle
   const circleX = useSharedValue(-CIRCLE_SIZE);
@@ -134,7 +263,6 @@ export default function TimelineScreen() {
     showCircle(date, true);
   }
 
-  // Updates week + selected date without closing the picker (used by SwiftUI DatePicker)
   function applyDate(date: Date) {
     const todayWeekStart = getWeekStart(today, 0);
     const targetWeekStart = getWeekStart(date, 0);
@@ -155,13 +283,11 @@ export default function TimelineScreen() {
     const newWeekDays = getWeekDays(getWeekStart(today, newOffset));
     const idx = newWeekDays.findIndex((d) => isSameDay(d, selectedDate));
 
-    // Snap circle to new position instantly (it slides in with the strip)
     circleX.value =
       idx !== -1 && stripWidth > 0
         ? circleXForIndexInWidth(idx, stripWidth)
         : -CIRCLE_SIZE;
 
-    // Snap strip off-screen in the incoming direction, then slide to 0
     weekTranslate.value = delta > 0 ? stripWidth : -stripWidth;
     setWeekOffset(newOffset);
     weekTranslate.value = withTiming(0, {
@@ -172,14 +298,12 @@ export default function TimelineScreen() {
 
   return (
     <>
-      {/* Left: tappable date pill */}
       <Stack.Toolbar placement="left" asChild>
         <Pressable onPress={() => setShowPicker(true)}>
           <DatePill date={selectedDate} />
         </Pressable>
       </Stack.Toolbar>
 
-      {/* Right: week navigation chevrons */}
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon="chevron.left"
@@ -195,13 +319,12 @@ export default function TimelineScreen() {
         className="flex-1 bg-black"
         contentInsetAdjustmentBehavior="automatic"
       >
-        {/* Week Strip — outer container stays static (border), inner slides */}
+        {/* Week Strip */}
         <View
           className="relative border-b border-zinc-800/60 overflow-hidden"
           onLayout={(e) => onStripLayout(e.nativeEvent.layout.width)}
         >
           <Animated.View style={animatedWeek}>
-            {/* Sliding highlight circle — rendered first so it sits behind text */}
             <Animated.View
               className="absolute rounded-full bg-white"
               style={[
@@ -210,7 +333,6 @@ export default function TimelineScreen() {
               ]}
               pointerEvents="none"
             />
-
             <View className="flex-row">
               {weekDays.map((day, i) => {
                 const isToday = isSameDay(day, today);
@@ -252,28 +374,38 @@ export default function TimelineScreen() {
           </Animated.View>
         </View>
 
-        {/* Empty State */}
-        <View className="items-center justify-center pt-28 px-8">
-          {/* Glow rings */}
-          <View className="items-center justify-center mb-7">
-            <View className="absolute w-36 h-36 rounded-full bg-zinc-900/30" />
-            <View className="absolute w-28 h-28 rounded-full bg-zinc-900/50" />
-            <View className="w-20 h-20 rounded-full bg-zinc-900 items-center justify-center">
-              <Image
-                source="sf:timer"
-                style={{ width: 30, height: 30 }}
-                tintColor="#52525b"
-              />
+        {/* Content */}
+        {items.length === 0 ? (
+          <View className="items-center justify-center pt-28 px-8">
+            <View className="items-center justify-center mb-7">
+              <View className="absolute w-36 h-36 rounded-full bg-zinc-900/30" />
+              <View className="absolute w-28 h-28 rounded-full bg-zinc-900/50" />
+              <View className="w-20 h-20 rounded-full bg-zinc-900 items-center justify-center">
+                <Image
+                  source="sf:timer"
+                  style={{ width: 30, height: 30 }}
+                  tintColor="#52525b"
+                />
+              </View>
             </View>
+            <Text className="text-white text-xl font-semibold mb-2 text-center">
+              No Sessions
+            </Text>
+            <Text className="text-zinc-500 text-sm text-center leading-5">
+              Start a focus session — your completed work will show up here.
+            </Text>
           </View>
-
-          <Text className="text-white text-xl font-semibold mb-2 text-center">
-            No Sessions
-          </Text>
-          <Text className="text-zinc-500 text-sm text-center leading-5">
-            Start a focus session — your completed work will show up here.
-          </Text>
-        </View>
+        ) : (
+          <View className="px-3 pt-4 pb-8 gap-2">
+            {items.map((item, i) =>
+              item.kind === "session" ? (
+                <SessionRow key={item.session.id} session={item.session} />
+              ) : (
+                <LiveSessionRow key="live" startTimestamp={startTimestamp!} />
+              )
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {showPicker && (

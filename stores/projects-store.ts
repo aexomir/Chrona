@@ -1,26 +1,13 @@
 import { PROJECTS, type Project } from "@/constants/projects";
-import { storage } from "@/storage";
+import { mmkvStorage } from "@/storage";
 import { create } from "zustand";
-import { persist, type StateStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 
 type ProjectsState = {
   projects: Project[];
   addProject: (project: Omit<Project, "id">) => void;
   updateProject: (id: string, patch: Partial<Omit<Project, "id">>) => void;
   removeProject: (id: string) => void;
-};
-
-const mmkvStorage: StateStorage = {
-  getItem: (name) => {
-    const value = storage.getString(name);
-    return value ? JSON.parse(value) : null;
-  },
-  setItem: (name, value) => {
-    storage.set(name, JSON.stringify(value));
-  },
-  removeItem: (name) => {
-    storage.delete(name);
-  },
 };
 
 export const useProjects = create<ProjectsState>()(
