@@ -1,10 +1,11 @@
-import { type Session, useSessionsStore } from "@/stores/sessions-store";
 import { useProjects } from "@/stores/projects-store";
+import { type Session, useSessionsStore } from "@/stores/sessions-store";
 import { useTimerStore } from "@/stores/timer-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
+import { Button } from "heroui-native";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Modal,
@@ -41,8 +42,18 @@ function getWeekDays(weekStart: Date): Date[] {
 }
 
 const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 function formatDate(d: Date) {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
@@ -142,7 +153,7 @@ function LiveSessionRow({ startTimestamp }: { startTimestamp: string }) {
   useEffect(() => {
     const tick = () =>
       setElapsed(
-        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000)
+        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000),
       );
     tick();
     const id = setInterval(tick, 1000);
@@ -197,22 +208,45 @@ export default function TimelineScreen() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekOffset, setWeekOffset] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
 
-  const { isTracking, startTimestamp } = useTimerStore();
+  const {
+    isTracking,
+    startTimestamp,
+    projectId: timerProjectId,
+  } = useTimerStore();
   const { sessions } = useSessionsStore();
+  const { projects } = useProjects();
 
   const weekStart = getWeekStart(today, weekOffset);
   const weekDays = getWeekDays(weekStart);
 
-  // Filter to selected day, sort ascending
+  const filtersActive = selectedProjectIds.length > 0;
+
+  function toggleProject(id: string) {
+    setSelectedProjectIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  // Filter to selected day + active project filters, sort ascending
   const daySessions = sessions
-    .filter((s) => isSameDay(new Date(s.startTime), selectedDate))
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    .filter((s) => {
+      if (!isSameDay(new Date(s.startTime), selectedDate)) return false;
+      if (filtersActive) return selectedProjectIds.includes(s.projectId ?? "");
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+    );
 
   const liveInDay =
     isTracking &&
     startTimestamp &&
-    isSameDay(new Date(startTimestamp), selectedDate);
+    isSameDay(new Date(startTimestamp), selectedDate) &&
+    (!filtersActive || selectedProjectIds.includes(timerProjectId ?? ""));
 
   // Merge live timer into sorted list by startTimestamp
   type Item =
@@ -226,7 +260,12 @@ export default function TimelineScreen() {
       startTime: new Date(s.startTime).getTime(),
     })),
     ...(liveInDay
-      ? [{ kind: "live" as const, startTime: new Date(startTimestamp!).getTime() }]
+      ? [
+          {
+            kind: "live" as const,
+            startTime: new Date(startTimestamp!).getTime(),
+          },
+        ]
       : []),
   ].sort((a, b) => a.startTime - b.startTime);
 
@@ -305,6 +344,14 @@ export default function TimelineScreen() {
       </Stack.Toolbar>
 
       <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={
+            filtersActive
+              ? "line.3.horizontal.decrease.circle.fill"
+              : "line.3.horizontal.decrease.circle"
+          }
+          onPress={() => setShowFilter(true)}
+        />
         <Stack.Toolbar.Button
           icon="chevron.left"
           onPress={() => handleWeekChange(-1)}
@@ -397,17 +444,18 @@ export default function TimelineScreen() {
           </View>
         ) : (
           <View className="px-3 pt-4 pb-8 gap-2">
-            {items.map((item, i) =>
+            {items.map((item) =>
               item.kind === "session" ? (
                 <SessionRow key={item.session.id} session={item.session} />
               ) : (
                 <LiveSessionRow key="live" startTimestamp={startTimestamp!} />
-              )
+              ),
             )}
           </View>
         )}
       </ScrollView>
 
+      {/* Date Picker Modal */}
       {showPicker && (
         <Modal
           transparent
@@ -433,6 +481,78 @@ export default function TimelineScreen() {
             >
               <Text className="text-white font-semibold text-base">Done</Text>
             </Pressable>
+          </View>
+        </Modal>
+      )}
+
+      {/* Filter Modal */}
+      {showFilter && (
+        <Modal
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowFilter(false)}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowFilter(false)}
+          />
+          <View className="absolute bottom-0 left-0 right-0 bg-zinc-900 rounded-t-2xl pb-safe">
+            {/* Handle */}
+            <View className="items-center pt-3 pb-1">
+              <View className="w-10 h-1 rounded-full bg-zinc-700" />
+            </View>
+
+            {/* Header */}
+            <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
+              <Text className="text-white text-lg font-semibold">
+                Filter by Project
+              </Text>
+              {filtersActive && (
+                <Pressable onPress={() => setSelectedProjectIds([])}>
+                  <Text className="text-zinc-400 text-sm">Clear</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* Project list */}
+            <View className="px-5">
+              {projects.map((p, i) => {
+                const isSelected = selectedProjectIds.includes(p.id);
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => toggleProject(p.id)}
+                    className={`flex-row items-center gap-3 py-3.5 ${
+                      i < projects.length - 1 ? "border-b border-zinc-800" : ""
+                    }`}
+                  >
+                    <Image
+                      source={`sf:${p.icon}`}
+                      style={{ width: 18, height: 18, tintColor: p.color }}
+                    />
+                    <Text className="text-white text-base flex-1">
+                      {p.name}
+                    </Text>
+                    <Image
+                      source={
+                        isSelected ? "sf:checkmark.circle.fill" : "sf:circle"
+                      }
+                      style={{
+                        width: 22,
+                        height: 22,
+                        tintColor: isSelected ? "#ffffff" : "#52525b",
+                      }}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View className="px-5 pt-4 pb-2">
+              <Button variant="primary" onPress={() => setShowFilter(false)}>
+                <Button.Label>Done</Button.Label>
+              </Button>
+            </View>
           </View>
         </Modal>
       )}
