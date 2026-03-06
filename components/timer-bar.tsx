@@ -1,9 +1,9 @@
-import { TimerModal } from "@/components/timer-modal";
-import { TimerContext } from "@/contexts/timer-context";
+import { useTimerStore } from "@/stores/timer-store";
 import { useProjects } from "@/stores/projects-store";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
-import React, { useState } from "react";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 function formatTime(seconds: number): string {
@@ -17,50 +17,60 @@ function formatTime(seconds: number): string {
 }
 
 export function TimerBar() {
-  const { isTracking, title, projectId, elapsedSeconds } = React.use(TimerContext)!;
+  const { isTracking, title, projectId, startTimestamp } = useTimerStore();
   const { projects } = useProjects();
   const project = projects.find((p) => p.id === projectId) ?? null;
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!isTracking || !startTimestamp) {
+      setElapsed(0);
+      return;
+    }
+    const tick = () =>
+      setElapsed(
+        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000)
+      );
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [isTracking, startTimestamp]);
 
   return (
-    <>
-      <Pressable onPress={() => setIsModalVisible(true)}>
-        <BlurView intensity={60} tint="dark" style={styles.blur}>
-          {isTracking ? (
-            <View className="flex-row items-center justify-center gap-2">
-              {project ? (
-                <Image
-                  source={`sf:${project.icon}`}
-                  style={[styles.icon, { tintColor: project.color }]}
-                />
-              ) : (
-                <View className="w-2 h-2 rounded-full bg-red-500" />
-              )}
-              <Text className="text-white text-sm shrink" numberOfLines={1}>
-                {title}
-              </Text>
-              {project && (
-                <Text className="text-neutral-500 text-sm shrink-0" numberOfLines={1}>
-                  {project.name}
-                </Text>
-              )}
-              <Text className="text-white text-sm font-mono font-semibold shrink-0">
-                {formatTime(elapsedSeconds)}
-              </Text>
-            </View>
-          ) : (
-            <Text className="text-white/50 text-sm text-center">
-              Tap to start a timer
+    <Pressable onPress={() => router.push("/timer")}>
+      <BlurView intensity={60} tint="dark" style={styles.blur}>
+        {isTracking ? (
+          <View className="flex-row items-center justify-center gap-2">
+            {project ? (
+              <Image
+                source={`sf:${project.icon}`}
+                style={[styles.icon, { tintColor: project.color }]}
+              />
+            ) : (
+              <View className="w-2 h-2 rounded-full bg-red-500" />
+            )}
+            <Text className="text-white text-sm shrink" numberOfLines={1}>
+              {title}
             </Text>
-          )}
-        </BlurView>
-      </Pressable>
-
-      <TimerModal
-        isVisible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
-      />
-    </>
+            {project && (
+              <Text
+                className="text-neutral-500 text-sm shrink-0"
+                numberOfLines={1}
+              >
+                {project.name}
+              </Text>
+            )}
+            <Text className="text-white text-sm font-mono font-semibold shrink-0">
+              {formatTime(elapsed)}
+            </Text>
+          </View>
+        ) : (
+          <Text className="text-white/50 text-sm text-center">
+            Tap to start a timer
+          </Text>
+        )}
+      </BlurView>
+    </Pressable>
   );
 }
 

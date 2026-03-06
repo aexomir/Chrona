@@ -1,0 +1,247 @@
+import { useSessionsStore } from "@/stores/sessions-store";
+import { useProjects } from "@/stores/projects-store";
+import { useTimerStore } from "@/stores/timer-store";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { Button, Input, PortalHost, Select } from "heroui-native";
+import { useEffect, useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+type SelectOption = { value: string; label: string };
+
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+export default function TimerScreen() {
+  const { projects } = useProjects();
+  const {
+    isTracking,
+    title,
+    projectId,
+    startTimestamp,
+    startTimer,
+    stopTimer,
+    updateTitle,
+    updateProjectId,
+  } = useTimerStore();
+  const { addSession } = useSessionsStore();
+  const insets = useSafeAreaInsets();
+
+  const [taskTitle, setTaskTitle] = useState(title || "");
+  const [selectedProject, setSelectedProject] = useState<
+    SelectOption | undefined
+  >(() => {
+    if (!projectId) return undefined;
+    const proj = projects.find((p) => p.id === projectId);
+    return proj ? { value: proj.id, label: proj.name } : undefined;
+  });
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!isTracking || !startTimestamp) {
+      setElapsed(0);
+      return;
+    }
+    const tick = () =>
+      setElapsed(
+        Math.floor(
+          (Date.now() - new Date(startTimestamp).getTime()) / 1000
+        )
+      );
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [isTracking, startTimestamp]);
+
+  const handleStart = () => {
+    if (!taskTitle.trim()) return;
+    startTimer(taskTitle.trim(), selectedProject?.value ?? null);
+    router.back();
+  };
+
+  const handleStop = () => {
+    const session = stopTimer();
+    if (session) {
+      addSession({ id: Date.now().toString(), ...session });
+    }
+    router.back();
+  };
+
+  const handleProjectChange = (v: SelectOption | undefined) => {
+    setSelectedProject(v);
+    updateProjectId(v?.value ?? null);
+  };
+
+  const selProj = projects.find((p) => p.id === selectedProject?.value);
+
+  return (
+    <KeyboardAvoidingView
+      behavior="padding"
+      className="flex-1 bg-[#111113]"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
+      {/* Nav bar */}
+      <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
+        <Pressable onPress={() => router.back()} hitSlop={12}>
+          <Text className="text-neutral-400 text-base">Cancel</Text>
+        </Pressable>
+        <Text className="text-white text-base font-semibold">
+          {isTracking ? "Tracking" : "New Timer"}
+        </Text>
+        <View className="w-14" />
+      </View>
+
+      {isTracking ? (
+        <View className="flex-1 justify-center px-6 gap-5">
+          <View
+            className="items-center justify-center rounded-3xl py-8 bg-[#1a1a1c]"
+            style={styles.card}
+          >
+            <Text className="text-neutral-500 text-xs uppercase tracking-widest mb-2">
+              elapsed
+            </Text>
+            <Text className="text-white text-7xl font-mono font-bold">
+              {formatTime(elapsed)}
+            </Text>
+          </View>
+
+          <Input
+            placeholder="What are you working on?"
+            value={taskTitle}
+            onChangeText={setTaskTitle}
+            onBlur={() => {
+              if (taskTitle.trim()) updateTitle(taskTitle.trim());
+            }}
+            onSubmitEditing={() => {
+              if (taskTitle.trim()) updateTitle(taskTitle.trim());
+            }}
+            returnKeyType="done"
+          />
+
+          <Select
+            value={selectedProject}
+            onValueChange={(v) =>
+              handleProjectChange(v as SelectOption | undefined)
+            }
+          >
+            <Select.Trigger>
+              <View className="flex-row items-center gap-2 flex-1">
+                {selProj && (
+                  <Image
+                    source={`sf:${selProj.icon}`}
+                    style={[styles.icon16, { tintColor: selProj.color }]}
+                  />
+                )}
+                <Select.Value placeholder="Project (optional)" />
+              </View>
+              <Select.TriggerIndicator />
+            </Select.Trigger>
+            <Select.Portal hostName="timer-modal">
+              <Select.Overlay />
+              <Select.Content presentation="popover" width="trigger">
+                <Select.ListLabel>Select a project</Select.ListLabel>
+                {projects.map((p) => (
+                  <Select.Item key={p.id} value={p.id} label={p.name}>
+                    <View className="flex-row items-center gap-3 flex-1">
+                      <Image
+                        source={`sf:${p.icon}`}
+                        style={[styles.icon18, { tintColor: p.color }]}
+                      />
+                      <Select.ItemLabel />
+                    </View>
+                    <Select.ItemIndicator />
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Portal>
+          </Select>
+
+          <Button variant="danger" onPress={handleStop}>
+            <Button.Label>Stop Timer</Button.Label>
+          </Button>
+        </View>
+      ) : (
+        <View className="flex-1 justify-center px-6 gap-5">
+          <Input
+            placeholder="What are you working on?"
+            value={taskTitle}
+            onChangeText={setTaskTitle}
+            onSubmitEditing={handleStart}
+            returnKeyType="go"
+            autoFocus
+          />
+
+          <Select
+            value={selectedProject}
+            onValueChange={(v) => setSelectedProject(v as SelectOption)}
+          >
+            <Select.Trigger>
+              <View className="flex-row items-center gap-2 flex-1">
+                {selProj && (
+                  <Image
+                    source={`sf:${selProj.icon}`}
+                    style={[styles.icon16, { tintColor: selProj.color }]}
+                  />
+                )}
+                <Select.Value placeholder="Project (optional)" />
+              </View>
+              <Select.TriggerIndicator />
+            </Select.Trigger>
+            <Select.Portal hostName="timer-modal">
+              <Select.Overlay />
+              <Select.Content presentation="popover" width="trigger">
+                <Select.ListLabel>Select a project</Select.ListLabel>
+                {projects.map((p) => (
+                  <Select.Item key={p.id} value={p.id} label={p.name}>
+                    <View className="flex-row items-center gap-3 flex-1">
+                      <Image
+                        source={`sf:${p.icon}`}
+                        style={[styles.icon18, { tintColor: p.color }]}
+                      />
+                      <Select.ItemLabel />
+                    </View>
+                    <Select.ItemIndicator />
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Portal>
+          </Select>
+
+          <Button
+            variant="primary"
+            onPress={handleStart}
+            isDisabled={!taskTitle.trim()}
+          >
+            <Button.Label>Start Timer</Button.Label>
+          </Button>
+        </View>
+      )}
+      <PortalHost name="timer-modal" />
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    shadowColor: "#000",
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+  },
+  icon16: { width: 16, height: 16 },
+  icon18: { width: 18, height: 18 },
+});
