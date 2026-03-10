@@ -467,7 +467,7 @@ export default function TimelineScreen() {
             onPress={() => setShowPicker(false)}
           />
           <View className="absolute bottom-0 left-0 right-0 bg-zinc-900 rounded-t-2xl pb-safe">
-            <Host>
+            <Host matchContents>
               <DatePicker
                 selection={selectedDate}
                 displayedComponents={["date"]}

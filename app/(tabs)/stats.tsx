@@ -2,6 +2,7 @@ import type { Project } from "@/constants/projects";
 import { useProjects } from "@/stores/projects-store";
 import { type Session, useSessionsStore } from "@/stores/sessions-store";
 import { BlurView } from "expo-blur";
+import { GlassView } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -509,10 +510,7 @@ const styles = StyleSheet.create({
   pillContainer: {
     flexDirection: "row",
     position: "relative",
-    backgroundColor: "rgba(255,255,255,0.07)",
     borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.14)",
   },
   pillIndicator: {
     position: "absolute",
@@ -676,7 +674,10 @@ export default function StatsScreen() {
       </ScrollShadow>
 
       {/* Fixed header — rendered above ScrollShadow */}
-      <View className="absolute top-0 left-0 right-0 bg-black" style={{ paddingTop: insets.top }}>
+      <View
+        className="absolute top-0 left-0 right-0 bg-black"
+        style={{ paddingTop: insets.top }}
+      >
         {/* Scroll shadow gradient */}
         <Animated.View
           style={[
@@ -684,7 +685,12 @@ export default function StatsScreen() {
             {
               height: 1,
               pointerEvents: "none",
-              opacity: interpolate(scrollY.value, [0, 40], [0, 1], Extrapolation.CLAMP),
+              opacity: interpolate(
+                scrollY.value,
+                [0, 40],
+                [0, 1],
+                Extrapolation.CLAMP,
+              ),
             },
           ]}
         >
@@ -699,23 +705,22 @@ export default function StatsScreen() {
         <View style={{ height: 56, paddingHorizontal: 16 }}>
           {/* Compact title */}
           <Animated.View
-            style={[
-              styles.compactTitleContainer,
-              compactAnimStyle,
-            ]}
+            style={[styles.compactTitleContainer, compactAnimStyle]}
             pointerEvents="none"
           >
             <Text style={styles.compactTitle}>
               Stats{" "}
-              <Text style={styles.compactTitleSecondary}>
-                · {activeLabel}
-              </Text>
+              <Text style={styles.compactTitleSecondary}>· {activeLabel}</Text>
             </Text>
           </Animated.View>
 
-          {/* Expanded pill selector (fades out when scrolled) */}
+          {/* Expanded pill selector */}
           <Animated.View style={[pillAnimStyle, { paddingVertical: 10 }]}>
-            <View style={styles.pillContainer}>
+            <GlassView
+              style={styles.pillContainer}
+              glassEffectStyle="regular"
+              colorScheme="dark"
+            >
               <Animated.View
                 style={[styles.pillIndicator, indicatorStyle]}
                 pointerEvents="none"
@@ -744,7 +749,9 @@ export default function StatsScreen() {
                       styles.pillButtonText,
                       {
                         color:
-                          activeIndex === idx ? "#000" : "rgba(255,255,255,0.45)",
+                          activeIndex === idx
+                            ? "#000"
+                            : "rgba(255,255,255,0.45)",
                       },
                     ]}
                   >
@@ -752,7 +759,7 @@ export default function StatsScreen() {
                   </Text>
                 </Pressable>
               ))}
-            </View>
+            </GlassView>
           </Animated.View>
         </View>
       </View>
