@@ -2,6 +2,11 @@ import { mmkvStorage } from "@/storage";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type AppUsage = {
+  app: string;
+  duration: number; // seconds
+};
+
 export type Session = {
   id: string;
   title: string;
@@ -9,6 +14,7 @@ export type Session = {
   startTime: string; // ISO
   endTime: string; // ISO
   duration: number; // seconds
+  apps?: AppUsage[]; // optional, attached after AW query
 };
 
 type SessionsState = {

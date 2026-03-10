@@ -106,6 +106,14 @@ function SessionRow({ session }: { session: Session }) {
     ? projects.find((p) => p.id === session.projectId)
     : null;
 
+  // Show max 3 apps, comma separated
+  const appsString = session.apps
+    ? session.apps
+        .slice(0, 3)
+        .map((a) => a.app)
+        .join(" · ")
+    : null;
+
   return (
     <View className="flex-row items-start gap-2">
       <View className="w-14 items-end pt-3.5">
@@ -138,6 +146,11 @@ function SessionRow({ session }: { session: Session }) {
             />
             <Text className="text-zinc-500 text-xs">{project.name}</Text>
           </View>
+        )}
+        {appsString && (
+          <Text className="text-zinc-600 text-xs mt-1 leading-4" numberOfLines={1}>
+            {appsString}
+          </Text>
         )}
       </View>
     </View>

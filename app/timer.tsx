@@ -1,6 +1,8 @@
-import { useSessionsStore } from "@/stores/sessions-store";
+import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
 import { useProjects } from "@/stores/projects-store";
 import { useTimerStore } from "@/stores/timer-store";
+import { AwAppsModal } from "@/components/aw-apps-modal";
+import { getAppUsage } from "@/lib/activitywatch";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
@@ -15,6 +17,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
+
+type PendingSession = {
+  title: string;
+  projectId: string | null;
+  startTime: string;
+  endTime: string;
+  duration: number;
+};
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -51,6 +61,14 @@ export default function TimerScreen() {
   });
   const [elapsed, setElapsed] = useState(0);
 
+  // ActivityWatch modal state
+  const [showAwModal, setShowAwModal] = useState(false);
+  const [pendingSession, setPendingSession] = useState<PendingSession | null>(
+    null
+  );
+  const [awApps, setAwApps] = useState<AppUsage[]>([]);
+  const [awLoading, setAwLoading] = useState(false);
+
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
       setElapsed(0);
@@ -73,11 +91,48 @@ export default function TimerScreen() {
     router.back();
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
     const session = stopTimer();
-    if (session) {
-      addSession({ id: Date.now().toString(), ...session });
+    if (!session) {
+      router.back();
+      return;
     }
+
+    // Store pending session and open modal
+    setPendingSession(session);
+    setShowAwModal(true);
+    setAwLoading(true);
+
+    // Query ActivityWatch in background
+    const apps = await getAppUsage(session.startTime, session.endTime);
+    setAwApps(apps);
+    setAwLoading(false);
+  };
+
+  const handleSaveSession = (selectedApps: AppUsage[]) => {
+    if (pendingSession) {
+      addSession({
+        id: Date.now().toString(),
+        ...pendingSession,
+        apps: selectedApps.length > 0 ? selectedApps : undefined,
+      });
+    }
+    setShowAwModal(false);
+    setPendingSession(null);
+    setAwApps([]);
+    router.back();
+  };
+
+  const handleSkipSession = () => {
+    if (pendingSession) {
+      addSession({
+        id: Date.now().toString(),
+        ...pendingSession,
+      });
+    }
+    setShowAwModal(false);
+    setPendingSession(null);
+    setAwApps([]);
     router.back();
   };
 
@@ -231,6 +286,15 @@ export default function TimerScreen() {
         </View>
       )}
       <PortalHost name="timer-modal" />
+
+      {/* ActivityWatch Apps Modal */}
+      <AwAppsModal
+        visible={showAwModal}
+        apps={awApps}
+        loading={awLoading}
+        onSave={handleSaveSession}
+        onSkip={handleSkipSession}
+      />
     </KeyboardAvoidingView>
   );
 }
