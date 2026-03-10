@@ -4,7 +4,8 @@ import { persist } from "zustand/middleware";
 
 export type AppUsage = {
   app: string;
-  duration: number; // seconds
+  duration: number;
+  titles?: string[];
 };
 
 export type Session = {
@@ -37,6 +38,6 @@ export const useSessionsStore = create<SessionsState>()(
     {
       name: "sessions",
       storage: mmkvStorage,
-    }
-  )
+    },
+  ),
 );
