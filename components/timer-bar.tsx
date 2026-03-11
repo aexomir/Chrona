@@ -3,6 +3,7 @@ import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore } from "@/stores/sessions-store";
 import { useSuggestionsStore } from "@/stores/suggestions-store";
 import { useRecoveryStore } from "@/stores/recovery-store";
+import { useCalendarStore } from "@/stores/calendar-store";
 import { detectMissedTime } from "@/lib/detectMissedTime";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
@@ -26,9 +27,19 @@ export function TimerBar() {
   const { sessions } = useSessionsStore();
   const { suggestProject } = useSuggestionsStore();
   const { pending, set: setRecovery } = useRecoveryStore();
+  const {
+    isEnabled: calendarEnabled,
+    getActiveEventSuggestion,
+    fetchEvents: fetchCalendarEvents,
+  } = useCalendarStore();
   const project = projects.find((p) => p.id === projectId) ?? null;
   const [elapsed, setElapsed] = useState(0);
+  const [calendarSuggestion, setCalendarSuggestion] = useState<{
+    eventTitle: string;
+    projectId: string;
+  } | null>(null);
   const hasDetectedRef = useRef(false);
+  const hasCheckCalendarRef = useRef(false);
 
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
@@ -60,8 +71,52 @@ export function TimerBar() {
     });
   }, [isTracking, sessions, suggestProject, pending, setRecovery]);
 
+  // Calendar event suggestion effect: check when not tracking
+  useEffect(() => {
+    if (isTracking || pending || !calendarEnabled) {
+      hasCheckCalendarRef.current = false;
+      setCalendarSuggestion(null);
+      return;
+    }
+    if (hasCheckCalendarRef.current) return;
+
+    hasCheckCalendarRef.current = true;
+    const suggestion = getActiveEventSuggestion();
+    if (suggestion) {
+      setCalendarSuggestion({
+        eventTitle: suggestion.event.title,
+        projectId: suggestion.projectId,
+      });
+    }
+  }, [isTracking, pending, calendarEnabled, getActiveEventSuggestion]);
+
+  // Periodic calendar refresh: refresh events every 5 minutes when idle
+  useEffect(() => {
+    if (!calendarEnabled || isTracking) return;
+
+    const interval = setInterval(() => {
+      fetchCalendarEvents();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [calendarEnabled, isTracking, fetchCalendarEvents]);
+
+  const calendarProj = calendarSuggestion
+    ? projects.find((p) => p.id === calendarSuggestion.projectId)
+    : null;
+
   return (
-    <Pressable onPress={() => router.push(pending ? "/recover" : "/timer")}>
+    <Pressable
+      onPress={() => {
+        if (pending) {
+          router.push("/recover");
+        } else if (calendarSuggestion && calendarProj) {
+          router.push(`/timer?suggestProjectId=${calendarSuggestion.projectId}&suggestEventTitle=${encodeURIComponent(calendarSuggestion.eventTitle)}`);
+        } else {
+          router.push("/timer");
+        }
+      }}
+    >
       <BlurView intensity={60} tint="dark" style={styles.blur}>
         {isTracking ? (
           <View className="flex-row items-center justify-center gap-2">
@@ -93,6 +148,17 @@ export function TimerBar() {
             <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
             <Text className="text-amber-400 text-sm">
               Activity not tracked · Tap to review
+            </Text>
+          </View>
+        ) : calendarSuggestion ? (
+          <View className="flex-row items-center justify-center gap-1.5">
+            <Text className="text-white/50 text-sm shrink-0">suggested:</Text>
+            <View
+              className="w-1 h-1 rounded-full shrink-0"
+              style={{ backgroundColor: calendarProj?.color || "#888" }}
+            />
+            <Text className="text-white text-sm shrink" numberOfLines={1}>
+              {calendarSuggestion.eventTitle}
             </Text>
           </View>
         ) : (

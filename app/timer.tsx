@@ -9,7 +9,7 @@ import {
 } from "@/stores/suggestions-store";
 import { getAppUsage } from "@/lib/activitywatch";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -67,13 +67,24 @@ export default function TimerScreen() {
   const { addSession } = useSessionsStore();
   const { learnFromSession, suggestProject, associations } = useSuggestionsStore();
   const insets = useSafeAreaInsets();
+  const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
+    suggestProjectId?: string;
+    suggestEventTitle?: string;
+  }>();
 
-  const [taskTitle, setTaskTitle] = useState(title || "");
+  const [taskTitle, setTaskTitle] = useState<string>(() => {
+    if (title) return title;
+    // Pre-fill with event title if provided from calendar suggestion
+    if (suggestEventTitle) return decodeURIComponent(suggestEventTitle);
+    return "";
+  });
   const [selectedProject, setSelectedProject] = useState<
     SelectOption | undefined
   >(() => {
-    if (!projectId) return undefined;
-    const proj = projects.find((p) => p.id === projectId);
+    // Use suggestProjectId if provided from calendar suggestion
+    const projId = suggestProjectId || projectId;
+    if (!projId) return undefined;
+    const proj = projects.find((p) => p.id === projId);
     return proj ? { value: proj.id, label: proj.name } : undefined;
   });
   const [elapsed, setElapsed] = useState(0);

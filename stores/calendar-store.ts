@@ -2,6 +2,8 @@ import {
   fetchCalendarEvents,
   getCalendarPermissionStatus,
   requestCalendarPermission,
+  findActiveEvents,
+  eventMatchesMapping,
   type CalendarEvent,
 } from "@/lib/calendar";
 import { mmkvStorage } from "@/storage";
@@ -13,6 +15,11 @@ export type CalendarMapping = {
   projectId: string;
   calendarName?: string; // exact match against event.calendarName
   titleKeywords?: string[]; // case-insensitive substring match against event.title
+};
+
+type ActiveEventSuggestion = {
+  event: CalendarEvent;
+  projectId: string;
 };
 
 type CalendarState = {
@@ -29,6 +36,7 @@ type CalendarState = {
   addMapping(m: Omit<CalendarMapping, "id">): void;
   updateMapping(id: string, patch: Partial<Omit<CalendarMapping, "id">>): void;
   removeMapping(id: string): void;
+  getActiveEventSuggestion(): ActiveEventSuggestion | null;
 };
 
 export const useCalendarStore = create<CalendarState>()(
@@ -93,6 +101,22 @@ export const useCalendarStore = create<CalendarState>()(
         set((state) => ({
           mappings: state.mappings.filter((m) => m.id !== id),
         }));
+      },
+
+      getActiveEventSuggestion() {
+        const activeEvents = findActiveEvents(get().events);
+        if (activeEvents.length === 0) return null;
+
+        // Find first event that matches a mapping
+        for (const event of activeEvents) {
+          for (const mapping of get().mappings) {
+            if (eventMatchesMapping(event, mapping)) {
+              return { event, projectId: mapping.projectId };
+            }
+          }
+        }
+
+        return null;
       },
     }),
     {

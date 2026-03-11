@@ -131,3 +131,37 @@ export function calendarStatusLabel(
   if (permissionStatus === "granted" && !isEnabled) return "Disconnected";
   return "Permission Required";
 }
+
+/**
+ * Find active calendar events at the current time
+ */
+export function findActiveEvents(events: CalendarEvent[]): CalendarEvent[] {
+  const now = new Date();
+  return events.filter((event) => {
+    const start = new Date(event.startDate);
+    const end = new Date(event.endDate);
+    return now >= start && now <= end;
+  });
+}
+
+/**
+ * Check if event matches a mapping's criteria
+ */
+export function eventMatchesMapping(
+  event: CalendarEvent,
+  mapping: {
+    calendarName?: string;
+    titleKeywords?: string[];
+  }
+): boolean {
+  if (mapping.calendarName) {
+    if (event.calendarName === mapping.calendarName) return true;
+  }
+  if (mapping.titleKeywords && mapping.titleKeywords.length > 0) {
+    const titleLower = event.title.toLowerCase();
+    return mapping.titleKeywords.some((keyword) =>
+      titleLower.includes(keyword.toLowerCase())
+    );
+  }
+  return false;
+}
