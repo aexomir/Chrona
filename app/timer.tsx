@@ -3,20 +3,22 @@ import { useProjects } from "@/stores/projects-store";
 import type { Project } from "@/constants/projects";
 import { useTimerStore } from "@/stores/timer-store";
 import { useSuggestionsStore } from "@/stores/suggestions-store";
-import { AwAppsModal } from "@/components/aw-apps-modal";
 import { getAppUsage } from "@/lib/activitywatch";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 type SelectOption = { value: string; label: string };
 
@@ -36,6 +38,14 @@ function formatTime(seconds: number): string {
     return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.floor(seconds)}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 export default function TimerScreen() {
@@ -64,13 +74,12 @@ export default function TimerScreen() {
   });
   const [elapsed, setElapsed] = useState(0);
 
-  // ActivityWatch modal state
-  const [showAwModal, setShowAwModal] = useState(false);
-  const [pendingSession, setPendingSession] = useState<PendingSession | null>(
-    null
-  );
-  const [awApps, setAwApps] = useState<AppUsage[]>([]);
-  const [awLoading, setAwLoading] = useState(false);
+  // Session review state
+  const [reviewData, setReviewData] = useState<{
+    session: PendingSession;
+    apps: AppUsage[];
+    loading: boolean;
+  } | null>(null);
 
   // Suggestion state
   const [suggestion, setSuggestion] = useState<
@@ -123,45 +132,38 @@ export default function TimerScreen() {
       return;
     }
 
-    // Store pending session and open modal
-    setPendingSession(session);
-    setShowAwModal(true);
-    setAwLoading(true);
+    // Enter review state with loading
+    setReviewData({ session, apps: [], loading: true });
 
     // Query ActivityWatch in background
     const apps = await getAppUsage(session.startTime, session.endTime);
-    setAwApps(apps);
-    setAwLoading(false);
+    setReviewData((prev) =>
+      prev ? { ...prev, apps, loading: false } : null
+    );
   };
 
-  const handleSaveSession = (selectedApps: AppUsage[]) => {
-    if (pendingSession) {
-      addSession({
-        id: Date.now().toString(),
-        ...pendingSession,
-        apps: selectedApps.length > 0 ? selectedApps : undefined,
-      });
-      // Learn from session if we have both project and app data
-      if (pendingSession.projectId !== null && selectedApps.length > 0) {
-        learnFromSession(selectedApps, pendingSession.projectId);
-      }
+  const handleSaveReview = (selectedApps: AppUsage[]) => {
+    if (!reviewData) return;
+    addSession({
+      id: Date.now().toString(),
+      ...reviewData.session,
+      apps: selectedApps.length > 0 ? selectedApps : undefined,
+    });
+    // Learn from session if we have both project and app data
+    if (reviewData.session.projectId !== null && selectedApps.length > 0) {
+      learnFromSession(selectedApps, reviewData.session.projectId);
     }
-    setShowAwModal(false);
-    setPendingSession(null);
-    setAwApps([]);
+    setReviewData(null);
     router.back();
   };
 
-  const handleSkipSession = () => {
-    if (pendingSession) {
-      addSession({
-        id: Date.now().toString(),
-        ...pendingSession,
-      });
-    }
-    setShowAwModal(false);
-    setPendingSession(null);
-    setAwApps([]);
+  const handleDiscardReview = () => {
+    if (!reviewData) return;
+    addSession({
+      id: Date.now().toString(),
+      ...reviewData.session,
+    });
+    setReviewData(null);
     router.back();
   };
 
@@ -198,12 +200,22 @@ export default function TimerScreen() {
           <Text className="text-neutral-400 text-base">Cancel</Text>
         </Pressable>
         <Text className="text-white text-base font-semibold">
-          {isTracking ? "Tracking" : "New Timer"}
+          {reviewData
+            ? "Review"
+            : isTracking
+              ? "Tracking"
+              : "New Timer"}
         </Text>
         <View className="w-14" />
       </View>
 
-      {isTracking ? (
+      {reviewData ? (
+        <ReviewView
+          reviewData={reviewData}
+          onSave={handleSaveReview}
+          onDiscard={handleDiscardReview}
+        />
+      ) : isTracking ? (
         <View className="flex-1 justify-center px-6 gap-5">
           <View
             className="items-center justify-center rounded-3xl py-8 bg-[#1a1a1c]"
@@ -338,16 +350,160 @@ export default function TimerScreen() {
         </View>
       )}
       <PortalHost name="timer-modal" />
-
-      {/* ActivityWatch Apps Modal */}
-      <AwAppsModal
-        visible={showAwModal}
-        apps={awApps}
-        loading={awLoading}
-        onSave={handleSaveSession}
-        onSkip={handleSkipSession}
-      />
     </KeyboardAvoidingView>
+  );
+}
+
+type ReviewViewProps = {
+  reviewData: {
+    session: PendingSession;
+    apps: AppUsage[];
+    loading: boolean;
+  };
+  onSave: (selectedApps: AppUsage[]) => void;
+  onDiscard: () => void;
+};
+
+function ReviewView({ reviewData, onSave, onDiscard }: ReviewViewProps) {
+  const [selectedApps, setSelectedApps] = useState<Set<string>>(
+    new Set(reviewData.apps.map((a) => a.app))
+  );
+
+  const handleToggleApp = (app: string) => {
+    const newSelected = new Set(selectedApps);
+    if (newSelected.has(app)) {
+      newSelected.delete(app);
+    } else {
+      newSelected.add(app);
+    }
+    setSelectedApps(newSelected);
+  };
+
+  const handleSave = () => {
+    const selected = reviewData.apps.filter((a) =>
+      selectedApps.has(a.app)
+    );
+    onSave(selected);
+  };
+
+  const isEmpty = reviewData.apps.length === 0;
+  const { session, apps, loading } = reviewData;
+
+  return (
+    <Animated.View
+      className="flex-1"
+      entering={FadeInDown.duration(300)}
+    >
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        className="flex-1 px-6"
+      >
+        {/* Session summary card */}
+        <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
+          <View className="flex-row items-center gap-2 mb-3">
+            <Image
+              source="sf:checkmark.circle.fill"
+              style={{ width: 20, height: 20, tintColor: "#10b981" }}
+            />
+            <Text className="text-emerald-500 text-sm font-semibold">
+              Session Complete
+            </Text>
+          </View>
+          <Text className="text-white text-lg font-semibold mb-2">
+            {session.title}
+          </Text>
+          <Text className="text-zinc-400 text-sm">
+            {formatTime(session.duration)}
+          </Text>
+        </View>
+
+        {/* Apps detected section */}
+        <View className="mb-6">
+          <Text className="text-white text-base font-semibold mb-3">
+            Apps Detected
+          </Text>
+
+          {loading ? (
+            <View className="items-center justify-center py-8">
+              <ActivityIndicator size="large" color="#ffffff" />
+            </View>
+          ) : isEmpty ? (
+            <View className="items-center justify-center py-8 rounded-2xl bg-[#1a1a1c] border border-zinc-800">
+              <Text className="text-zinc-400 text-base">
+                No activity detected
+              </Text>
+            </View>
+          ) : (
+            <View className="rounded-2xl bg-[#1a1a1c] border border-zinc-800 overflow-hidden">
+              {apps.map((app, i) => {
+                const isSelected = selectedApps.has(app.app);
+                const titles = app.titles ?? [];
+                return (
+                  <Pressable
+                    key={app.app}
+                    onPress={() => handleToggleApp(app.app)}
+                    className={`flex-row items-start gap-3 px-4 py-3 ${
+                      i < apps.length - 1 ? "border-b border-zinc-800" : ""
+                    }`}
+                  >
+                    <View className="pt-1">
+                      <View
+                        className={`w-5 h-5 rounded border-2 items-center justify-center ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-zinc-600"
+                        }`}
+                      >
+                        {isSelected && (
+                          <Text className="text-white text-xs font-bold">
+                            ✓
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row items-baseline gap-2 mb-1">
+                        <Text className="text-white text-base font-medium">
+                          {app.app}
+                        </Text>
+                        <Text className="text-zinc-500 text-sm">
+                          {formatDuration(app.duration)}
+                        </Text>
+                      </View>
+                      {titles.length > 0 && (
+                        <View className="gap-0.5">
+                          {titles.slice(0, 2).map((title, idx) => (
+                            <Text
+                              key={idx}
+                              className="text-zinc-400 text-xs"
+                              numberOfLines={1}
+                            >
+                              · {title}
+                            </Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Action buttons */}
+      <View className="px-6 gap-2 py-4">
+        <Button variant="primary" onPress={handleSave}>
+          <Button.Label>
+            {isEmpty ? "Save Session" : "Save Session"}
+          </Button.Label>
+        </Button>
+        <Button variant="ghost" onPress={onDiscard}>
+          <Button.Label>Discard</Button.Label>
+        </Button>
+      </View>
+    </Animated.View>
   );
 }
 
