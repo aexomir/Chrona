@@ -3,11 +3,44 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AppUsage } from "@/stores/sessions-store";
 
-type AssociationMap = {
+export type AssociationMap = {
   [appName: string]: {
     [projectId: string]: { count: number; totalDuration: number };
   };
 };
+
+export function getSmartDefaultApps(
+  apps: AppUsage[],
+  projectId: string | null,
+  associations: AssociationMap
+): Set<string> {
+  if (projectId !== null) {
+    const historicalMatches = apps.filter(
+      (a) => (associations[a.app]?.[projectId]?.count ?? 0) > 0
+    );
+    if (historicalMatches.length > 0) {
+      return new Set(historicalMatches.map((a) => a.app));
+    }
+  }
+
+  if (apps.length > 0) {
+    const totalDuration = apps.reduce((sum, a) => sum + a.duration, 0);
+    if (totalDuration > 0) {
+      const sorted = [...apps].sort((a, b) => b.duration - a.duration);
+      const threshold = totalDuration * 0.8;
+      let cumulative = 0;
+      const selected = new Set<string>();
+      for (const app of sorted) {
+        selected.add(app.app);
+        cumulative += app.duration;
+        if (cumulative >= threshold) break;
+      }
+      return selected;
+    }
+  }
+
+  return new Set(apps.map((a) => a.app));
+}
 
 type SuggestionsState = {
   associations: AssociationMap;

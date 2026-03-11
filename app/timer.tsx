@@ -2,12 +2,16 @@ import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
 import { useProjects } from "@/stores/projects-store";
 import type { Project } from "@/constants/projects";
 import { useTimerStore } from "@/stores/timer-store";
-import { useSuggestionsStore } from "@/stores/suggestions-store";
+import {
+  useSuggestionsStore,
+  getSmartDefaultApps,
+  type AssociationMap,
+} from "@/stores/suggestions-store";
 import { getAppUsage } from "@/lib/activitywatch";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -61,7 +65,7 @@ export default function TimerScreen() {
     updateProjectId,
   } = useTimerStore();
   const { addSession } = useSessionsStore();
-  const { learnFromSession, suggestProject } = useSuggestionsStore();
+  const { learnFromSession, suggestProject, associations } = useSuggestionsStore();
   const insets = useSafeAreaInsets();
 
   const [taskTitle, setTaskTitle] = useState(title || "");
@@ -212,6 +216,7 @@ export default function TimerScreen() {
       {reviewData ? (
         <ReviewView
           reviewData={reviewData}
+          associations={associations}
           onSave={handleSaveReview}
           onDiscard={handleDiscardReview}
         />
@@ -360,14 +365,29 @@ type ReviewViewProps = {
     apps: AppUsage[];
     loading: boolean;
   };
+  associations: AssociationMap;
   onSave: (selectedApps: AppUsage[]) => void;
   onDiscard: () => void;
 };
 
-function ReviewView({ reviewData, onSave, onDiscard }: ReviewViewProps) {
-  const [selectedApps, setSelectedApps] = useState<Set<string>>(
-    new Set(reviewData.apps.map((a) => a.app))
-  );
+function ReviewView({ reviewData, associations, onSave, onDiscard }: ReviewViewProps) {
+  const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    if (reviewData.loading) return;
+    hasInitialized.current = true;
+    if (reviewData.apps.length > 0) {
+      setSelectedApps(
+        getSmartDefaultApps(
+          reviewData.apps,
+          reviewData.session.projectId,
+          associations
+        )
+      );
+    }
+  }, [reviewData.loading, reviewData.apps, reviewData.session.projectId, associations]);
 
   const handleToggleApp = (app: string) => {
     const newSelected = new Set(selectedApps);
