@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aexomir.Focus"
+      "bundleIdentifier": "com.aexomir.Focus",
+      "infoPlist": {
+        "NSCalendarsUsageDescription": "Focus uses your calendar to suggest projects for upcoming events."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -41,7 +44,13 @@
       ],
       "expo-font",
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Focus uses your calendar to suggest projects for upcoming events."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -2,6 +2,8 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { ListGroup, Separator } from "heroui-native";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCalendarStore } from "@/stores/calendar-store";
+import { calendarStatusLabel } from "@/lib/calendar";
 
 function IconSquare({ icon, color }: { icon: string; color: string }) {
   return (
@@ -48,6 +50,7 @@ function QuestionSuffix() {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { permissionStatus, isEnabled } = useCalendarStore();
 
   return (
     <ScrollView
@@ -111,6 +114,22 @@ export default function SettingsScreen() {
           </ListGroup.ItemContent>
           <ListGroup.ItemSuffix>
             <ValueSuffix value="After 5 min" />
+          </ListGroup.ItemSuffix>
+        </ListGroup.Item>
+      </ListGroup>
+
+      {/* INTEGRATIONS */}
+      <SectionLabel>Integrations</SectionLabel>
+      <ListGroup className="mb-8">
+        <ListGroup.Item onPress={() => router.push("/calendar-settings")}>
+          <ListGroup.ItemPrefix>
+            <IconSquare icon="calendar.badge.checkmark" color="#3b82f6" />
+          </ListGroup.ItemPrefix>
+          <ListGroup.ItemContent>
+            <ListGroup.ItemTitle>Calendar</ListGroup.ItemTitle>
+          </ListGroup.ItemContent>
+          <ListGroup.ItemSuffix>
+            <ValueSuffix value={calendarStatusLabel(permissionStatus, isEnabled)} />
           </ListGroup.ItemSuffix>
         </ListGroup.Item>
       </ListGroup>
