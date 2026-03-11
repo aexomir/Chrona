@@ -4,6 +4,8 @@ import { ListGroup, Separator } from "heroui-native";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useCalendarStore } from "@/stores/calendar-store";
 import { calendarStatusLabel } from "@/lib/calendar";
+import { useMeetingStore } from "@/stores/meeting-store";
+import { meetingStatusLabel } from "@/lib/meetingDetection";
 
 function IconSquare({ icon, color }: { icon: string; color: string }) {
   return (
@@ -51,6 +53,7 @@ function QuestionSuffix() {
 export default function SettingsScreen() {
   const router = useRouter();
   const { permissionStatus, isEnabled } = useCalendarStore();
+  const { isEnabled: meetingEnabled, selectedAppIds } = useMeetingStore();
 
   return (
     <ScrollView
@@ -130,6 +133,20 @@ export default function SettingsScreen() {
           </ListGroup.ItemContent>
           <ListGroup.ItemSuffix>
             <ValueSuffix value={calendarStatusLabel(permissionStatus, isEnabled)} />
+          </ListGroup.ItemSuffix>
+        </ListGroup.Item>
+
+        <Separator className="mx-4" />
+
+        <ListGroup.Item onPress={() => router.push("/meeting-settings")}>
+          <ListGroup.ItemPrefix>
+            <IconSquare icon="video.fill" color="#7c3aed" />
+          </ListGroup.ItemPrefix>
+          <ListGroup.ItemContent>
+            <ListGroup.ItemTitle>Meetings</ListGroup.ItemTitle>
+          </ListGroup.ItemContent>
+          <ListGroup.ItemSuffix>
+            <ValueSuffix value={meetingStatusLabel(meetingEnabled, selectedAppIds)} />
           </ListGroup.ItemSuffix>
         </ListGroup.Item>
       </ListGroup>
