@@ -87,8 +87,9 @@ export default function RecoverScreen() {
   }
 
   const selectedProj = projects.find((p) => p.id === selectedProject?.value);
+  const selected = pending.apps.filter((a) => selectedApps.has(a.app));
   const durationSeconds = Math.floor(
-    (new Date(pending.endTime).getTime() - new Date(pending.startTime).getTime()) / 1000
+    selected.reduce((sum, a) => sum + a.duration, 0)
   );
 
   const handleToggleApp = (app: string) => {
@@ -103,8 +104,6 @@ export default function RecoverScreen() {
 
   const handleLog = () => {
     if (!title.trim() || !selectedProject) return;
-
-    const selected = pending.apps.filter((a) => selectedApps.has(a.app));
 
     addSession({
       id: Date.now().toString(),
