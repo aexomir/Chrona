@@ -1,9 +1,13 @@
 import { useTimerStore } from "@/stores/timer-store";
 import { useProjects } from "@/stores/projects-store";
+import { useSessionsStore } from "@/stores/sessions-store";
+import { useSuggestionsStore } from "@/stores/suggestions-store";
+import { useRecoveryStore } from "@/stores/recovery-store";
+import { detectMissedTime } from "@/lib/detectMissedTime";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 function formatTime(seconds: number): string {
@@ -19,8 +23,12 @@ function formatTime(seconds: number): string {
 export function TimerBar() {
   const { isTracking, title, projectId, startTimestamp } = useTimerStore();
   const { projects } = useProjects();
+  const { sessions } = useSessionsStore();
+  const { suggestProject } = useSuggestionsStore();
+  const { pending, set: setRecovery } = useRecoveryStore();
   const project = projects.find((p) => p.id === projectId) ?? null;
   const [elapsed, setElapsed] = useState(0);
+  const hasDetectedRef = useRef(false);
 
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
@@ -36,8 +44,24 @@ export function TimerBar() {
     return () => clearInterval(id);
   }, [isTracking, startTimestamp]);
 
+  // Detection effect: run when not tracking
+  useEffect(() => {
+    if (isTracking) {
+      hasDetectedRef.current = false;
+      return;
+    }
+    if (hasDetectedRef.current || pending) return;
+
+    hasDetectedRef.current = true;
+    detectMissedTime(sessions, suggestProject).then((result) => {
+      if (result) {
+        setRecovery(result);
+      }
+    });
+  }, [isTracking, sessions, suggestProject, pending, setRecovery]);
+
   return (
-    <Pressable onPress={() => router.push("/timer")}>
+    <Pressable onPress={() => router.push(pending ? "/recover" : "/timer")}>
       <BlurView intensity={60} tint="dark" style={styles.blur}>
         {isTracking ? (
           <View className="flex-row items-center justify-center gap-2">
@@ -62,6 +86,13 @@ export function TimerBar() {
             )}
             <Text className="text-white text-sm font-mono font-semibold shrink-0">
               {formatTime(elapsed)}
+            </Text>
+          </View>
+        ) : pending ? (
+          <View className="flex-row items-center justify-center gap-2">
+            <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <Text className="text-amber-400 text-sm">
+              Activity not tracked · Tap to review
             </Text>
           </View>
         ) : (

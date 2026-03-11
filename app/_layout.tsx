@@ -22,6 +22,10 @@ export default function RootLayout() {
                 name="timer"
                 options={{ presentation: "modal", headerShown: false }}
               />
+              <Stack.Screen
+                name="recover"
+                options={{ presentation: "modal", headerShown: false }}
+              />
             </Stack>
             <StatusBar style="light" />
           </ThemeProvider>
