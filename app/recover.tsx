@@ -49,7 +49,12 @@ export default function RecoverScreen() {
   const { addSession } = useSessionsStore();
   const { learnFromSession, associations } = useSuggestionsStore();
 
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(() => {
+    if (pending?.source === "calendar" && pending?.eventTitle) {
+      return pending.eventTitle;
+    }
+    return "";
+  });
   const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>(() => {
     if (!pending?.suggestion.projectId) return undefined;
     const proj = projects.find((p) => p.id === pending.suggestion.projectId);
@@ -141,24 +146,47 @@ export default function RecoverScreen() {
       </View>
 
       <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 px-6">
-        {/* Activity not tracked card (amber) */}
-        <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
-          <View className="flex-row items-center gap-2 mb-3">
-            <Image
-              source="sf:clock.badge.exclamationmark"
-              style={{ width: 20, height: 20, tintColor: "#f59e0b" }}
-            />
-            <Text className="text-amber-400 text-sm font-semibold">
-              Activity not tracked
+        {/* Header card: calendar-specific or AW-based */}
+        {pending.source === "calendar" ? (
+          <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
+            <View className="flex-row items-center gap-2 mb-3">
+              <Image
+                source="sf:calendar.badge.exclamationmark"
+                style={{ width: 20, height: 20, tintColor: "#f59e0b" }}
+              />
+              <Text className="text-amber-400 text-sm font-semibold">
+                Calendar event not logged
+              </Text>
+            </View>
+            <Text className="text-white text-lg font-semibold mb-1">
+              {pending.eventTitle}
+            </Text>
+            <Text className="text-zinc-400 text-sm mb-2">
+              {formatTimeRange(pending.startTime, pending.endTime)}
+            </Text>
+            <Text className="text-zinc-500 text-sm">
+              {formatDuration(durationSeconds)}
             </Text>
           </View>
-          <Text className="text-white text-lg font-semibold mb-2">
-            {formatTimeRange(pending.startTime, pending.endTime)}
-          </Text>
-          <Text className="text-zinc-400 text-sm">
-            {formatDuration(durationSeconds)}
-          </Text>
-        </View>
+        ) : (
+          <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
+            <View className="flex-row items-center gap-2 mb-3">
+              <Image
+                source="sf:clock.badge.exclamationmark"
+                style={{ width: 20, height: 20, tintColor: "#f59e0b" }}
+              />
+              <Text className="text-amber-400 text-sm font-semibold">
+                Activity not tracked
+              </Text>
+            </View>
+            <Text className="text-white text-lg font-semibold mb-2">
+              {formatTimeRange(pending.startTime, pending.endTime)}
+            </Text>
+            <Text className="text-zinc-400 text-sm">
+              {formatDuration(durationSeconds)}
+            </Text>
+          </View>
+        )}
 
         {/* Title input */}
         <View className="mb-4">

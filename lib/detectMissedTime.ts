@@ -6,6 +6,8 @@ export type RecoveryPeriod = {
   endTime: string;
   apps: AppUsage[];
   suggestion: { projectId: string; matchedApps: string[] };
+  source?: "calendar"; // omitted = AW-based (default)
+  eventTitle?: string; // calendar event title, present when source === "calendar"
 };
 
 // Constants
