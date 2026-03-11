@@ -1,6 +1,8 @@
 import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
 import { useProjects } from "@/stores/projects-store";
+import type { Project } from "@/constants/projects";
 import { useTimerStore } from "@/stores/timer-store";
+import { useSuggestionsStore } from "@/stores/suggestions-store";
 import { AwAppsModal } from "@/components/aw-apps-modal";
 import { getAppUsage } from "@/lib/activitywatch";
 import { Image } from "expo-image";
@@ -49,6 +51,7 @@ export default function TimerScreen() {
     updateProjectId,
   } = useTimerStore();
   const { addSession } = useSessionsStore();
+  const { learnFromSession, suggestProject } = useSuggestionsStore();
   const insets = useSafeAreaInsets();
 
   const [taskTitle, setTaskTitle] = useState(title || "");
@@ -69,6 +72,12 @@ export default function TimerScreen() {
   const [awApps, setAwApps] = useState<AppUsage[]>([]);
   const [awLoading, setAwLoading] = useState(false);
 
+  // Suggestion state
+  const [suggestion, setSuggestion] = useState<
+    { projectId: string; matchedApps: string[] } | null
+  >(null);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
       setElapsed(0);
@@ -84,6 +93,22 @@ export default function TimerScreen() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [isTracking, startTimestamp]);
+
+  // AW query for suggestions when entering non-tracking mode
+  useEffect(() => {
+    if (isTracking) {
+      setSuggestion(null);
+      setSuggestionDismissed(false);
+      return;
+    }
+    const now = new Date();
+    const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    getAppUsage(thirtyMinAgo.toISOString(), now.toISOString()).then((apps) => {
+      if (apps.length === 0) return;
+      const result = suggestProject(apps);
+      setSuggestion(result);
+    });
+  }, [isTracking, suggestProject]);
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
@@ -116,6 +141,10 @@ export default function TimerScreen() {
         ...pendingSession,
         apps: selectedApps.length > 0 ? selectedApps : undefined,
       });
+      // Learn from session if we have both project and app data
+      if (pendingSession.projectId !== null && selectedApps.length > 0) {
+        learnFromSession(selectedApps, pendingSession.projectId);
+      }
     }
     setShowAwModal(false);
     setPendingSession(null);
@@ -140,6 +169,20 @@ export default function TimerScreen() {
     setSelectedProject(v);
     updateProjectId(v?.value ?? null);
   };
+
+  const handleAcceptSuggestion = () => {
+    if (!suggestion) return;
+    const proj = projects.find((p) => p.id === suggestion.projectId);
+    if (!proj) return;
+    handleProjectChange({ value: proj.id, label: proj.name });
+    setSuggestionDismissed(true);
+  };
+
+  const showSuggestionBanner =
+    !isTracking &&
+    suggestion !== null &&
+    !suggestionDismissed &&
+    selectedProject === undefined;
 
   const selProj = projects.find((p) => p.id === selectedProject?.value);
 
@@ -240,6 +283,15 @@ export default function TimerScreen() {
             autoFocus
           />
 
+          {showSuggestionBanner && (
+            <SuggestionBanner
+              suggestion={suggestion!}
+              projects={projects}
+              onAccept={handleAcceptSuggestion}
+              onDismiss={() => setSuggestionDismissed(true)}
+            />
+          )}
+
           <Select
             value={selectedProject}
             onValueChange={(v) => setSelectedProject(v as SelectOption)}
@@ -296,6 +348,68 @@ export default function TimerScreen() {
         onSkip={handleSkipSession}
       />
     </KeyboardAvoidingView>
+  );
+}
+
+type SuggestionBannerProps = {
+  suggestion: { projectId: string; matchedApps: string[] };
+  projects: Project[];
+  onAccept: () => void;
+  onDismiss: () => void;
+};
+
+function SuggestionBanner({
+  suggestion,
+  projects,
+  onAccept,
+  onDismiss,
+}: SuggestionBannerProps) {
+  const proj = projects.find((p) => p.id === suggestion.projectId);
+  if (!proj) return null;
+
+  return (
+    <View className="px-4 py-4 rounded-2xl bg-[#1a1a1c] border border-zinc-800 gap-3">
+      {/* Header with project color and name */}
+      <View className="flex-row items-center gap-3">
+        <View
+          className="w-3 h-3 rounded-full shrink-0"
+          style={{ backgroundColor: proj.color }}
+        />
+        <Text className="text-white text-sm font-semibold flex-1">
+          {proj.name}
+        </Text>
+        <Pressable onPress={onDismiss} hitSlop={8}>
+          <Text className="text-zinc-500 text-lg leading-none">×</Text>
+        </Pressable>
+      </View>
+
+      {/* App list */}
+      <View className="gap-1.5">
+        <Text className="text-zinc-400 text-xs uppercase tracking-wide">
+          Detected Apps
+        </Text>
+        <View className="flex-row flex-wrap gap-2">
+          {suggestion.matchedApps.map((app, i) => (
+            <View
+              key={i}
+              className="bg-zinc-700/50 px-3 py-1.5 rounded-lg border border-zinc-600"
+            >
+              <Text className="text-zinc-200 text-xs font-medium">{app}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Action button */}
+      <Pressable
+        onPress={onAccept}
+        className="bg-blue-600 active:bg-blue-700 rounded-lg py-3 items-center"
+      >
+        <Text className="text-white text-sm font-semibold">
+          Track as {proj.name}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
