@@ -16,12 +16,14 @@ export type Session = {
   endTime: string; // ISO
   duration: number; // seconds
   apps?: AppUsage[]; // optional, attached after AW query
+  notes?: string;
 };
 
 type SessionsState = {
   sessions: Session[];
   addSession: (session: Session) => void;
   removeSession: (id: string) => void;
+  updateSession: (session: Session) => void;
 };
 
 export const useSessionsStore = create<SessionsState>()(
@@ -33,6 +35,12 @@ export const useSessionsStore = create<SessionsState>()(
       removeSession: (id) =>
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== id),
+        })),
+      updateSession: (session) =>
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === session.id ? session : s,
+          ),
         })),
     }),
     {

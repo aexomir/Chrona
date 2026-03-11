@@ -11,6 +11,16 @@ export default function TimelineLayout() {
           headerShadowVisible: false,
         }}
       />
+      <Stack.Screen
+        name="[id]"
+        options={{
+          headerStyle: { backgroundColor: "#000000" },
+          headerShadowVisible: false,
+          headerBackTitle: "Timeline",
+          headerTitle: "Session",
+          presentation: "card",
+        }}
+      />
     </Stack>
   );
 }

@@ -1,9 +1,14 @@
 import { TimerBar } from "@/components/timer-bar";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useState } from "react";
+import { TabBarContext } from "@/context/TabBarContext";
 
 export default function TabLayout() {
+  const [isTabBarHidden, setIsTabBarHidden] = useState(false);
+
   return (
-    <NativeTabs minimizeBehavior="onScrollDown">
+    <TabBarContext value={{ setIsTabBarHidden }}>
+      <NativeTabs minimizeBehavior="onScrollDown" hidden={isTabBarHidden}>
       <NativeTabs.BottomAccessory>
         <TimerBar />
       </NativeTabs.BottomAccessory>
@@ -30,6 +35,7 @@ export default function TabLayout() {
       <NativeTabs.Trigger name="search" role="search">
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
       </NativeTabs.Trigger>
-    </NativeTabs>
+      </NativeTabs>
+    </TabBarContext>
   );
 }

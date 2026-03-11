@@ -4,7 +4,7 @@ import { useTimerStore } from "@/stores/timer-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
-import { router, Stack } from "expo-router";
+import { Link, router, Stack } from "expo-router";
 import { Button } from "heroui-native";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
@@ -124,35 +124,44 @@ function SessionRow({ session }: { session: Session }) {
       <View className="items-center pt-[18px]">
         <View className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
       </View>
-      <View className="flex-1 bg-zinc-900 rounded-2xl px-4 py-3 gap-1">
-        <View className="flex-row items-start justify-between gap-2">
-          <Text
-            className="text-white text-base font-semibold flex-1"
-            numberOfLines={1}
-          >
-            {session.title}
-          </Text>
-          <View className="bg-zinc-800 rounded-full px-2 py-0.5 mt-0.5">
-            <Text className="text-zinc-300 text-xs font-medium">
-              {formatDuration(session.duration)}
-            </Text>
-          </View>
-        </View>
-        {project && (
-          <View className="flex-row items-center gap-1.5">
-            <Image
-              source={`sf:${project.icon}`}
-              style={{ width: 11, height: 11, tintColor: project.color }}
-            />
-            <Text className="text-zinc-500 text-xs">{project.name}</Text>
-          </View>
-        )}
-        {appsString && (
-          <Text className="text-zinc-600 text-xs mt-1 leading-4" numberOfLines={1}>
-            {appsString}
-          </Text>
-        )}
-      </View>
+      <Link href={`/(tabs)/timeline/${session.id}`} asChild className="flex-1">
+        <Link.AppleZoom>
+          <Pressable className="flex-1">
+            <View className="bg-zinc-900 rounded-2xl px-4 py-3 gap-1">
+              <View className="flex-row items-start justify-between gap-2">
+                <Text
+                  className="text-white text-base font-semibold flex-1"
+                  numberOfLines={1}
+                >
+                  {session.title}
+                </Text>
+                <View className="bg-zinc-800 rounded-full px-2 py-0.5 mt-0.5">
+                  <Text className="text-zinc-300 text-xs font-medium">
+                    {formatDuration(session.duration)}
+                  </Text>
+                </View>
+              </View>
+              {project && (
+                <View className="flex-row items-center gap-1.5">
+                  <Image
+                    source={`sf:${project.icon}`}
+                    style={{ width: 11, height: 11, tintColor: project.color }}
+                  />
+                  <Text className="text-zinc-500 text-xs">{project.name}</Text>
+                </View>
+              )}
+              {appsString && (
+                <Text
+                  className="text-zinc-600 text-xs mt-1 leading-4"
+                  numberOfLines={1}
+                >
+                  {appsString}
+                </Text>
+              )}
+            </View>
+          </Pressable>
+        </Link.AppleZoom>
+      </Link>
     </View>
   );
 }
