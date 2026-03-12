@@ -11,7 +11,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { withSpring } from "react-native-reanimated";
 import "../global.css";
 
-// Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {

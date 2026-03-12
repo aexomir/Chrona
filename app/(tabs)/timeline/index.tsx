@@ -106,7 +106,6 @@ function SessionRow({ session }: { session: Session }) {
     ? projects.find((p) => p.id === session.projectId)
     : null;
 
-  // Show max 3 apps, comma separated
   const appsString = session.apps
     ? session.apps
         .slice(0, 3)
@@ -291,12 +290,11 @@ export default function TimelineScreen() {
       : []),
   ].sort((a, b) => a.startTime - b.startTime);
 
-  // Reanimated — circle
+  //circle
   const circleX = useSharedValue(-CIRCLE_SIZE);
   const stripWidthRef = useRef(0);
   const animatedCircle = useAnimatedStyle(() => ({ left: circleX.value }));
-
-  // Reanimated — week slide
+  //week slide
   const weekTranslate = useSharedValue(0);
   const animatedWeek = useAnimatedStyle(() => ({
     transform: [{ translateX: weekTranslate.value }],

@@ -551,7 +551,6 @@ export default function StatsScreen() {
   const streak = computeStreak(allSessions);
   const isEmpty = sessions.length === 0;
 
-  // Pill indicator
   const pillLayouts = useRef<{ x: number; width: number }[]>([]);
   const indicatorX = useSharedValue(-100);
   const indicatorW = useSharedValue(0);
@@ -573,7 +572,6 @@ export default function StatsScreen() {
     }
   }
 
-  // Scroll-driven header collapse
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {

@@ -1,13 +1,13 @@
-import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
-import { useProjects } from "@/stores/projects-store";
 import type { Project } from "@/constants/projects";
-import { useTimerStore } from "@/stores/timer-store";
+import { getAppUsage } from "@/lib/activitywatch";
+import { useProjects } from "@/stores/projects-store";
+import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
 import {
-  useSuggestionsStore,
   getSmartDefaultApps,
+  useSuggestionsStore,
   type AssociationMap,
 } from "@/stores/suggestions-store";
-import { getAppUsage } from "@/lib/activitywatch";
+import { useTimerStore } from "@/stores/timer-store";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
@@ -21,8 +21,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
 
@@ -65,7 +65,8 @@ export default function TimerScreen() {
     updateProjectId,
   } = useTimerStore();
   const { addSession } = useSessionsStore();
-  const { learnFromSession, suggestProject, associations } = useSuggestionsStore();
+  const { learnFromSession, suggestProject, associations } =
+    useSuggestionsStore();
   const insets = useSafeAreaInsets();
   const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
     suggestProjectId?: string;
@@ -89,17 +90,16 @@ export default function TimerScreen() {
   });
   const [elapsed, setElapsed] = useState(0);
 
-  // Session review state
   const [reviewData, setReviewData] = useState<{
     session: PendingSession;
     apps: AppUsage[];
     loading: boolean;
   } | null>(null);
 
-  // Suggestion state
-  const [suggestion, setSuggestion] = useState<
-    { projectId: string; matchedApps: string[] } | null
-  >(null);
+  const [suggestion, setSuggestion] = useState<{
+    projectId: string;
+    matchedApps: string[];
+  } | null>(null);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
 
   useEffect(() => {
@@ -109,9 +109,7 @@ export default function TimerScreen() {
     }
     const tick = () =>
       setElapsed(
-        Math.floor(
-          (Date.now() - new Date(startTimestamp).getTime()) / 1000
-        )
+        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000),
       );
     tick();
     const id = setInterval(tick, 1000);
@@ -152,9 +150,7 @@ export default function TimerScreen() {
 
     // Query ActivityWatch in background
     const apps = await getAppUsage(session.startTime, session.endTime);
-    setReviewData((prev) =>
-      prev ? { ...prev, apps, loading: false } : null
-    );
+    setReviewData((prev) => (prev ? { ...prev, apps, loading: false } : null));
   };
 
   const handleSaveReview = (selectedApps: AppUsage[]) => {
@@ -215,11 +211,7 @@ export default function TimerScreen() {
           <Text className="text-neutral-400 text-base">Cancel</Text>
         </Pressable>
         <Text className="text-white text-base font-semibold">
-          {reviewData
-            ? "Review"
-            : isTracking
-              ? "Tracking"
-              : "New Timer"}
+          {reviewData ? "Review" : isTracking ? "Tracking" : "New Timer"}
         </Text>
         <View className="w-14" />
       </View>
@@ -381,7 +373,12 @@ type ReviewViewProps = {
   onDiscard: () => void;
 };
 
-function ReviewView({ reviewData, associations, onSave, onDiscard }: ReviewViewProps) {
+function ReviewView({
+  reviewData,
+  associations,
+  onSave,
+  onDiscard,
+}: ReviewViewProps) {
   const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
   const hasInitialized = useRef(false);
 
@@ -394,11 +391,16 @@ function ReviewView({ reviewData, associations, onSave, onDiscard }: ReviewViewP
         getSmartDefaultApps(
           reviewData.apps,
           reviewData.session.projectId,
-          associations
-        )
+          associations,
+        ),
       );
     }
-  }, [reviewData.loading, reviewData.apps, reviewData.session.projectId, associations]);
+  }, [
+    reviewData.loading,
+    reviewData.apps,
+    reviewData.session.projectId,
+    associations,
+  ]);
 
   const handleToggleApp = (app: string) => {
     const newSelected = new Set(selectedApps);
@@ -411,9 +413,7 @@ function ReviewView({ reviewData, associations, onSave, onDiscard }: ReviewViewP
   };
 
   const handleSave = () => {
-    const selected = reviewData.apps.filter((a) =>
-      selectedApps.has(a.app)
-    );
+    const selected = reviewData.apps.filter((a) => selectedApps.has(a.app));
     onSave(selected);
   };
 
@@ -421,10 +421,7 @@ function ReviewView({ reviewData, associations, onSave, onDiscard }: ReviewViewP
   const { session, apps, loading } = reviewData;
 
   return (
-    <Animated.View
-      className="flex-1"
-      entering={FadeInDown.duration(300)}
-    >
+    <Animated.View className="flex-1" entering={FadeInDown.duration(300)}>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         className="flex-1 px-6"

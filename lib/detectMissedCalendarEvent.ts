@@ -1,8 +1,8 @@
+import type { CalendarMapping } from "@/stores/calendar-store";
+import type { Session } from "@/stores/sessions-store";
 import { getAppUsage } from "./activitywatch";
-import type { AppUsage, Session } from "@/stores/sessions-store";
 import type { CalendarEvent } from "./calendar";
 import { eventMatchesMapping } from "./calendar";
-import type { CalendarMapping } from "@/stores/calendar-store";
 import type { RecoveryPeriod } from "./detectMissedTime";
 
 // Constants
@@ -15,18 +15,17 @@ const EVENT_END_BUFFER_MS = 2 * 60 * 1000; // 2 minutes before now (event just e
 /**
  * Compute total milliseconds of coverage from sessions overlapping [start, end]
  */
-function computeCoveredMs(
-  sessions: Session[],
-  start: Date,
-  end: Date
-): number {
+function computeCoveredMs(sessions: Session[], start: Date, end: Date): number {
   const overlapping = sessions
     .filter((s) => {
       const sStart = new Date(s.startTime);
       const sEnd = new Date(s.endTime);
       return sStart < end && sEnd > start;
     })
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    .sort(
+      (a, b) =>
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+    );
 
   let cursor = start;
   let totalCovered = 0;
@@ -58,7 +57,7 @@ function computeCoveredMs(
 export async function detectMissedCalendarEvent(
   events: CalendarEvent[],
   mappings: CalendarMapping[],
-  sessions: Session[]
+  sessions: Session[],
 ): Promise<RecoveryPeriod | null> {
   try {
     const now = new Date();
@@ -74,7 +73,8 @@ export async function detectMissedCalendarEvent(
       if (duration < MIN_EVENT_MS) return false;
 
       // Event must have ended in the last 2 minutes
-      if (eventEnd.getTime() > now.getTime() - EVENT_END_BUFFER_MS) return false;
+      if (eventEnd.getTime() > now.getTime() - EVENT_END_BUFFER_MS)
+        return false;
 
       // Event must be within look-back window
       if (eventEnd.getTime() < lookBackTime.getTime()) return false;
@@ -85,10 +85,10 @@ export async function detectMissedCalendarEvent(
     if (candidateEvents.length === 0) return null;
 
     // Find events matching a mapping
-    const matchedCandidates: Array<{
+    const matchedCandidates: {
       event: CalendarEvent;
       projectId: string;
-    }> = [];
+    }[] = [];
 
     for (const event of candidateEvents) {
       for (const mapping of mappings) {

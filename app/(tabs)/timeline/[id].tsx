@@ -1,3 +1,4 @@
+import { TabBarContext } from "@/context/TabBarContext";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore } from "@/stores/sessions-store";
 import {
@@ -7,10 +8,15 @@ import {
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
-import { Link, router, useLocalSearchParams, useNavigation, useFocusEffect } from "expo-router";
+import {
+  Link,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
-import { useCallback, useEffect, useLayoutEffect, useState, use } from "react";
-import { TabBarContext } from "@/context/TabBarContext";
+import { use, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -74,10 +80,8 @@ export default function SessionDetailScreen() {
   const { projects } = useProjects();
   const { associations } = useSuggestionsStore();
 
-  // Find the session
   const session = sessions.find((s) => s.id === id);
 
-  // Draft state - must be before early return
   const [draftTitle, setDraftTitle] = useState(session?.title ?? "");
   const [draftProjectId, setDraftProjectId] = useState<
     SelectOption | undefined
@@ -115,7 +119,6 @@ export default function SessionDetailScreen() {
     return () => setIsTabBarHidden(false);
   });
 
-  // Early return after all hooks
   useEffect(() => {
     if (!session) {
       router.back();
@@ -186,7 +189,6 @@ export default function SessionDetailScreen() {
     ]);
   }, [session.id, removeSession]);
 
-  // Set header delete button
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (

@@ -67,15 +67,13 @@ export default function MeetingSettingsScreen() {
           <ListGroup className="mb-6">
             {MEETING_APPS.map((app, index) => {
               const isSelected = selectedAppIds.includes(app.id);
-              const isOnlySelected =
-                isSelected && selectedAppIds.length === 1;
+              const isOnlySelected = isSelected && selectedAppIds.length === 1;
 
               return (
                 <View key={app.id}>
                   {index > 0 && <Separator className="mx-4" />}
                   <ListGroup.Item
                     onPress={() => {
-                      // Allow disabling the last app (store will handle gracefully)
                       toggleApp(app.id);
                     }}
                   >
@@ -83,12 +81,13 @@ export default function MeetingSettingsScreen() {
                       <IconSquare icon={app.icon} color="#7c3aed" />
                     </ListGroup.ItemPrefix>
                     <ListGroup.ItemContent>
-                      <ListGroup.ItemTitle>{app.displayName}</ListGroup.ItemTitle>
+                      <ListGroup.ItemTitle>
+                        {app.displayName}
+                      </ListGroup.ItemTitle>
                     </ListGroup.ItemContent>
                     <ListGroup.ItemSuffix>
                       <TouchableOpacity
                         onPress={() => {
-                          // Allow disabling the last app
                           toggleApp(app.id);
                         }}
                         disabled={isOnlySelected}

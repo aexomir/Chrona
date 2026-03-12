@@ -1,6 +1,6 @@
+import { Atmosphere } from "@/components/atmosphere";
 import { FocusRing } from "@/components/focus-ring";
 import { SessionConstellation } from "@/components/session-constellation";
-import { Atmosphere } from "@/components/atmosphere";
 import { heroProgress } from "@/lib/hero-animation";
 import { useSessionsStore } from "@/stores/sessions-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -16,7 +16,6 @@ export default function DashboardScreen() {
   const { sessions } = useSessionsStore();
   const { constellationEnabled } = useSettingsStore();
 
-  // Dashboard content fades in as hero animation progresses
   const dashboardStyle = useAnimatedStyle(() => ({
     opacity: interpolate(heroProgress.value, [0.4, 1], [0, 1], {
       extrapolateLeft: "clamp",
@@ -32,7 +31,10 @@ export default function DashboardScreen() {
         contentInsetAdjustmentBehavior="automatic"
         scrollEnabled={false}
       >
-        <AnimatedView style={dashboardStyle} className="flex-1 items-center justify-center">
+        <AnimatedView
+          style={dashboardStyle}
+          className="flex-1 items-center justify-center"
+        >
           {/* Focus Ring with integrated stats */}
           <FocusRing />
           {constellationEnabled && <SessionConstellation />}

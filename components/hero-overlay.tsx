@@ -1,21 +1,21 @@
-import { heroIconOpacity, heroProgress } from '@/lib/hero-animation';
-import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { heroIconOpacity, heroProgress } from "@/lib/hero-animation";
+import { Image } from "expo-image";
+import { useState } from "react";
+import { StyleSheet, View } from "react-native";
 import Animated, {
   interpolate,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
   withSpring,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -24,16 +24,16 @@ const styles = StyleSheet.create({
   },
   background: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   iconContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   icon: {
     width: 200,
@@ -55,7 +55,7 @@ export function HeroOverlay() {
           stiffness: 100,
         });
       }
-    }
+    },
   );
 
   // Track when overlay should be hidden
@@ -65,24 +65,22 @@ export function HeroOverlay() {
       if (opacity < 0.1) {
         runOnJS(setIsDone)(true);
       }
-    }
+    },
   );
 
-  // Background opacity
   const bgStyle = useAnimatedStyle(() => ({
     opacity: interpolate(heroProgress.value, [0, 0.7], [1, 0], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
     }),
   }));
 
-  // Icon scale and opacity
   const iconStyle = useAnimatedStyle(() => ({
     transform: [
       {
         scale: interpolate(heroProgress.value, [0, 1], [1.0, 0.24], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
         }),
       },
     ],
@@ -94,15 +92,18 @@ export function HeroOverlay() {
   return (
     <AnimatedView
       style={[styles.overlay, bgStyle]}
-      pointerEvents={isDone ? 'none' : 'auto'}
+      pointerEvents={isDone ? "none" : "auto"}
     >
       {/* Black background */}
       <View style={styles.background} />
 
       {/* Hero icon centered */}
-      <AnimatedView style={[styles.iconContainer, iconStyle]} pointerEvents="none">
+      <AnimatedView
+        style={[styles.iconContainer, iconStyle]}
+        pointerEvents="none"
+      >
         <AnimatedImage
-          source={require('@/assets/images/splash-icon.png')}
+          source={require("@/assets/images/splash-icon.png")}
           style={styles.icon}
         />
       </AnimatedView>

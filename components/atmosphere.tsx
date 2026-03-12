@@ -1,18 +1,18 @@
-import { Canvas, Skia, Shader, Fill } from '@shopify/react-native-skia';
-import { useWindowDimensions, View } from 'react-native';
-import Animated, {
+import { getAtmosphereColors } from "@/lib/atmosphereColors";
+import { detectAtmosphere } from "@/lib/atmosphereDetector";
+import { AURORA_SKSL, toFloat3 } from "@/lib/atmosphereShader";
+import { Session } from "@/stores/sessions-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { Canvas, Fill, Shader, Skia } from "@shopify/react-native-skia";
+import { useWindowDimensions, View } from "react-native";
+import {
   interpolate,
-  useAnimatedReaction,
   useSharedValue as reanimatedUseSharedValue,
+  useAnimatedReaction,
   useDerivedValue,
+  useFrameCallback,
   withTiming,
-} from 'react-native-reanimated';
-import { useFrameCallback } from 'react-native-reanimated';
-import { detectAtmosphere } from '@/lib/atmosphereDetector';
-import { getAtmosphereColors } from '@/lib/atmosphereColors';
-import { AURORA_SKSL, toFloat3 } from '@/lib/atmosphereShader';
-import { Session } from '@/stores/sessions-store';
-import { useSettingsStore } from '@/stores/settings-store';
+} from "react-native-reanimated";
 
 // Compile shader once at module scope
 const effect = Skia.RuntimeEffect.Make(AURORA_SKSL)!;
@@ -43,10 +43,10 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
 
   // Map state to numeric value for interpolation
   const stateMap = {
-    'calm': 0,
-    'gentle': 1,
-    'aurora': 2,
-    'strong-aurora': 3,
+    calm: 0,
+    gentle: 1,
+    aurora: 2,
+    "strong-aurora": 3,
   };
 
   // Update state with smooth transition (5s)
@@ -54,7 +54,7 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
     () => stateMap[metrics.state],
     (nextState) => {
       stateValue.value = withTiming(nextState, { duration: 5000 });
-    }
+    },
   );
 
   // Animation loop: update time every frame
@@ -64,8 +64,16 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
 
   // Build uniforms as derived value (Skia-side, no React re-renders per frame)
   const uniforms = useDerivedValue(() => {
-    const intensity = interpolate(stateValue.value, [0, 1, 2, 3], [0.0, 0.15, 0.50, 1.0]);
-    const speed = interpolate(stateValue.value, [0, 1, 2, 3], [0.15, 0.25, 0.45, 0.70]);
+    const intensity = interpolate(
+      stateValue.value,
+      [0, 1, 2, 3],
+      [0.0, 0.15, 0.5, 1.0],
+    );
+    const speed = interpolate(
+      stateValue.value,
+      [0, 1, 2, 3],
+      [0.15, 0.25, 0.45, 0.7],
+    );
 
     // Lighten skyBottom slightly for gradient depth
     const skyBottomAdjusted: [number, number, number] = [
@@ -87,17 +95,16 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
     };
   });
 
-  // If aurora is disabled, render plain black background
   if (!auroraEnabled) {
     return (
       <View
         style={{
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
           width,
           height,
-          backgroundColor: '#000000',
+          backgroundColor: "#000000",
         }}
         pointerEvents="none"
       />
@@ -107,7 +114,7 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
   return (
     <Canvas
       style={{
-        position: 'absolute',
+        position: "absolute",
         top: 0,
         left: 0,
         width,
