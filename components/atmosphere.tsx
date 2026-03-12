@@ -1,5 +1,5 @@
 import { Canvas, Skia, Shader, Fill } from '@shopify/react-native-skia';
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedReaction,
@@ -12,6 +12,7 @@ import { detectAtmosphere } from '@/lib/atmosphereDetector';
 import { getAtmosphereColors } from '@/lib/atmosphereColors';
 import { AURORA_SKSL, toFloat3 } from '@/lib/atmosphereShader';
 import { Session } from '@/stores/sessions-store';
+import { useSettingsStore } from '@/stores/settings-store';
 
 // Compile shader once at module scope
 const effect = Skia.RuntimeEffect.Make(AURORA_SKSL)!;
@@ -24,14 +25,19 @@ interface AtmosphereProps {
  * Atmosphere background component using Skia RuntimeEffect shader
  * Renders a living aurora sky that reacts to user's productivity
  * States: calm → gentle → aurora → strong-aurora
+ * Can be toggled off in settings for a plain background
  */
 export function Atmosphere({ sessions }: AtmosphereProps) {
   const { width, height } = useWindowDimensions();
+  const { auroraEnabled } = useSettingsStore();
 
   // Detect atmosphere state from sessions
   const metrics = detectAtmosphere(sessions);
 
-  // Track state transitions with reanimated
+  // Compute colors (JS-side, updates when state changes)
+  const colors = getAtmosphereColors(metrics.state);
+
+  // Track state transitions with reanimated (always call hooks)
   const stateValue = reanimatedUseSharedValue(0);
   const time = reanimatedUseSharedValue(0);
 
@@ -55,9 +61,6 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
   useFrameCallback((info) => {
     time.value = info.timeSinceFirstFrame;
   });
-
-  // Compute colors (JS-side, updates when state changes)
-  const colors = getAtmosphereColors(metrics.state);
 
   // Build uniforms as derived value (Skia-side, no React re-renders per frame)
   const uniforms = useDerivedValue(() => {
@@ -83,6 +86,23 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
       uColor3: toFloat3(colors.auroraHigh),
     };
   });
+
+  // If aurora is disabled, render plain black background
+  if (!auroraEnabled) {
+    return (
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width,
+          height,
+          backgroundColor: '#000000',
+        }}
+        pointerEvents="none"
+      />
+    );
+  }
 
   return (
     <Canvas

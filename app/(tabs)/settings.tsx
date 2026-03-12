@@ -1,11 +1,12 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { ListGroup, Separator } from "heroui-native";
+import { ListGroup, Separator, Switch } from "heroui-native";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useCalendarStore } from "@/stores/calendar-store";
 import { calendarStatusLabel } from "@/lib/calendar";
 import { useMeetingStore } from "@/stores/meeting-store";
 import { meetingStatusLabel } from "@/lib/meetingDetection";
+import { useSettingsStore } from "@/stores/settings-store";
 
 function IconSquare({ icon, color }: { icon: string; color: string }) {
   return (
@@ -54,6 +55,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { permissionStatus, isEnabled } = useCalendarStore();
   const { isEnabled: meetingEnabled, selectedAppIds } = useMeetingStore();
+  const { auroraEnabled, setAuroraEnabled } = useSettingsStore();
 
   return (
     <ScrollView
@@ -76,6 +78,23 @@ export default function SettingsScreen() {
           <ListGroup.ItemSuffix>
             <ValueSuffix value="System" />
           </ListGroup.ItemSuffix>
+        </ListGroup.Item>
+
+        <Separator className="mx-4" />
+
+        <ListGroup.Item className="flex-row items-center justify-between">
+          <View className="flex-1 flex-row items-center gap-3">
+            <IconSquare icon="sparkles" color="#8b5cf6" />
+            <ListGroup.ItemContent>
+              <ListGroup.ItemTitle>Aurora Theme</ListGroup.ItemTitle>
+            </ListGroup.ItemContent>
+          </View>
+          <View className="mr-2">
+            <Switch
+              isSelected={auroraEnabled}
+              onSelectedChange={setAuroraEnabled}
+            />
+          </View>
         </ListGroup.Item>
 
         <Separator className="mx-4" />
