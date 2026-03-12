@@ -1,9 +1,8 @@
 import { heroIconOpacity, heroProgress } from '@/lib/hero-animation';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
-  Easing,
   interpolate,
   runOnJS,
   useAnimatedReaction,
@@ -13,6 +12,34 @@ import Animated, {
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedImage = Animated.createAnimatedComponent(Image);
+
+const styles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
+  background: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  iconContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  icon: {
+    width: 200,
+    height: 200,
+  },
+});
 
 export function HeroOverlay() {
   const [isDone, setIsDone] = useState(false);
@@ -66,34 +93,17 @@ export function HeroOverlay() {
 
   return (
     <AnimatedView
-      style={[
-        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
-        bgStyle,
-      ]}
+      style={[styles.overlay, bgStyle]}
       pointerEvents={isDone ? 'none' : 'auto'}
     >
       {/* Black background */}
-      <View style={{ flex: 1, backgroundColor: '#000' }} />
+      <View style={styles.background} />
 
       {/* Hero icon centered */}
-      <AnimatedView
-        style={[
-          {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-          iconStyle,
-        ]}
-        pointerEvents="none"
-      >
+      <AnimatedView style={[styles.iconContainer, iconStyle]} pointerEvents="none">
         <AnimatedImage
           source={require('@/assets/images/splash-icon.png')}
-          style={{ width: 200, height: 200 }}
+          style={styles.icon}
         />
       </AnimatedView>
     </AnimatedView>
