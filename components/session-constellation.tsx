@@ -1,19 +1,14 @@
 import { heroProgress } from "@/lib/hero-animation";
 import { useProjects } from "@/stores/projects-store";
 import { Session, useSessionsStore } from "@/stores/sessions-store";
-import { BlurView } from "expo-blur";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
 import Animated, {
-  Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withRepeat,
-  withSequence,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
 
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -64,7 +59,8 @@ function computeConstellationLayout(
   containerHeight: number,
 ): PointLayout[] {
   const sorted = [...sessions].sort(
-    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+    (a, b) =>
+      new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 
   const durations = sorted.map((s) => s.duration);
@@ -80,12 +76,15 @@ function computeConstellationLayout(
 
     const normalizedDuration =
       durationRange === 0 ? 1 : (session.duration - minDur) / durationRange;
-    const radius = MIN_RADIUS + normalizedDuration * (MAX_RADIUS - MIN_RADIUS);
+    const radius =
+      MIN_RADIUS + normalizedDuration * (MAX_RADIUS - MIN_RADIUS);
     const opacity =
       MIN_OPACITY + normalizedDuration * (MAX_OPACITY - MIN_OPACITY);
 
-    const driftDurX = DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
-    const driftDurY = DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
+    const driftDurX =
+      DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
+    const driftDurY =
+      DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
     const driftPhaseX = prng() > 0.5 ? 1 : -1;
     const driftPhaseY = prng() > 0.5 ? 1 : -1;
 
@@ -103,7 +102,10 @@ function computeConstellationLayout(
 
       let minDist = Infinity;
       for (const point of placedPoints) {
-        const dist = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+        const dist = Math.hypot(
+          candidate.x - point.x,
+          candidate.y - point.y,
+        );
         minDist = Math.min(minDist, dist);
       }
 
@@ -137,62 +139,22 @@ function computeConstellationLayout(
   return layouts;
 }
 
-function truncateTitle(title: string, maxLen: number): string {
-  if (title.length <= maxLen) return title;
-  return title.substring(0, maxLen - 1) + "…";
-}
-
-function formatTooltipDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m}m`;
-}
-
-const styles = StyleSheet.create({
-  tooltipBlur: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    overflow: "hidden",
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.12)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  tooltipTitle: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 12,
-    fontWeight: "500",
-    flex: 1,
-  },
-  tooltipDuration: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 11,
-  },
-});
 
 interface ConstellationPointProps {
   layout: PointLayout;
-  session: Session;
   color: string;
-  containerWidth: number;
   index: number;
 }
 
 function ConstellationPoint({
   layout,
-  session,
   color,
-  containerWidth,
   index,
 }: ConstellationPointProps) {
   const scale = useSharedValue(0);
-  const driftX = useSharedValue(0);
-  const driftY = useSharedValue(0);
-  const tooltipOpacity = useSharedValue(0);
-  const tooltipScale = useSharedValue(0.9);
+  const offsetX = useSharedValue(0);
+  const offsetY = useSharedValue(0);
+  const rafIdRef = useRef<number>(0);
 
   useEffect(() => {
     scale.value = withDelay(
@@ -202,126 +164,73 @@ function ConstellationPoint({
   }, [scale, index]);
 
   useEffect(() => {
-    const startDrift = () => {
-      const amp = layout.radius * 0.6;
+    let startTime: number;
 
-      driftX.value = withRepeat(
-        withSequence(
-          withTiming(amp * layout.driftPhaseX, {
-            duration: layout.driftDurX,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(-amp * layout.driftPhaseX, {
-            duration: layout.driftDurX,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        false,
-      );
+    const animate = (now: number) => {
+      if (!startTime) startTime = now;
 
-      driftY.value = withRepeat(
-        withSequence(
-          withTiming(amp * layout.driftPhaseY, {
-            duration: layout.driftDurY,
-            easing: Easing.inOut(Easing.sin),
-          }),
-          withTiming(-amp * layout.driftPhaseY, {
-            duration: layout.driftDurY,
-            easing: Easing.inOut(Easing.sin),
-          }),
-        ),
-        -1,
-        false,
-      );
+      const amp = layout.radius * 0.3;
+      const elapsedX = (now - startTime) / layout.driftDurX;
+      const elapsedY = (now - startTime) / layout.driftDurY;
+
+      const angleX = (elapsedX % 2) * Math.PI * layout.driftPhaseX;
+      const angleY = (elapsedY % 2) * Math.PI * layout.driftPhaseY;
+
+      offsetX.value = Math.sin(angleX) * amp;
+      offsetY.value = Math.sin(angleY) * amp;
+
+      rafIdRef.current = requestAnimationFrame(animate);
     };
 
-    const timer = setTimeout(startDrift, index * 80 + 650);
-    return () => clearTimeout(timer);
-  }, [driftX, driftY, layout, index]);
+    const timer = setTimeout(() => {
+      rafIdRef.current = requestAnimationFrame(animate);
+    }, index * 80 + 650);
+
+    return () => {
+      clearTimeout(timer);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, [offsetX, offsetY, layout, index]);
 
   const dotStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: layout.x + driftX.value },
-      { translateY: layout.y + driftY.value },
+      { translateX: layout.x + offsetX.value },
+      { translateY: layout.y + offsetY.value },
       { scale: scale.value },
     ],
   }));
 
-  const TOOLTIP_W = 148;
-  const tooltipStyle = useAnimatedStyle(() => {
-    const rawLeft = layout.x + driftX.value - TOOLTIP_W / 2;
-    const clampedLeft = Math.max(
-      8,
-      Math.min(rawLeft, containerWidth - TOOLTIP_W - 8),
-    );
-    return {
-      opacity: tooltipOpacity.value,
-      transform: [
-        { translateX: clampedLeft },
-        { translateY: layout.y + driftY.value - layout.radius - 44 },
-        { scale: tooltipScale.value },
-      ],
-    };
-  });
-
-  const handlePress = () => {
-    tooltipOpacity.value = withTiming(1, { duration: 200 });
-    tooltipScale.value = withTiming(1, { duration: 200 });
-    tooltipOpacity.value = withDelay(2000, withTiming(0, { duration: 400 }));
-    tooltipScale.value = withDelay(2000, withTiming(0.9, { duration: 400 }));
-  };
-
   return (
-    <>
-      <AnimatedView
-        style={[{ position: "absolute", top: 0, left: 0 }, dotStyle]}
-        pointerEvents="box-none"
-      >
-        <View
-          style={{
-            position: "absolute",
-            width: layout.radius * 2 * 3,
-            height: layout.radius * 2 * 3,
-            borderRadius: layout.radius * 3,
-            backgroundColor: color,
-            opacity: 0.18,
-            top: -layout.radius * 2,
-            left: -layout.radius * 2,
-          }}
-          pointerEvents="none"
-        />
-
-        <Pressable
-          onPress={handlePress}
-          hitSlop={{ top: 12, left: 12, right: 12, bottom: 12 }}
-          style={{
-            width: layout.radius * 2,
-            height: layout.radius * 2,
-            borderRadius: layout.radius,
-            backgroundColor: color,
-            opacity: layout.opacity,
-          }}
-        />
-      </AnimatedView>
-
-      <AnimatedView
-        style={[
-          { position: "absolute", top: 0, left: 0, width: TOOLTIP_W },
-          tooltipStyle,
-        ]}
+    <AnimatedView
+      style={[{ position: "absolute", top: 0, left: 0 }, dotStyle]}
+      pointerEvents="box-none"
+    >
+      <View
+        style={{
+          width: layout.radius * 2 * 3,
+          height: layout.radius * 2 * 3,
+          borderRadius: layout.radius * 3,
+          backgroundColor: color,
+          opacity: 0.1,
+          position: "absolute",
+          top: -layout.radius * 2,
+          left: -layout.radius * 2,
+        }}
         pointerEvents="none"
-      >
-        <BlurView intensity={55} tint="dark" style={styles.tooltipBlur}>
-          <Text style={styles.tooltipTitle} numberOfLines={1}>
-            {truncateTitle(session.title, 20)}
-          </Text>
-          <Text style={styles.tooltipDuration}>
-            {formatTooltipDuration(session.duration)}
-          </Text>
-        </BlurView>
-      </AnimatedView>
-    </>
+      />
+
+      <View
+        style={{
+          width: layout.radius * 2,
+          height: layout.radius * 2,
+          borderRadius: layout.radius,
+          backgroundColor: color,
+          opacity: layout.opacity,
+        }}
+      />
+    </AnimatedView>
   );
 }
 
@@ -357,7 +266,13 @@ export function SessionConstellation() {
   return (
     <AnimatedView
       style={[
-        { width: "100%", height: 160, position: "relative" },
+        {
+          width: "100%",
+          height: 100,
+          position: "relative",
+          marginTop: 12,
+          marginBottom: 20,
+        },
         containerStyle,
       ]}
       onLayout={(e) => {
@@ -372,9 +287,7 @@ export function SessionConstellation() {
           <ConstellationPoint
             key={session.id}
             layout={layout}
-            session={session}
             color={project?.color ?? "#ffffff"}
-            containerWidth={containerSize!.width}
             index={index}
           />
         );

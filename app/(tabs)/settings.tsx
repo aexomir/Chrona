@@ -55,7 +55,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { permissionStatus, isEnabled } = useCalendarStore();
   const { isEnabled: meetingEnabled, selectedAppIds } = useMeetingStore();
-  const { auroraEnabled, setAuroraEnabled } = useSettingsStore();
+  const { auroraEnabled, setAuroraEnabled, constellationEnabled, setConstellationEnabled } = useSettingsStore();
 
   return (
     <ScrollView
@@ -93,6 +93,23 @@ export default function SettingsScreen() {
             <Switch
               isSelected={auroraEnabled}
               onSelectedChange={setAuroraEnabled}
+            />
+          </View>
+        </ListGroup.Item>
+
+        <Separator className="mx-4" />
+
+        <ListGroup.Item className="flex-row items-center justify-between">
+          <View className="flex-1 flex-row items-center gap-3">
+            <IconSquare icon="star.fill" color="#06b6d4" />
+            <ListGroup.ItemContent>
+              <ListGroup.ItemTitle>Session Constellation</ListGroup.ItemTitle>
+            </ListGroup.ItemContent>
+          </View>
+          <View className="mr-2">
+            <Switch
+              isSelected={constellationEnabled}
+              onSelectedChange={setConstellationEnabled}
             />
           </View>
         </ListGroup.Item>

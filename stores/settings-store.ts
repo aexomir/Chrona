@@ -5,6 +5,8 @@ import { persist } from "zustand/middleware";
 type SettingsState = {
   auroraEnabled: boolean;
   setAuroraEnabled: (enabled: boolean) => void;
+  constellationEnabled: boolean;
+  setConstellationEnabled: (enabled: boolean) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -12,6 +14,8 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       auroraEnabled: true,
       setAuroraEnabled: (enabled) => set({ auroraEnabled: enabled }),
+      constellationEnabled: true,
+      setConstellationEnabled: (enabled) => set({ constellationEnabled: enabled }),
     }),
     {
       name: "settings",
