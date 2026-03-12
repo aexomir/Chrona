@@ -1,4 +1,5 @@
 import { FocusRing } from "@/components/focus-ring";
+import { SessionConstellation } from "@/components/session-constellation";
 import { Atmosphere } from "@/components/atmosphere";
 import { heroProgress } from "@/lib/hero-animation";
 import { useSessionsStore } from "@/stores/sessions-store";
@@ -32,6 +33,7 @@ export default function DashboardScreen() {
         <AnimatedView style={dashboardStyle} className="flex-1 items-center justify-center">
           {/* Focus Ring with integrated stats */}
           <FocusRing />
+          <SessionConstellation />
         </AnimatedView>
       </ScrollView>
     </View>
