@@ -105,12 +105,16 @@ export default function RecoverScreen() {
   const handleLog = () => {
     if (!title.trim() || !selectedProject) return;
 
+    // Adjust endTime to match selected apps' duration
+    const startDate = new Date(pending.startTime);
+    const adjustedEndTime = new Date(startDate.getTime() + durationSeconds * 1000).toISOString();
+
     addSession({
       id: Date.now().toString(),
       title: title.trim(),
       projectId: selectedProject.value,
       startTime: pending.startTime,
-      endTime: pending.endTime,
+      endTime: adjustedEndTime,
       duration: durationSeconds,
       apps: selected.length > 0 ? selected : undefined,
     });
