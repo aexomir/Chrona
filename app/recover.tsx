@@ -5,6 +5,7 @@ import {
   useSuggestionsStore,
   getSmartDefaultApps,
 } from "@/stores/suggestions-store";
+import { StaticAuraBackground } from "@/components/static-aura-background";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
@@ -136,9 +137,10 @@ export default function RecoverScreen() {
   return (
     <KeyboardAvoidingView
       behavior="padding"
-      className="flex-1 bg-[#111113]"
+      className="flex-1"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
+      <StaticAuraBackground />
       {/* Nav bar */}
       <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
         <Pressable onPress={handleDismiss} hitSlop={12}>

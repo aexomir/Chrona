@@ -1,6 +1,8 @@
 import type { Project } from "@/constants/projects";
 import { useProjects } from "@/stores/projects-store";
 import { type Session, useSessionsStore } from "@/stores/sessions-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { getAtmosphereColors } from "@/lib/atmosphereColors";
 import { BlurView } from "expo-blur";
 import { GlassView } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
@@ -21,6 +23,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StaticAuraBackground } from "@/components/static-aura-background";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -536,6 +539,7 @@ export default function StatsScreen() {
   const [timeframe, setTimeframe] = useState<Timeframe>("week");
   const { sessions: allSessions } = useSessionsStore();
   const { projects } = useProjects();
+  const auroraEnabled = useSettingsStore(s => s.auroraEnabled);
 
   const now = new Date();
   const { start, end } = getRange(timeframe, now);
@@ -592,17 +596,23 @@ export default function StatsScreen() {
 
   const headerHeight = insets.top + 56;
 
+  // Dynamic shadow color based on aurora
+  const shadowColor = auroraEnabled
+    ? `rgba(${getAtmosphereColors('calm').background[0]}, ${getAtmosphereColors('calm').background[1]}, ${getAtmosphereColors('calm').background[2]}, 1)`
+    : "#000000";
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1 }}>
+      <StaticAuraBackground />
       <ScrollShadow
-        color="#000000"
+        color={shadowColor}
         LinearGradientComponent={LinearGradient}
         visibility="top"
         size={headerHeight}
         style={{ flex: 1 }}
       >
         <ScrollView
-          className="flex-1 bg-black"
+          className="flex-1"
           contentInsetAdjustmentBehavior="never"
           contentContainerStyle={{ paddingVertical: headerHeight }}
           onScroll={scrollHandler}
@@ -673,7 +683,7 @@ export default function StatsScreen() {
 
       {/* Fixed header — rendered above ScrollShadow */}
       <View
-        className="absolute top-0 left-0 right-0 bg-black"
+        className="absolute top-0 left-0 right-0"
         style={{ paddingTop: insets.top }}
       >
         {/* Scroll shadow gradient */}

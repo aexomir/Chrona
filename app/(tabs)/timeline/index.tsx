@@ -1,6 +1,7 @@
 import { useProjects } from "@/stores/projects-store";
 import { type Session, useSessionsStore } from "@/stores/sessions-store";
 import { useTimerStore } from "@/stores/timer-store";
+import { StaticAuraBackground } from "@/components/static-aura-background";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
@@ -357,6 +358,7 @@ export default function TimelineScreen() {
 
   return (
     <>
+      <StaticAuraBackground />
       <Stack.Toolbar placement="left" asChild>
         <Pressable onPress={() => setShowPicker(true)}>
           <DatePill date={selectedDate} />
@@ -383,7 +385,7 @@ export default function TimelineScreen() {
       </Stack.Toolbar>
 
       <ScrollView
-        className="flex-1 bg-black"
+        className="flex-1"
         contentInsetAdjustmentBehavior="automatic"
       >
         {/* Week Strip */}

@@ -7,6 +7,7 @@ import { calendarStatusLabel } from "@/lib/calendar";
 import { useMeetingStore } from "@/stores/meeting-store";
 import { meetingStatusLabel } from "@/lib/meetingDetection";
 import { useSettingsStore } from "@/stores/settings-store";
+import { StaticAuraBackground } from "@/components/static-aura-background";
 
 function IconSquare({ icon, color }: { icon: string; color: string }) {
   return (
@@ -58,11 +59,13 @@ export default function SettingsScreen() {
   const { auroraEnabled, setAuroraEnabled, constellationEnabled, setConstellationEnabled } = useSettingsStore();
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      className="flex-1 bg-[#111113]"
-      contentContainerClassName="px-5 pb-10"
-    >
+    <View style={{ flex: 1 }}>
+      <StaticAuraBackground />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        className="flex-1"
+        contentContainerClassName="px-5 pb-10"
+      >
       <Text className="text-white text-4xl font-bold mt-8 mb-8">Settings</Text>
 
       {/* GENERAL */}
@@ -274,7 +277,8 @@ export default function SettingsScreen() {
           </ListGroup.ItemSuffix>
         </ListGroup.Item>
       </ListGroup>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
