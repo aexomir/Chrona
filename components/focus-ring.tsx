@@ -1,77 +1,74 @@
-import { heroProgress } from '@/lib/hero-animation';
-import { useSessionsStore } from '@/stores/sessions-store';
-import { useTimerStore } from '@/stores/timer-store';
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { heroProgress } from "@/lib/hero-animation";
+import { useSessionsStore } from "@/stores/sessions-store";
+import { useTimerStore } from "@/stores/timer-store";
+import { useEffect, useMemo, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import Animated, {
   interpolate,
-  useAnimatedProps,
   useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
+} from "react-native-reanimated";
+import Svg, { Circle } from "react-native-svg";
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
 const SVG_SIZE = 280;
 const RING_RADIUS = 110;
 const RING_STROKE_WIDTH = 8;
+const CENTER = SVG_SIZE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-const DAILY_GOAL_SECONDS = 8 * 3600; // 8 hours goal
+const DAY_SECONDS = 24 * 3600; // full 24-hour day
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingBottom: 40,
   },
   svgWrapper: {
     width: SVG_SIZE,
     height: SVG_SIZE,
-    position: 'relative',
+    position: "relative",
   },
   centerContent: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   centerTitle: {
     fontSize: 48,
-    fontWeight: '700',
-    color: 'white',
+    fontWeight: "700",
+    color: "white",
     marginBottom: 4,
   },
   centerLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontWeight: '500',
+    color: "rgba(255, 255, 255, 0.6)",
+    fontWeight: "500",
     letterSpacing: 0.5,
   },
   indicatorsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 40,
     marginTop: 40,
   },
   indicatorBox: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   indicatorValue: {
     fontSize: 24,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
     marginBottom: 2,
   },
   indicatorLabel: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontWeight: '500',
-    textTransform: 'uppercase',
+    color: "rgba(255, 255, 255, 0.5)",
+    fontWeight: "500",
+    textTransform: "uppercase",
     letterSpacing: 0.4,
   },
 });
@@ -83,76 +80,89 @@ function formatDuration(seconds: number): string {
   return `${h}h ${m}m`;
 }
 
+function secondsSinceMidnight(isoString: string): number {
+  const d = new Date(isoString);
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+}
+
+type SegmentProps = {
+  id: string;
+  dash: number;
+  offset: number;
+};
+
 export function FocusRing() {
   const { sessions } = useSessionsStore();
   const { isTracking, startTimestamp } = useTimerStore();
-  const [totalSeconds, setTotalSeconds] = useState(0);
-  const [longestBlockSeconds, setLongestBlockSeconds] = useState(0);
-  const [sessionCount, setSessionCount] = useState(0);
-  const progressShared = useSharedValue(0);
+  const [liveTotal, setLiveTotal] = useState(0);
+  const [liveSegment, setLiveSegment] = useState<SegmentProps | null>(null);
 
-  // Calculate today's stats
-  const todayStats = useMemo(() => {
+  // Get today's sessions sorted by start time
+  const todaySessions = useMemo(() => {
     const today = new Date().toDateString();
-    const todaySessions = sessions.filter(
-      (s) => new Date(s.startTime).toDateString() === today
-    );
+    return sessions
+      .filter((s) => new Date(s.startTime).toDateString() === today)
+      .sort(
+        (a, b) =>
+          new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+      );
+  }, [sessions]);
 
-    // Sort by startTime to calculate longest block
-    const sortedSessions = [...todaySessions].sort(
-      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    );
-
-    let totalDuration = 0;
-    let longestBlock = 0;
-
-    // Calculate total and longest single session
-    for (let i = 0; i < sortedSessions.length; i++) {
-      const session = sortedSessions[i];
-      totalDuration += session.duration;
-
-      if (session.duration > longestBlock) {
-        longestBlock = session.duration;
-      }
+  // Completed sessions stats (including longest and count)
+  const completedStats = useMemo(() => {
+    let total = 0;
+    let longest = 0;
+    for (const s of todaySessions) {
+      total += s.duration;
+      if (s.duration > longest) longest = s.duration;
     }
+    return { total, longest, count: todaySessions.length };
+  }, [todaySessions]);
 
-    // If currently tracking, add elapsed time to total
-    let currentElapsed = 0;
-    if (isTracking && startTimestamp) {
-      const now = new Date().getTime();
-      const startTime = new Date(startTimestamp).getTime();
-      currentElapsed = Math.floor((now - startTime) / 1000);
-    }
+  // Map completed sessions to SVG segment props
+  const completedSegments: SegmentProps[] = useMemo(
+    () =>
+      todaySessions.map((s) => {
+        const startFraction = secondsSinceMidnight(s.startTime) / DAY_SECONDS;
+        const lengthFraction = s.duration / DAY_SECONDS;
+        return {
+          id: s.id,
+          dash: lengthFraction * CIRCUMFERENCE,
+          offset: -(startFraction * CIRCUMFERENCE),
+        };
+      }),
+    [todaySessions],
+  );
 
-    const totalWithCurrent = totalDuration + currentElapsed;
-
-    return {
-      total: totalWithCurrent,
-      longest: longestBlock,
-      count: todaySessions.length,
-      progress: Math.min(totalWithCurrent / DAILY_GOAL_SECONDS, 1),
-    };
-  }, [sessions, isTracking, startTimestamp]);
-
-  // Update states and animate progress
+  // Real-time tick — updates center text and live segment every second
   useEffect(() => {
-    setTotalSeconds(todayStats.total);
-    setLongestBlockSeconds(todayStats.longest);
-    setSessionCount(todayStats.count);
+    if (!isTracking || !startTimestamp) {
+      setLiveTotal(completedStats.total);
+      setLiveSegment(null);
+      return;
+    }
 
-    // Animate progress smoothly
-    progressShared.value = withTiming(todayStats.progress, {
-      duration: 500,
-    });
-  }, [todayStats.progress, todayStats.total, todayStats.longest, todayStats.count]);
+    const tick = () => {
+      const elapsed = Math.floor(
+        (Date.now() - new Date(startTimestamp).getTime()) / 1000,
+      );
+      const total = completedStats.total + elapsed;
+      setLiveTotal(total);
 
-  // Progress arc animated props
-  const arcAnimatedProps = useAnimatedProps(() => {
-    const offset = CIRCUMFERENCE * (1 - progressShared.value);
-    return {
-      strokeDashoffset: offset,
+      // Compute live segment
+      const startFraction = secondsSinceMidnight(startTimestamp) / DAY_SECONDS;
+      const lengthFraction = elapsed / DAY_SECONDS;
+      setLiveSegment({
+        id: "live",
+        dash: lengthFraction * CIRCUMFERENCE,
+        offset: -(startFraction * CIRCUMFERENCE),
+      });
     };
-  });
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [isTracking, startTimestamp, completedStats.total]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ring container opacity (fade in with hero animation)
   const ringContainerStyle = useAnimatedStyle(() => ({
@@ -163,35 +173,58 @@ export function FocusRing() {
     <AnimatedView style={[styles.container, ringContainerStyle]}>
       {/* SVG Ring */}
       <View style={styles.svgWrapper}>
-        <Svg width={SVG_SIZE} height={SVG_SIZE} viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}>
-          {/* Background track */}
+        <Svg
+          width={SVG_SIZE}
+          height={SVG_SIZE}
+          viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
+        >
+          {/* Background track — full ring, very faint */}
           <Circle
-            cx={SVG_SIZE / 2}
-            cy={SVG_SIZE / 2}
+            cx={CENTER}
+            cy={CENTER}
             r={RING_RADIUS}
             stroke="rgba(255, 255, 255, 0.08)"
             strokeWidth={RING_STROKE_WIDTH}
             fill="none"
           />
 
-          {/* Progress arc */}
-          <AnimatedCircle
-            cx={SVG_SIZE / 2}
-            cy={SVG_SIZE / 2}
-            r={RING_RADIUS}
-            stroke="rgba(255, 255, 255, 0.9)"
-            strokeWidth={RING_STROKE_WIDTH}
-            fill="none"
-            strokeDasharray={CIRCUMFERENCE}
-            strokeLinecap="round"
-            animatedProps={arcAnimatedProps}
-            strokeDashoffset={0}
-          />
+          {/* Completed session segments */}
+          {completedSegments.map((seg) => (
+            <Circle
+              key={seg.id}
+              cx={CENTER}
+              cy={CENTER}
+              r={RING_RADIUS}
+              stroke="rgba(255, 255, 255, 0.85)"
+              strokeWidth={RING_STROKE_WIDTH}
+              fill="none"
+              strokeDasharray={`${seg.dash} ${CIRCUMFERENCE}`}
+              strokeDashoffset={seg.offset}
+              strokeLinecap="butt"
+              transform={`rotate(-90, ${CENTER}, ${CENTER})`}
+            />
+          ))}
+
+          {/* Live session segment (updates every second) */}
+          {isTracking && liveSegment && (
+            <Circle
+              cx={CENTER}
+              cy={CENTER}
+              r={RING_RADIUS}
+              stroke="rgba(255, 255, 255, 0.6)"
+              strokeWidth={RING_STROKE_WIDTH}
+              fill="none"
+              strokeDasharray={`${liveSegment.dash} ${CIRCUMFERENCE}`}
+              strokeDashoffset={liveSegment.offset}
+              strokeLinecap="butt"
+              transform={`rotate(-90, ${CENTER}, ${CENTER})`}
+            />
+          )}
         </Svg>
 
         {/* Center content */}
         <View style={styles.centerContent}>
-          <Text style={styles.centerTitle}>{formatDuration(totalSeconds)}</Text>
+          <Text style={styles.centerTitle}>{formatDuration(liveTotal)}</Text>
           <Text style={styles.centerLabel}>TODAY</Text>
         </View>
       </View>
@@ -200,13 +233,15 @@ export function FocusRing() {
       <View style={styles.indicatorsRow}>
         {/* Sessions count */}
         <View style={styles.indicatorBox}>
-          <Text style={styles.indicatorValue}>{sessionCount}</Text>
+          <Text style={styles.indicatorValue}>{completedStats.count}</Text>
           <Text style={styles.indicatorLabel}>Sessions</Text>
         </View>
 
         {/* Longest block */}
         <View style={styles.indicatorBox}>
-          <Text style={styles.indicatorValue}>{formatDuration(longestBlockSeconds)}</Text>
+          <Text style={styles.indicatorValue}>
+            {formatDuration(completedStats.longest)}
+          </Text>
           <Text style={styles.indicatorLabel}>Longest Block</Text>
         </View>
       </View>
