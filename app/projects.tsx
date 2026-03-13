@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { useProjects } from "@/stores/projects-store";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { ListGroup, Separator } from "heroui-native";
 import { useState } from "react";
 import {
@@ -40,6 +41,7 @@ const PROJECT_ICONS = [
 ];
 
 export default function ProjectsScreen() {
+  const theme = useAuroraTheme()
   const { projects, addProject, updateProject, removeProject } = useProjects();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -89,14 +91,16 @@ export default function ProjectsScreen() {
     <>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 bg-[#111113]"
+        className="flex-1"
+        style={{ backgroundColor: theme.modalSheet }}
         contentContainerClassName="px-5 pb-10"
       >
         <View className="flex-row items-center justify-between mt-8 mb-8">
           <Text className="text-white text-4xl font-bold">Projects</Text>
           <TouchableOpacity
             onPress={openAdd}
-            className="bg-[#1c1c1e] w-10 h-10 rounded-full items-center justify-center"
+            className="w-10 h-10 rounded-full items-center justify-center"
+            style={{ backgroundColor: theme.card }}
           >
             <Image
               source="sf:plus"
@@ -111,7 +115,7 @@ export default function ProjectsScreen() {
             No projects yet. Tap + to add one.
           </Text>
         ) : (
-          <ListGroup>
+          <ListGroup className={theme.listGroupClassName}>
             {projects.map((project, index) => (
               <View key={project.id}>
                 {index > 0 && <Separator className="mx-4" />}
@@ -162,7 +166,7 @@ export default function ProjectsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View className="flex-1 bg-[#111113] px-5 pt-6">
+        <View className="flex-1 px-5 pt-6" style={{ backgroundColor: theme.modalSheet }}>
           <View className="flex-row items-center justify-between mb-8">
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text className="text-neutral-400 text-base">Cancel</Text>
@@ -184,7 +188,8 @@ export default function ProjectsScreen() {
             placeholder="Project name"
             placeholderTextColor="#636366"
             autoFocus
-            className="bg-[#1c1c1e] text-white px-4 py-3 rounded-xl text-base mb-6"
+            className="text-white px-4 py-3 rounded-xl text-base mb-6"
+            style={{ backgroundColor: theme.card }}
           />
 
           <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
@@ -220,7 +225,7 @@ export default function ProjectsScreen() {
                   height: 44,
                   borderRadius: 10,
                   backgroundColor:
-                    selectedIcon === icon ? selectedColor : "#1c1c1e",
+                    selectedIcon === icon ? selectedColor : theme.card,
                   alignItems: "center",
                   justifyContent: "center",
                   borderWidth: selectedIcon === icon ? 2 : 0,

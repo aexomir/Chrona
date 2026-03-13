@@ -5,6 +5,7 @@ import {
 } from "@/lib/calendar";
 import { useCalendarStore } from "@/stores/calendar-store";
 import { useProjects } from "@/stores/projects-store";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { ListGroup, PortalHost, Select, Separator } from "heroui-native";
@@ -34,6 +35,7 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 export default function CalendarSettingsScreen() {
+  const theme = useAuroraTheme()
   const { projects } = useProjects();
   const {
     permissionStatus,
@@ -128,14 +130,15 @@ export default function CalendarSettingsScreen() {
     <>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 bg-[#111113]"
+        className="flex-1"
+        style={{ backgroundColor: theme.modalSheet }}
         contentContainerClassName="px-5 pb-10"
       >
         <Text className="text-white text-4xl font-bold mt-8 mb-8">Calendar</Text>
 
         {/* ACCESS SECTION */}
         <SectionLabel>Access</SectionLabel>
-        <ListGroup className="mb-8">
+        <ListGroup className={`mb-8 ${theme.listGroupClassName}`}>
           <ListGroup.Item>
             <ListGroup.ItemContent>
               <ListGroup.ItemTitle>Calendar Access</ListGroup.ItemTitle>
@@ -162,7 +165,7 @@ export default function CalendarSettingsScreen() {
         {permissionStatus === "granted" && (
           <>
             <SectionLabel>Integration</SectionLabel>
-            <ListGroup className="mb-8">
+            <ListGroup className={`mb-8 ${theme.listGroupClassName}`}>
               <ListGroup.Item>
                 <ListGroup.ItemContent>
                   <ListGroup.ItemTitle>Enable Calendar</ListGroup.ItemTitle>
@@ -207,7 +210,7 @@ export default function CalendarSettingsScreen() {
                 No mappings yet. Add one to match calendar events to projects.
               </Text>
             ) : (
-              <ListGroup className="mb-6">
+              <ListGroup className={`mb-6 ${theme.listGroupClassName}`}>
                 {mappings.map((mapping, index) => {
                   const project = projects.find(
                     (p) => p.id === mapping.projectId,
@@ -265,7 +268,7 @@ export default function CalendarSettingsScreen() {
               </ListGroup>
             )}
 
-            <ListGroup>
+            <ListGroup className={theme.listGroupClassName}>
               <ListGroup.Item onPress={openAddMappingModal}>
                 <ListGroup.ItemPrefix>
                   <Image
@@ -292,7 +295,7 @@ export default function CalendarSettingsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setAddMappingModalVisible(false)}
       >
-        <View className="flex-1 bg-[#111113] px-5 pt-6">
+        <View className="flex-1 px-5 pt-6" style={{ backgroundColor: theme.modalSheet }}>
           <View className="flex-row items-center justify-between mb-8">
             <TouchableOpacity onPress={() => setAddMappingModalVisible(false)}>
               <Text className="text-neutral-400 text-base">Cancel</Text>
@@ -326,11 +329,8 @@ export default function CalendarSettingsScreen() {
             <View className="flex-row gap-3 mb-8">
               <TouchableOpacity
                 onPress={() => setSignalType("calendarName")}
-                className={`flex-1 p-4 rounded-xl border ${
-                  signalType === "calendarName"
-                    ? "bg-blue-600 border-blue-500"
-                    : "bg-[#1c1c1e] border-zinc-800"
-                }`}
+                className={`flex-1 p-4 rounded-xl border ${signalType === "calendarName" ? "bg-blue-600 border-blue-500" : ""}`}
+                style={signalType !== "calendarName" ? { backgroundColor: theme.card, borderColor: theme.cardBorder } : undefined}
               >
                 <Text
                   className={`text-center font-semibold text-sm ${
@@ -344,11 +344,8 @@ export default function CalendarSettingsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setSignalType("titleKeyword")}
-                className={`flex-1 p-4 rounded-xl border ${
-                  signalType === "titleKeyword"
-                    ? "bg-blue-600 border-blue-500"
-                    : "bg-[#1c1c1e] border-zinc-800"
-                }`}
+                className={`flex-1 p-4 rounded-xl border ${signalType === "titleKeyword" ? "bg-blue-600 border-blue-500" : ""}`}
+                style={signalType !== "titleKeyword" ? { backgroundColor: theme.card, borderColor: theme.cardBorder } : undefined}
               >
                 <Text
                   className={`text-center font-semibold text-sm ${
@@ -372,11 +369,8 @@ export default function CalendarSettingsScreen() {
                     <TouchableOpacity
                       key={cal.id}
                       onPress={() => setSelectedCalendar(cal)}
-                      className={`px-4 py-2 rounded-full border ${
-                        selectedCalendar?.id === cal.id
-                          ? "bg-blue-600 border-blue-500"
-                          : "bg-[#1c1c1e] border-zinc-800"
-                      }`}
+                      className={`px-4 py-2 rounded-full border ${selectedCalendar?.id === cal.id ? "bg-blue-600 border-blue-500" : ""}`}
+                      style={selectedCalendar?.id !== cal.id ? { backgroundColor: theme.card, borderColor: theme.cardBorder } : undefined}
                     >
                       <Text
                         className={
@@ -403,7 +397,8 @@ export default function CalendarSettingsScreen() {
                   onChangeText={setTitleKeywords}
                   placeholder="e.g., meeting, standup, review"
                   placeholderTextColor="#636366"
-                  className="bg-[#1c1c1e] text-white px-4 py-3 rounded-xl text-base mb-8"
+                  className="text-white px-4 py-3 rounded-xl text-base mb-8"
+                  style={{ backgroundColor: theme.card }}
                   multiline
                 />
               </>

@@ -9,6 +9,7 @@ import {
 } from "@/stores/suggestions-store";
 import { useTimerStore } from "@/stores/timer-store";
 import { StaticAuraBackground } from "@/components/static-aura-background";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
@@ -199,6 +200,7 @@ export default function TimerScreen() {
     selectedProject === undefined;
 
   const selProj = projects.find((p) => p.id === selectedProject?.value);
+  const theme = useAuroraTheme()
 
   return (
     <KeyboardAvoidingView
@@ -228,8 +230,8 @@ export default function TimerScreen() {
       ) : isTracking ? (
         <View className="flex-1 justify-center px-6 gap-5">
           <View
-            className="items-center justify-center rounded-3xl py-8 bg-[#1a1a1c]"
-            style={styles.card}
+            className="items-center justify-center rounded-3xl py-8"
+            style={[styles.card, { backgroundColor: theme.card }]}
           >
             <Text className="text-neutral-500 text-xs uppercase tracking-widest mb-2">
               elapsed
@@ -381,6 +383,7 @@ function ReviewView({
   onSave,
   onDiscard,
 }: ReviewViewProps) {
+  const theme = useAuroraTheme()
   const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
   const hasInitialized = useRef(false);
 
@@ -429,7 +432,7 @@ function ReviewView({
         className="flex-1 px-6"
       >
         {/* Session summary card */}
-        <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
+        <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
           <View className="flex-row items-center gap-2 mb-3">
             <Image
               source="sf:checkmark.circle.fill"
@@ -458,13 +461,13 @@ function ReviewView({
               <ActivityIndicator size="large" color="#ffffff" />
             </View>
           ) : isEmpty ? (
-            <View className="items-center justify-center py-8 rounded-2xl bg-[#1a1a1c] border border-zinc-800">
+            <View className="items-center justify-center py-8 rounded-2xl border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               <Text className="text-zinc-400 text-base">
                 No activity detected
               </Text>
             </View>
           ) : (
-            <View className="rounded-2xl bg-[#1a1a1c] border border-zinc-800 overflow-hidden">
+            <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               {apps.map((app, i) => {
                 const isSelected = selectedApps.has(app.app);
                 const titles = app.titles ?? [];
@@ -472,9 +475,8 @@ function ReviewView({
                   <Pressable
                     key={app.app}
                     onPress={() => handleToggleApp(app.app)}
-                    className={`flex-row items-start gap-3 px-4 py-3 ${
-                      i < apps.length - 1 ? "border-b border-zinc-800" : ""
-                    }`}
+                    className="flex-row items-start gap-3 px-4 py-3"
+                    style={i < apps.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
                   >
                     <View className="pt-1">
                       <View
@@ -550,11 +552,12 @@ function SuggestionBanner({
   onAccept,
   onDismiss,
 }: SuggestionBannerProps) {
+  const theme = useAuroraTheme()
   const proj = projects.find((p) => p.id === suggestion.projectId);
   if (!proj) return null;
 
   return (
-    <View className="px-4 py-4 rounded-2xl bg-[#1a1a1c] border border-zinc-800 gap-3">
+    <View className="px-4 py-4 rounded-2xl border gap-3" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
       {/* Header with project color and name */}
       <View className="flex-row items-center gap-3">
         <View

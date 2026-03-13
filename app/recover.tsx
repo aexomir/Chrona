@@ -6,6 +6,7 @@ import {
   getSmartDefaultApps,
 } from "@/stores/suggestions-store";
 import { StaticAuraBackground } from "@/components/static-aura-background";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
@@ -45,6 +46,7 @@ function formatTimeRange(startISO: string, endISO: string): string {
 
 export default function RecoverScreen() {
   const insets = useSafeAreaInsets();
+  const theme = useAuroraTheme()
   const { projects } = useProjects();
   const { pending, clear } = useRecoveryStore();
   const { addSession } = useSessionsStore();
@@ -153,7 +155,7 @@ export default function RecoverScreen() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 px-6">
         {/* Header card: calendar-specific or AW-based */}
         {pending.source === "calendar" ? (
-          <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
+          <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
             <View className="flex-row items-center gap-2 mb-3">
               <Image
                 source="sf:calendar.badge.exclamationmark"
@@ -174,7 +176,7 @@ export default function RecoverScreen() {
             </Text>
           </View>
         ) : (
-          <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
+          <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
             <View className="flex-row items-center gap-2 mb-3">
               <Image
                 source="sf:clock.badge.exclamationmark"
@@ -254,11 +256,11 @@ export default function RecoverScreen() {
         <View className="mb-6">
           <Text className="text-white text-base font-semibold mb-3">Apps Detected</Text>
           {pending.apps.length === 0 ? (
-            <View className="items-center justify-center py-8 rounded-2xl bg-[#1a1a1c] border border-zinc-800">
+            <View className="items-center justify-center py-8 rounded-2xl border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               <Text className="text-zinc-400 text-base">No activity detected</Text>
             </View>
           ) : (
-            <View className="rounded-2xl bg-[#1a1a1c] border border-zinc-800 overflow-hidden">
+            <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               {pending.apps.map((app, i) => {
                 const isSelected = selectedApps.has(app.app);
                 const titles = app.titles ?? [];
@@ -266,9 +268,8 @@ export default function RecoverScreen() {
                   <Pressable
                     key={app.app}
                     onPress={() => handleToggleApp(app.app)}
-                    className={`flex-row items-start gap-3 px-4 py-3 ${
-                      i < pending.apps.length - 1 ? "border-b border-zinc-800" : ""
-                    }`}
+                    className="flex-row items-start gap-3 px-4 py-3"
+                    style={i < pending.apps.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
                   >
                     <View className="pt-1">
                       <View

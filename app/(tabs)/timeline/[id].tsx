@@ -5,6 +5,7 @@ import {
   getSmartDefaultApps,
   useSuggestionsStore,
 } from "@/stores/suggestions-store";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
@@ -73,6 +74,7 @@ function SectionLabel({ label }: { label: string }) {
 }
 
 export default function SessionDetailScreen() {
+  const theme = useAuroraTheme()
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -219,8 +221,8 @@ export default function SessionDetailScreen() {
   return (
     <KeyboardAvoidingView
       behavior="padding"
-      className="flex-1 bg-black"
-      style={{ paddingBottom: insets.bottom }}
+      className="flex-1"
+      style={{ paddingBottom: insets.bottom, backgroundColor: theme.modalSheet }}
     >
       <Link.AppleZoomTarget>
         <ScrollView
@@ -228,7 +230,7 @@ export default function SessionDetailScreen() {
           className="flex-1 px-6"
         >
           {/* Header summary card */}
-          <View className="mb-6 rounded-3xl p-5 bg-[#1a1a1c] border border-zinc-800">
+          <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
             <Text className="text-white text-4xl font-bold mb-2">
               {formatDuration(computedDuration)}
             </Text>
@@ -258,8 +260,8 @@ export default function SessionDetailScreen() {
           {/* Details section */}
           <View className="mb-4">
             <SectionLabel label="Details" />
-            <View className="rounded-2xl bg-[#1a1a1c] border border-zinc-800 overflow-hidden">
-              <View className="px-4 py-3 border-b border-zinc-800">
+            <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+              <View className="px-4 py-3" style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}>
                 <Input
                   placeholder="Session title"
                   value={draftTitle}
@@ -319,13 +321,14 @@ export default function SessionDetailScreen() {
           {/* Time section */}
           <View className="mb-4">
             <SectionLabel label="Time" />
-            <View className="rounded-2xl bg-[#1a1a1c] border border-zinc-800 overflow-hidden">
+            <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               <Pressable
                 onPress={() => {
                   setEditingField("start");
                   setShowTimePicker(true);
                 }}
-                className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-800"
+                className="flex-row items-center justify-between px-4 py-3"
+                style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}
               >
                 <Text className="text-zinc-400 text-sm">Start</Text>
                 <Text className="text-white text-sm font-medium">
@@ -337,7 +340,8 @@ export default function SessionDetailScreen() {
                   setEditingField("end");
                   setShowTimePicker(true);
                 }}
-                className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-800"
+                className="flex-row items-center justify-between px-4 py-3"
+                style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}
               >
                 <Text className="text-zinc-400 text-sm">End</Text>
                 <Text className="text-white text-sm font-medium">
@@ -356,7 +360,7 @@ export default function SessionDetailScreen() {
           {/* Notes section */}
           <View className="mb-4">
             <SectionLabel label="Notes" />
-            <View className="rounded-2xl bg-[#1a1a1c] border border-zinc-800 px-4 py-3">
+            <View className="rounded-2xl border px-4 py-3" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               <Input
                 placeholder="Add notes..."
                 value={draftNotes}
@@ -370,7 +374,7 @@ export default function SessionDetailScreen() {
           {session.apps && session.apps.length > 0 && (
             <View className="mb-6">
               <SectionLabel label="Apps" />
-              <View className="rounded-2xl bg-[#1a1a1c] border border-zinc-800 overflow-hidden">
+              <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
                 {session.apps.map((app, i) => {
                   const isSelected = draftApps.has(app.app);
                   const titles = app.titles ?? [];
@@ -378,11 +382,8 @@ export default function SessionDetailScreen() {
                     <Pressable
                       key={app.app}
                       onPress={() => handleToggleApp(app.app)}
-                      className={`flex-row items-start gap-3 px-4 py-3 ${
-                        i < session.apps!.length - 1
-                          ? "border-b border-zinc-800"
-                          : ""
-                      }`}
+                      className="flex-row items-start gap-3 px-4 py-3"
+                      style={i < session.apps!.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
                     >
                       <View className="pt-1">
                         <View
@@ -453,7 +454,7 @@ export default function SessionDetailScreen() {
             style={StyleSheet.absoluteFill}
             onPress={() => setShowTimePicker(false)}
           />
-          <View className="absolute bottom-0 left-0 right-0 bg-zinc-900 rounded-t-2xl pb-safe">
+          <View className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe" style={{ backgroundColor: theme.modalSheet }}>
             <Host matchContents>
               <DatePicker
                 selection={

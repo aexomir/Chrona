@@ -8,6 +8,7 @@ import { useMeetingStore } from "@/stores/meeting-store";
 import { meetingStatusLabel } from "@/lib/meetingDetection";
 import { useSettingsStore } from "@/stores/settings-store";
 import { StaticAuraBackground } from "@/components/static-aura-background";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 
 function IconSquare({ icon, color }: { icon: string; color: string }) {
   return (
@@ -54,6 +55,7 @@ function QuestionSuffix() {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const theme = useAuroraTheme()
   const { permissionStatus, isEnabled } = useCalendarStore();
   const { isEnabled: meetingEnabled, selectedAppIds } = useMeetingStore();
   const { auroraEnabled, setAuroraEnabled, constellationEnabled, setConstellationEnabled } = useSettingsStore();
@@ -70,7 +72,7 @@ export default function SettingsScreen() {
 
       {/* GENERAL */}
       <SectionLabel>General</SectionLabel>
-      <ListGroup className="mb-8">
+      <ListGroup className={`mb-8 ${theme.listGroupClassName}`}>
         <ListGroup.Item onPress={() => {}}>
           <ListGroup.ItemPrefix>
             <IconSquare icon="sun.min.fill" color="#f97316" />
@@ -162,7 +164,7 @@ export default function SettingsScreen() {
 
       {/* INTEGRATIONS */}
       <SectionLabel>Integrations</SectionLabel>
-      <ListGroup className="mb-8">
+      <ListGroup className={`mb-8 ${theme.listGroupClassName}`}>
         <ListGroup.Item onPress={() => router.push("/calendar-settings")}>
           <ListGroup.ItemPrefix>
             <IconSquare icon="calendar.badge.checkmark" color="#3b82f6" />
@@ -192,7 +194,7 @@ export default function SettingsScreen() {
 
       {/* DATA & PRIVACY */}
       <SectionLabel>Data &amp; Privacy</SectionLabel>
-      <ListGroup className="mb-8">
+      <ListGroup className={`mb-8 ${theme.listGroupClassName}`}>
         <ListGroup.Item onPress={() => {}}>
           <ListGroup.ItemPrefix>
             <IconSquare icon="iphone" color="#3b82f6" />
@@ -236,7 +238,7 @@ export default function SettingsScreen() {
 
       {/* ABOUT */}
       <SectionLabel>About</SectionLabel>
-      <ListGroup>
+      <ListGroup className={theme.listGroupClassName}>
         <ListGroup.Item onPress={() => {}}>
           <ListGroup.ItemPrefix>
             <IconSquare icon="shield.fill" color="#636366" />

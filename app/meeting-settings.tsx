@@ -1,5 +1,6 @@
 import { MEETING_APPS } from "@/lib/meetingDetection";
 import { useMeetingStore } from "@/stores/meeting-store";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { Image } from "expo-image";
 import { ListGroup, Separator } from "heroui-native";
 import {
@@ -28,20 +29,22 @@ function IconSquare({ icon, color }: { icon: string; color: string }) {
 }
 
 export default function MeetingSettingsScreen() {
+  const theme = useAuroraTheme()
   const { isEnabled, selectedAppIds, setEnabled, toggleApp } =
     useMeetingStore();
 
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      className="flex-1 bg-[#111113]"
+      className="flex-1"
+      style={{ backgroundColor: theme.modalSheet }}
       contentContainerClassName="px-5 pb-10"
     >
       <Text className="text-white text-4xl font-bold mt-8 mb-8">Meetings</Text>
 
       {/* INTEGRATION SECTION */}
       <SectionLabel>Integration</SectionLabel>
-      <ListGroup className="mb-8">
+      <ListGroup className={`mb-8 ${theme.listGroupClassName}`}>
         <ListGroup.Item>
           <ListGroup.ItemContent>
             <ListGroup.ItemTitle>Enable Meeting Detection</ListGroup.ItemTitle>
@@ -64,7 +67,7 @@ export default function MeetingSettingsScreen() {
       {isEnabled && (
         <>
           <SectionLabel>Detect From</SectionLabel>
-          <ListGroup className="mb-6">
+          <ListGroup className={`mb-6 ${theme.listGroupClassName}`}>
             {MEETING_APPS.map((app, index) => {
               const isSelected = selectedAppIds.includes(app.id);
               const isOnlySelected = isSelected && selectedAppIds.length === 1;

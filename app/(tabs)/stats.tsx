@@ -1,8 +1,7 @@
 import type { Project } from "@/constants/projects";
 import { useProjects } from "@/stores/projects-store";
 import { type Session, useSessionsStore } from "@/stores/sessions-store";
-import { useSettingsStore } from "@/stores/settings-store";
-import { getAtmosphereColors } from "@/lib/atmosphereColors";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { BlurView } from "expo-blur";
 import { GlassView } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
@@ -463,12 +462,13 @@ function StreakCallout({
 }
 
 function EmptyState() {
+  const theme = useAuroraTheme()
   return (
     <View className="items-center justify-center pt-28 px-8">
       <View className="items-center justify-center mb-7">
         <View className="absolute w-36 h-36 rounded-full bg-zinc-900/30" />
         <View className="absolute w-28 h-28 rounded-full bg-zinc-900/50" />
-        <View className="w-20 h-20 rounded-full bg-zinc-900 items-center justify-center">
+        <View className="w-20 h-20 rounded-full items-center justify-center" style={{ backgroundColor: theme.card }}>
           <Image
             source="sf:chart.bar"
             style={{ width: 30, height: 30 }}
@@ -539,7 +539,7 @@ export default function StatsScreen() {
   const [timeframe, setTimeframe] = useState<Timeframe>("week");
   const { sessions: allSessions } = useSessionsStore();
   const { projects } = useProjects();
-  const auroraEnabled = useSettingsStore(s => s.auroraEnabled);
+  const theme = useAuroraTheme();
 
   const now = new Date();
   const { start, end } = getRange(timeframe, now);
@@ -596,10 +596,7 @@ export default function StatsScreen() {
 
   const headerHeight = insets.top + 56;
 
-  // Dynamic shadow color based on aurora
-  const shadowColor = auroraEnabled
-    ? `rgba(${getAtmosphereColors('calm').background[0]}, ${getAtmosphereColors('calm').background[1]}, ${getAtmosphereColors('calm').background[2]}, 1)`
-    : "#000000";
+  const shadowColor = theme.modalSheet;
 
   return (
     <View style={{ flex: 1 }}>
@@ -703,7 +700,7 @@ export default function StatsScreen() {
           ]}
         >
           <LinearGradient
-            colors={["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0)"]}
+            colors={theme.headerGradient}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={{ flex: 1, height: 20 }}

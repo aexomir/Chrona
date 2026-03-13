@@ -2,6 +2,7 @@ import { useProjects } from "@/stores/projects-store";
 import { type Session, useSessionsStore } from "@/stores/sessions-store";
 import { useTimerStore } from "@/stores/timer-store";
 import { StaticAuraBackground } from "@/components/static-aura-background";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
@@ -94,8 +95,9 @@ function circleXForIndexInWidth(idx: number, width: number): number {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function DatePill({ date }: { date: Date }) {
+  const theme = useAuroraTheme()
   return (
-    <View className="bg-zinc-900 rounded-full px-4 py-1.5">
+    <View className="rounded-full px-4 py-1.5" style={{ backgroundColor: theme.chip }}>
       <Text className="text-white text-sm font-medium">{formatDate(date)}</Text>
     </View>
   );
@@ -103,6 +105,7 @@ function DatePill({ date }: { date: Date }) {
 
 function SessionRow({ session }: { session: Session }) {
   const { projects } = useProjects();
+  const theme = useAuroraTheme()
   const project = session.projectId
     ? projects.find((p) => p.id === session.projectId)
     : null;
@@ -127,7 +130,7 @@ function SessionRow({ session }: { session: Session }) {
       <Link href={`/(tabs)/timeline/${session.id}`} asChild className="flex-1">
         <Link.AppleZoom>
           <Pressable className="flex-1">
-            <View className="bg-zinc-900 rounded-2xl px-4 py-3 gap-1">
+            <View className="rounded-2xl px-4 py-3 gap-1" style={{ backgroundColor: theme.card }}>
               <View className="flex-row items-start justify-between gap-2">
                 <Text
                   className="text-white text-base font-semibold flex-1"
@@ -135,7 +138,7 @@ function SessionRow({ session }: { session: Session }) {
                 >
                   {session.title}
                 </Text>
-                <View className="bg-zinc-800 rounded-full px-2 py-0.5 mt-0.5">
+                <View className="rounded-full px-2 py-0.5 mt-0.5" style={{ backgroundColor: theme.chip }}>
                   <Text className="text-zinc-300 text-xs font-medium">
                     {formatDuration(session.duration)}
                   </Text>
@@ -169,6 +172,7 @@ function SessionRow({ session }: { session: Session }) {
 function LiveSessionRow({ startTimestamp }: { startTimestamp: string }) {
   const { title, projectId } = useTimerStore();
   const { projects } = useProjects();
+  const theme = useAuroraTheme()
   const project = projectId ? projects.find((p) => p.id === projectId) : null;
   const [elapsed, setElapsed] = useState(0);
 
@@ -193,7 +197,7 @@ function LiveSessionRow({ startTimestamp }: { startTimestamp: string }) {
         <View className="items-center pt-[18px]">
           <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
         </View>
-        <View className="flex-1 bg-zinc-900 rounded-2xl px-4 py-3 gap-1 border border-red-500/30">
+        <View className="flex-1 rounded-2xl px-4 py-3 gap-1 border border-red-500/30" style={{ backgroundColor: theme.card }}>
           <View className="flex-row items-start justify-between gap-2">
             <Text
               className="text-white text-base font-semibold flex-1"
@@ -232,6 +236,7 @@ export default function TimelineScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const theme = useAuroraTheme()
 
   const {
     isTracking,
@@ -449,7 +454,7 @@ export default function TimelineScreen() {
             <View className="items-center justify-center mb-7">
               <View className="absolute w-36 h-36 rounded-full bg-zinc-900/30" />
               <View className="absolute w-28 h-28 rounded-full bg-zinc-900/50" />
-              <View className="w-20 h-20 rounded-full bg-zinc-900 items-center justify-center">
+              <View className="w-20 h-20 rounded-full items-center justify-center" style={{ backgroundColor: theme.card }}>
                 <Image
                   source="sf:timer"
                   style={{ width: 30, height: 30 }}
@@ -488,7 +493,7 @@ export default function TimelineScreen() {
             style={StyleSheet.absoluteFill}
             onPress={() => setShowPicker(false)}
           />
-          <View className="absolute bottom-0 left-0 right-0 bg-zinc-900 rounded-t-2xl pb-safe">
+          <View className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe" style={{ backgroundColor: theme.modalSheet }}>
             <Host matchContents>
               <DatePicker
                 selection={selectedDate}
@@ -518,10 +523,10 @@ export default function TimelineScreen() {
             style={StyleSheet.absoluteFill}
             onPress={() => setShowFilter(false)}
           />
-          <View className="absolute bottom-0 left-0 right-0 bg-zinc-900 rounded-t-2xl pb-safe">
+          <View className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe" style={{ backgroundColor: theme.modalSheet }}>
             {/* Handle */}
             <View className="items-center pt-3 pb-1">
-              <View className="w-10 h-1 rounded-full bg-zinc-700" />
+              <View className="w-10 h-1 rounded-full" style={{ backgroundColor: theme.handle }} />
             </View>
 
             {/* Header */}
@@ -544,9 +549,8 @@ export default function TimelineScreen() {
                   <Pressable
                     key={p.id}
                     onPress={() => toggleProject(p.id)}
-                    className={`flex-row items-center gap-3 py-3.5 ${
-                      i < projects.length - 1 ? "border-b border-zinc-800" : ""
-                    }`}
+                    className="flex-row items-center gap-3 py-3.5"
+                    style={i < projects.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
                   >
                     <Image
                       source={`sf:${p.icon}`}
