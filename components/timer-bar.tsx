@@ -65,7 +65,34 @@ export function TimerBar() {
       hasDetectedRef.current = false;
       return;
     }
-    if (hasDetectedRef.current || pending) return;
+    // Reset detection flag when sessions change so we re-validate pending recovery
+    // If a new session was logged, detection will re-run and find no gap
+    hasDetectedRef.current = false;
+  }, [isTracking, sessions]);
+
+  // Validate pending recovery against current sessions
+  // If a newly logged session covers the pending period, clear it
+  useEffect(() => {
+    if (!pending) return;
+
+    const pendingStart = new Date(pending.startTime);
+    const pendingEnd = new Date(pending.endTime);
+
+    // Check if any session fully covers the pending period
+    const isCovered = sessions.some((s) => {
+      const sStart = new Date(s.startTime);
+      const sEnd = new Date(s.endTime);
+      return sStart <= pendingStart && sEnd >= pendingEnd;
+    });
+
+    if (isCovered) {
+      setRecovery(null as any); // Clear pending
+    }
+  }, [sessions, pending, setRecovery]);
+
+  // Separate effect for running detection when conditions are met
+  useEffect(() => {
+    if (isTracking || hasDetectedRef.current || pending) return;
 
     hasDetectedRef.current = true;
     (async () => {
