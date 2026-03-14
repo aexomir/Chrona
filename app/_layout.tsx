@@ -49,6 +49,18 @@ export default function RootLayout() {
                 name="calendar-settings"
                 options={{ presentation: "modal", headerShown: false }}
               />
+              <Stack.Screen
+                name="meeting-settings"
+                options={{ presentation: "modal", headerShown: false }}
+              />
+              <Stack.Screen
+                name="projects"
+                options={{ presentation: "modal", headerShown: false }}
+              />
+              <Stack.Screen
+                name="settings"
+                options={{ headerShown: false }}
+              />
             </Stack>
             <StatusBar style="light" />
             <HeroOverlay />
