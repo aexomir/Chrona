@@ -6,7 +6,6 @@ import { useRecoveryStore } from "@/stores/recovery-store";
 import { useSessionsStore } from "@/stores/sessions-store";
 import { useSuggestionsStore } from "@/stores/suggestions-store";
 import { useTimerStore } from "@/stores/timer-store";
-import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -71,21 +70,21 @@ export function TimerBar() {
   }, [isTracking, sessions]);
 
   // Validate pending recovery against current sessions
-  // If a newly logged session covers the pending period, clear it
+  // If a newly logged session overlaps with the pending period, clear it
   useEffect(() => {
     if (!pending) return;
 
     const pendingStart = new Date(pending.startTime);
     const pendingEnd = new Date(pending.endTime);
 
-    // Check if any session fully covers the pending period
-    const isCovered = sessions.some((s) => {
+    // Check if any session overlaps with the pending period
+    const isOverlapped = sessions.some((s) => {
       const sStart = new Date(s.startTime);
       const sEnd = new Date(s.endTime);
-      return sStart <= pendingStart && sEnd >= pendingEnd;
+      return sStart < pendingEnd && sEnd > pendingStart;
     });
 
-    if (isCovered) {
+    if (isOverlapped) {
       setRecovery(null as any); // Clear pending
     }
   }, [sessions, pending, setRecovery]);
@@ -165,6 +164,7 @@ export function TimerBar() {
 
   return (
     <Pressable
+      style={styles.container}
       onPress={() => {
         if (pending) {
           router.push("/recover");
@@ -177,76 +177,81 @@ export function TimerBar() {
         }
       }}
     >
-      <BlurView intensity={60} tint="dark" style={styles.blur}>
-        {isTracking ? (
-          <View className="flex-row items-center justify-center gap-2">
-            {project ? (
-              <Image
-                source={`sf:${project.icon}`}
-                style={[styles.icon, { tintColor: project.color }]}
-              />
-            ) : (
-              <View className="w-2 h-2 rounded-full bg-red-500" />
-            )}
-            <Text className="text-white text-sm shrink" numberOfLines={1}>
-              {title}
-            </Text>
-            {project && (
-              <Text
-                className="text-neutral-500 text-sm shrink-0"
-                numberOfLines={1}
-              >
-                {project.name}
-              </Text>
-            )}
-            <Text className="text-white text-sm font-mono font-semibold shrink-0">
-              {formatTime(elapsed)}
-            </Text>
-          </View>
-        ) : pending ? (
-          pending.source === "calendar" ? (
-            <View className="flex-row items-center justify-center gap-2">
-              <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              <Text className="text-amber-400 text-sm" numberOfLines={1}>
-                {pending.eventTitle} · Tap to log
-              </Text>
-            </View>
-          ) : (
-            <View className="flex-row items-center justify-center gap-2">
-              <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              <Text className="text-amber-400 text-sm">
-                Activity not tracked · Tap to review
-              </Text>
-            </View>
-          )
-        ) : calendarSuggestion ? (
-          <View className="flex-row items-center justify-center gap-1.5">
-            <Text className="text-white/50 text-sm shrink-0">Suggested:</Text>
-            <View
-              className="w-1 h-1 rounded-full shrink-0"
-              style={{ backgroundColor: calendarProj?.color || "#888" }}
+      {isTracking ? (
+        <View className="flex-row items-center justify-center gap-2">
+          {project ? (
+            <Image
+              source={`sf:${project.icon}`}
+              style={[styles.icon, { tintColor: project.color }]}
             />
-            <Text className="text-white text-sm shrink" numberOfLines={1}>
-              {calendarSuggestion.eventTitle}
+          ) : (
+            <View className="w-2 h-2 rounded-full bg-red-500" />
+          )}
+          <Text className="text-white text-sm shrink" numberOfLines={1}>
+            {title}
+          </Text>
+          {project && (
+            <Text
+              className="text-neutral-500 text-sm shrink-0"
+              numberOfLines={1}
+            >
+              {project.name}
+            </Text>
+          )}
+          <Text className="text-white text-sm font-mono font-semibold shrink-0">
+            {formatTime(elapsed)}
+          </Text>
+        </View>
+      ) : pending ? (
+        pending.source === "calendar" ? (
+          <View className="flex-row items-center justify-center gap-2">
+            <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <Text className="text-amber-400 text-sm" numberOfLines={1}>
+              {pending.eventTitle} · Tap to log
             </Text>
           </View>
         ) : (
-          <Text className="text-white/50 text-sm text-center">
-            Tap to start a timer
+          <View className="flex-row items-center justify-center gap-2">
+            <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <Text className="text-amber-400 text-sm">
+              Activity not tracked · Tap to review
+            </Text>
+          </View>
+        )
+      ) : calendarSuggestion ? (
+        <View className="flex-row items-center justify-center gap-1.5">
+          <Text className="text-white/50 text-sm shrink-0">Suggested:</Text>
+          <View
+            className="w-1 h-1 rounded-full shrink-0"
+            style={{ backgroundColor: calendarProj?.color || "#888" }}
+          />
+          <Text className="text-white text-sm shrink" numberOfLines={1}>
+            {calendarSuggestion.eventTitle}
           </Text>
-        )}
-      </BlurView>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              setCalendarSuggestion(null);
+            }}
+            hitSlop={8}
+          >
+            <Text className="text-white/50 text-sm font-semibold">×</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Text className="text-white/50 text-sm text-center">
+          Tap to start a timer
+        </Text>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  blur: {
-    borderTopWidth: 0.5,
-    borderTopColor: "rgba(255,255,255,0.12)",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: "rgba(18,18,20,0.55)",
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   icon: {
     width: 13,
