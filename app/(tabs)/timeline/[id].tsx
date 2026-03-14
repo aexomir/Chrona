@@ -1,33 +1,26 @@
+import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { TabBarContext } from "@/context/TabBarContext";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore } from "@/stores/sessions-store";
 import {
   getSmartDefaultApps,
   useSuggestionsStore,
 } from "@/stores/suggestions-store";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
 import {
   Link,
   router,
+  Stack,
   useFocusEffect,
   useLocalSearchParams,
   useNavigation,
 } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { use, useCallback, useEffect, useLayoutEffect, useState } from "react";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
@@ -74,9 +67,8 @@ function SectionLabel({ label }: { label: string }) {
 }
 
 export default function SessionDetailScreen() {
-  const theme = useAuroraTheme()
+  const theme = useAuroraTheme();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { sessions, updateSession, removeSession } = useSessionsStore();
   const { projects } = useProjects();
@@ -121,11 +113,24 @@ export default function SessionDetailScreen() {
     return () => setIsTabBarHidden(false);
   });
 
+  const navigation = useNavigation();
+
   useEffect(() => {
     if (!session) {
       router.back();
     }
   }, [session]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: draftTitle || "Session",
+      headerTitleStyle: {
+        color: "white",
+        fontSize: 17,
+        fontWeight: "600",
+      },
+    });
+  }, [navigation, draftTitle]);
 
   if (!session) {
     return null;
@@ -191,18 +196,6 @@ export default function SessionDetailScreen() {
     ]);
   }, [session.id, removeSession]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable onPress={handleDelete} hitSlop={12}>
-          <Text style={{ color: "#f87171", fontSize: 16, fontWeight: "500" }}>
-            Delete
-          </Text>
-        </Pressable>
-      ),
-    });
-  }, [navigation, handleDelete]);
-
   const handleTimeChange = (date: Date) => {
     if (editingField === "start") {
       // Ensure start is before end
@@ -219,18 +212,27 @@ export default function SessionDetailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior="padding"
-      className="flex-1"
-      style={{ paddingBottom: insets.bottom, backgroundColor: theme.modalSheet }}
-    >
+    <View style={{ flex: 1, backgroundColor: theme.modalSheet }}>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon="trash.fill"
+          tintColor="#ef4444"
+          variant="prominent"
+          onPress={handleDelete}
+        />
+      </Stack.Toolbar>
       <Link.AppleZoomTarget>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          className="flex-1 px-6"
+        <AnimatedHeaderScrollView
+          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 60 }}
         >
           {/* Header summary card */}
-          <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+          <View
+            className="mb-6 rounded-3xl p-5 border"
+            style={{
+              backgroundColor: theme.card,
+              borderColor: theme.cardBorder,
+            }}
+          >
             <Text className="text-white text-4xl font-bold mb-2">
               {formatDuration(computedDuration)}
             </Text>
@@ -260,12 +262,25 @@ export default function SessionDetailScreen() {
           {/* Details section */}
           <View className="mb-4">
             <SectionLabel label="Details" />
-            <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
-              <View className="px-4 py-3" style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}>
+            <View
+              className="rounded-2xl border overflow-hidden"
+              style={{
+                backgroundColor: theme.card,
+                borderColor: theme.cardBorder,
+              }}
+            >
+              <View
+                className="px-4 py-3"
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.cardBorder,
+                }}
+              >
                 <Input
                   placeholder="Session title"
                   value={draftTitle}
                   onChangeText={setDraftTitle}
+                  className="text-white"
                 />
               </View>
               <View className="px-4 py-3">
@@ -321,14 +336,23 @@ export default function SessionDetailScreen() {
           {/* Time section */}
           <View className="mb-4">
             <SectionLabel label="Time" />
-            <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+            <View
+              className="rounded-2xl border overflow-hidden"
+              style={{
+                backgroundColor: theme.card,
+                borderColor: theme.cardBorder,
+              }}
+            >
               <Pressable
                 onPress={() => {
                   setEditingField("start");
                   setShowTimePicker(true);
                 }}
                 className="flex-row items-center justify-between px-4 py-3"
-                style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.cardBorder,
+                }}
               >
                 <Text className="text-zinc-400 text-sm">Start</Text>
                 <Text className="text-white text-sm font-medium">
@@ -341,7 +365,10 @@ export default function SessionDetailScreen() {
                   setShowTimePicker(true);
                 }}
                 className="flex-row items-center justify-between px-4 py-3"
-                style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.cardBorder,
+                }}
               >
                 <Text className="text-zinc-400 text-sm">End</Text>
                 <Text className="text-white text-sm font-medium">
@@ -360,12 +387,19 @@ export default function SessionDetailScreen() {
           {/* Notes section */}
           <View className="mb-4">
             <SectionLabel label="Notes" />
-            <View className="rounded-2xl border px-4 py-3" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+            <View
+              className="rounded-2xl border px-4 py-3"
+              style={{
+                backgroundColor: theme.card,
+                borderColor: theme.cardBorder,
+              }}
+            >
               <Input
                 placeholder="Add notes..."
                 value={draftNotes}
                 onChangeText={setDraftNotes}
                 multiline
+                className="text-white"
               />
             </View>
           </View>
@@ -374,7 +408,13 @@ export default function SessionDetailScreen() {
           {session.apps && session.apps.length > 0 && (
             <View className="mb-6">
               <SectionLabel label="Apps" />
-              <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+              <View
+                className="rounded-2xl border overflow-hidden"
+                style={{
+                  backgroundColor: theme.card,
+                  borderColor: theme.cardBorder,
+                }}
+              >
                 {session.apps.map((app, i) => {
                   const isSelected = draftApps.has(app.app);
                   const titles = app.titles ?? [];
@@ -383,7 +423,14 @@ export default function SessionDetailScreen() {
                       key={app.app}
                       onPress={() => handleToggleApp(app.app)}
                       className="flex-row items-start gap-3 px-4 py-3"
-                      style={i < session.apps!.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
+                      style={
+                        i < session.apps!.length - 1
+                          ? {
+                              borderBottomWidth: 1,
+                              borderBottomColor: theme.cardBorder,
+                            }
+                          : undefined
+                      }
                     >
                       <View className="pt-1">
                         <View
@@ -429,11 +476,14 @@ export default function SessionDetailScreen() {
               </View>
             </View>
           )}
-        </ScrollView>
+        </AnimatedHeaderScrollView>
       </Link.AppleZoomTarget>
 
       {/* Action buttons */}
-      <View className="px-6 gap-2 py-4">
+      <View
+        className="px-6 gap-2 py-4"
+        style={{ paddingBottom: insets.bottom }}
+      >
         <Button
           variant="primary"
           onPress={handleSave}
@@ -454,7 +504,10 @@ export default function SessionDetailScreen() {
             style={StyleSheet.absoluteFill}
             onPress={() => setShowTimePicker(false)}
           />
-          <View className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe" style={{ backgroundColor: theme.modalSheet }}>
+          <View
+            className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe"
+            style={{ backgroundColor: theme.modalSheet }}
+          >
             <Host matchContents>
               <DatePicker
                 selection={
@@ -476,6 +529,6 @@ export default function SessionDetailScreen() {
       )}
 
       <PortalHost name="session-detail" />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
