@@ -1,4 +1,21 @@
 import { StaticAuraBackground } from "@/components/static-aura-background";
+import { EmptyState } from "@/components/empty-state";
+import { DatePill } from "@/components/timeline/date-pill";
+import { GapSeparator } from "@/components/timeline/gap-separator";
+import { SessionRow } from "@/components/timeline/session-row";
+import { LiveSessionRow } from "@/components/timeline/live-session-row";
+import { CalendarEventMarker } from "@/components/timeline/calendar-event-marker";
+import {
+  getWeekStart,
+  getWeekDays,
+  isSameDay,
+  circleXForIndexInWidth,
+  CIRCLE_SIZE,
+  CIRCLE_TOP,
+  CIRCLE_EASING,
+  CIRCLE_DURATION,
+  DAY_ABBREVS,
+} from "@/lib/timeline-utils";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import type { CalendarEvent } from "@/lib/calendar";
 import { useCalendarStore } from "@/stores/calendar-store";
@@ -8,9 +25,9 @@ import { useTimerStore } from "@/stores/timer-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
-import { Link, router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { Button } from "heroui-native";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -21,472 +38,10 @@ import {
 } from "react-native";
 import Animated, {
   Easing,
-  FadeIn,
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function getWeekStart(base: Date, offsetWeeks: number): Date {
-  const d = new Date(base);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff + offsetWeeks * 7);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function getWeekDays(weekStart: Date): Date[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    return d;
-  });
-}
-
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-function formatDate(d: Date) {
-  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-}
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-function formatTime24(d: Date): string {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-function formatDuration(seconds: number): string {
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-function formatGapDuration(ms: number): string {
-  const totalMinutes = Math.floor(ms / 60000);
-  if (totalMinutes < 60) return `${totalMinutes}m`;
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-const DAY_ABBREVS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const CIRCLE_SIZE = 36;
-const STRIP_PT = 12;
-const ABBREV_H = 16;
-const GAP = 8;
-const CIRCLE_TOP = STRIP_PT + ABBREV_H + GAP;
-const CIRCLE_EASING = Easing.out(Easing.cubic);
-const CIRCLE_DURATION = 240;
-
-function circleXForIndexInWidth(idx: number, width: number): number {
-  const cw = (width - 6) / 7;
-  return idx * (cw + 1) + (cw - CIRCLE_SIZE) / 2;
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function DatePill({ date }: { date: Date }) {
-  return (
-    <View className="rounded-full px-4 py-1.5">
-      <Text className="text-white text-sm font-medium">{formatDate(date)}</Text>
-    </View>
-  );
-}
-
-function GapSeparator({ durationMs }: { durationMs: number }) {
-  return (
-    <View className="flex-row items-center gap-2" style={{ opacity: 0.35 }}>
-      <View className="w-14" />
-      <View className="w-4" />
-      <View className="flex-1 flex-row items-center gap-2">
-        <View className="flex-1 h-px bg-zinc-600" />
-        <Text className="text-zinc-500 text-xs">
-          {formatGapDuration(durationMs)}
-        </Text>
-        <View className="flex-1 h-px bg-zinc-600" />
-      </View>
-    </View>
-  );
-}
-
-function SessionRow({
-  session,
-  index,
-  overlappingEvents,
-}: {
-  session: Session;
-  index: number;
-  overlappingEvents: CalendarEvent[];
-}) {
-  const { projects } = useProjects();
-  const theme = useAuroraTheme();
-  const project = session.projectId
-    ? projects.find((p) => p.id === session.projectId)
-    : null;
-
-  const appsString = session.apps
-    ? session.apps
-        .slice(0, 3)
-        .map((a) => a.app)
-        .join(" · ")
-    : null;
-
-  const pressScale = useSharedValue(1);
-  const scaleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pressScale.value }],
-  }));
-
-  return (
-    <Animated.View
-      className="flex-row items-start gap-2"
-      entering={FadeInDown.delay(index * 50)
-        .duration(400)
-        .easing(Easing.out(Easing.cubic))}
-    >
-      <View className="w-14 items-end pt-3.5">
-        <Text className="text-zinc-500 text-xs tabular-nums">
-          {formatTime24(new Date(session.startTime))}
-        </Text>
-      </View>
-      <View className="items-center pt-[18px]">
-        <View className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-      </View>
-      <Link href={`/(tabs)/timeline/${session.id}`} asChild className="flex-1">
-        <Link.AppleZoom>
-          <Pressable
-            className="flex-1"
-            onPressIn={() => {
-              pressScale.value = withTiming(0.96, {
-                duration: 100,
-                easing: Easing.out(Easing.quad),
-              });
-            }}
-            onPressOut={() => {
-              pressScale.value = withTiming(1, {
-                duration: 220,
-                easing: Easing.out(Easing.cubic),
-              });
-            }}
-          >
-            <Animated.View style={scaleStyle}>
-              <View
-                className="rounded-2xl px-4 py-3 gap-1 overflow-hidden"
-                style={{ backgroundColor: theme.card }}
-              >
-                <View className="flex-row items-start justify-between gap-2">
-                  <Text
-                    className="text-white text-base font-semibold flex-1"
-                    numberOfLines={1}
-                  >
-                    {session.title}
-                  </Text>
-                  <View
-                    className="rounded-full px-2 py-0.5 mt-0.5"
-                    style={{ backgroundColor: theme.chip }}
-                  >
-                    <Text className="text-zinc-300 text-xs font-medium">
-                      {formatDuration(session.duration)}
-                    </Text>
-                  </View>
-                </View>
-                {project && (
-                  <View className="flex-row items-center gap-1.5">
-                    <Image
-                      source={`sf:${project.icon}`}
-                      style={{
-                        width: 11,
-                        height: 11,
-                        tintColor: project.color,
-                      }}
-                    />
-                    <Text className="text-zinc-500 text-xs">
-                      {project.name}
-                    </Text>
-                  </View>
-                )}
-                {appsString && (
-                  <Text
-                    className="text-zinc-600 text-xs mt-1 leading-4"
-                    numberOfLines={1}
-                  >
-                    {appsString}
-                  </Text>
-                )}
-              </View>
-            </Animated.View>
-          </Pressable>
-        </Link.AppleZoom>
-      </Link>
-    </Animated.View>
-  );
-}
-
-function LiveSessionRow({
-  startTimestamp,
-  index,
-}: {
-  startTimestamp: string;
-  index: number;
-}) {
-  const { title, projectId } = useTimerStore();
-  const { projects } = useProjects();
-  const theme = useAuroraTheme();
-  const project = projectId ? projects.find((p) => p.id === projectId) : null;
-  const [elapsed, setElapsed] = useState(0);
-
-  const pressScale = useSharedValue(1);
-  const scaleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pressScale.value }],
-  }));
-
-  useEffect(() => {
-    const tick = () =>
-      setElapsed(
-        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000),
-      );
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [startTimestamp]);
-
-  return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 50)
-        .duration(400)
-        .easing(Easing.out(Easing.cubic))}
-    >
-      <Pressable
-        onPress={() => router.push("/timer")}
-        onPressIn={() => {
-          pressScale.value = withTiming(0.96, {
-            duration: 100,
-            easing: Easing.out(Easing.quad),
-          });
-        }}
-        onPressOut={() => {
-          pressScale.value = withTiming(1, {
-            duration: 220,
-            easing: Easing.out(Easing.cubic),
-          });
-        }}
-      >
-        <View className="flex-row items-start gap-2">
-          <View className="w-14 items-end pt-3.5">
-            <Text className="text-zinc-500 text-xs tabular-nums">
-              {formatTime24(new Date(startTimestamp))}
-            </Text>
-          </View>
-          <View className="items-center pt-[18px]">
-            <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
-          </View>
-          <Animated.View style={scaleStyle} className="flex-1">
-            <View
-              className="flex-1 rounded-2xl px-4 py-3 gap-1 border border-red-500/30"
-              style={{ backgroundColor: theme.card }}
-            >
-              <View className="flex-row items-start justify-between gap-2">
-                <Text
-                  className="text-white text-base font-semibold flex-1"
-                  numberOfLines={1}
-                >
-                  {title || "Untitled"}
-                </Text>
-                <View className="flex-row items-center gap-1.5 mt-0.5">
-                  <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <Text className="text-red-400 text-xs font-mono">
-                    {formatDuration(elapsed)}
-                  </Text>
-                </View>
-              </View>
-              {project && (
-                <View className="flex-row items-center gap-1.5">
-                  <Image
-                    source={`sf:${project.icon}`}
-                    style={{ width: 11, height: 11, tintColor: project.color }}
-                  />
-                  <Text className="text-zinc-500 text-xs">{project.name}</Text>
-                </View>
-              )}
-            </View>
-          </Animated.View>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-function CalendarEventMarker({
-  event,
-  index,
-  expanded,
-  onToggle,
-}: {
-  event: CalendarEvent;
-  index: number;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const { projects } = useProjects();
-  const { mappings } = useCalendarStore();
-
-  // Find the project color for this event
-  const mapping = mappings.find((m) => {
-    if (m.calendarName && m.calendarName === event.calendarName) return true;
-    if (
-      m.titleKeywords?.some((kw) =>
-        event.title.toLowerCase().includes(kw.toLowerCase()),
-      )
-    ) {
-      return true;
-    }
-    return false;
-  });
-
-  const project = mapping
-    ? projects.find((p) => p.id === mapping.projectId)
-    : null;
-  const eventColor = project?.color ?? "#3b82f6"; // Fallback to blue
-
-  const collapsedHeight = 20; // height of single line
-  const expandedHeight = 100; // height of card with padding
-
-  const containerHeight = useSharedValue(collapsedHeight);
-  const collapsedOpacity = useSharedValue(1);
-  const expandedOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    containerHeight.value = withTiming(
-      expanded ? expandedHeight : collapsedHeight,
-      {
-        duration: 280,
-        easing: Easing.out(Easing.cubic),
-      },
-    );
-    collapsedOpacity.value = withTiming(expanded ? 0 : 1, {
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-    });
-    expandedOpacity.value = withTiming(expanded ? 1 : 0, {
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [expanded, containerHeight, collapsedOpacity, expandedOpacity]);
-
-  const containerStyle = useAnimatedStyle(() => ({
-    height: containerHeight.value,
-    overflow: "hidden",
-  }));
-
-  const collapsedStyle = useAnimatedStyle(() => ({
-    opacity: collapsedOpacity.value,
-  }));
-
-  const expandedStyle = useAnimatedStyle(() => ({
-    opacity: expandedOpacity.value,
-  }));
-
-  return (
-    <Animated.View entering={FadeIn.delay(index * 30).duration(350)}>
-      <Pressable onPress={onToggle}>
-        <View className="flex-row items-start gap-2">
-          {/* Time column */}
-          <View className="w-14 items-end pt-2">
-            <Text className="text-zinc-700 text-xs tabular-nums">
-              {formatTime24(new Date(event.startDate))}
-            </Text>
-          </View>
-
-          {/* Connector: thin vertical line + small dot */}
-          <View className="w-4 items-center pt-[10px] gap-px">
-            <View
-              className="w-px flex-1"
-              style={{ minHeight: 16, backgroundColor: `${eventColor}33` }}
-            />
-            <View
-              className="w-1 h-1 rounded-full"
-              style={{ backgroundColor: `${eventColor}80` }}
-            />
-          </View>
-
-          {/* Event marker content - animated container */}
-          <Animated.View className="flex-1" style={containerStyle}>
-            {/* Collapsed state */}
-            <Animated.View
-              className="flex-row items-center gap-1.5"
-              style={collapsedStyle}
-              pointerEvents={expanded ? "none" : "auto"}
-            >
-              <Image
-                source="sf:calendar"
-                style={{ width: 10, height: 10, tintColor: `${eventColor}99` }}
-              />
-              <Text
-                className="text-xs flex-1"
-                numberOfLines={1}
-                style={{ color: `${eventColor}99` }}
-              >
-                {event.title}
-              </Text>
-              <Text className="text-zinc-700 text-xs tabular-nums">
-                {formatTime24(new Date(event.startDate))}–
-                {formatTime24(new Date(event.endDate))}
-              </Text>
-            </Animated.View>
-
-            {/* Expanded state */}
-            <Animated.View
-              className="rounded-xl px-3 py-2.5 border mt-1"
-              style={[
-                expandedStyle,
-                {
-                  backgroundColor: `${eventColor}14`,
-                  borderColor: `${eventColor}33`,
-                },
-              ]}
-              pointerEvents={expanded ? "auto" : "none"}
-            >
-              <Text
-                className="text-sm font-medium"
-                numberOfLines={2}
-                style={{ color: eventColor }}
-              >
-                {event.title}
-              </Text>
-              <Text className="text-zinc-500 text-xs mt-0.5">
-                {event.calendarName}
-              </Text>
-              <Text className="text-zinc-600 text-xs mt-1">
-                {formatTime24(new Date(event.startDate))} –{" "}
-                {formatTime24(new Date(event.endDate))}
-              </Text>
-            </Animated.View>
-          </Animated.View>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -797,28 +352,11 @@ export default function TimelineScreen() {
 
         {/* Content */}
         {augmentedItems.length === 0 && dayCalendarEvents.length === 0 ? (
-          <View className="items-center justify-center pt-28 px-8">
-            <View className="items-center justify-center mb-7">
-              <View className="absolute w-36 h-36 rounded-full bg-zinc-900/30" />
-              <View className="absolute w-28 h-28 rounded-full bg-zinc-900/50" />
-              <View
-                className="w-20 h-20 rounded-full items-center justify-center"
-                style={{ backgroundColor: theme.card }}
-              >
-                <Image
-                  source="sf:timer"
-                  style={{ width: 30, height: 30 }}
-                  tintColor="#52525b"
-                />
-              </View>
-            </View>
-            <Text className="text-white text-xl font-semibold mb-2 text-center">
-              No Sessions
-            </Text>
-            <Text className="text-zinc-500 text-sm text-center leading-5">
-              Start a focus session — your completed work will show up here.
-            </Text>
-          </View>
+          <EmptyState
+            icon="timer"
+            title="No Sessions"
+            description="Start a focus session — your completed work will show up here."
+          />
         ) : augmentedItems.length > 0 ? (
           <View className="px-3 pt-4 pb-8 gap-2">
             {augmentedItems.map((item) => {

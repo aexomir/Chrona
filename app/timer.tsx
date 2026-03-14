@@ -1,4 +1,6 @@
+import { StaticAuraBackground } from "@/components/static-aura-background";
 import type { Project } from "@/constants/projects";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { getAppUsage } from "@/lib/activitywatch";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
@@ -8,8 +10,6 @@ import {
   type AssociationMap,
 } from "@/stores/suggestions-store";
 import { useTimerStore } from "@/stores/timer-store";
-import { StaticAuraBackground } from "@/components/static-aura-background";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
@@ -200,7 +200,7 @@ export default function TimerScreen() {
     selectedProject === undefined;
 
   const selProj = projects.find((p) => p.id === selectedProject?.value);
-  const theme = useAuroraTheme()
+  const theme = useAuroraTheme();
 
   return (
     <KeyboardAvoidingView
@@ -383,7 +383,7 @@ function ReviewView({
   onSave,
   onDiscard,
 }: ReviewViewProps) {
-  const theme = useAuroraTheme()
+  const theme = useAuroraTheme();
   const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
   const hasInitialized = useRef(false);
 
@@ -432,7 +432,10 @@ function ReviewView({
         className="flex-1 px-6"
       >
         {/* Session summary card */}
-        <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+        <View
+          className="mb-6 rounded-3xl p-5 border"
+          style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}
+        >
           <View className="flex-row items-center gap-2 mb-3">
             <Image
               source="sf:checkmark.circle.fill"
@@ -461,13 +464,25 @@ function ReviewView({
               <ActivityIndicator size="large" color="#ffffff" />
             </View>
           ) : isEmpty ? (
-            <View className="items-center justify-center py-8 rounded-2xl border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+            <View
+              className="items-center justify-center py-8 rounded-2xl border"
+              style={{
+                backgroundColor: theme.card,
+                borderColor: theme.cardBorder,
+              }}
+            >
               <Text className="text-zinc-400 text-base">
                 No activity detected
               </Text>
             </View>
           ) : (
-            <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+            <View
+              className="rounded-2xl border overflow-hidden"
+              style={{
+                backgroundColor: theme.card,
+                borderColor: theme.cardBorder,
+              }}
+            >
               {apps.map((app, i) => {
                 const isSelected = selectedApps.has(app.app);
                 const titles = app.titles ?? [];
@@ -476,7 +491,14 @@ function ReviewView({
                     key={app.app}
                     onPress={() => handleToggleApp(app.app)}
                     className="flex-row items-start gap-3 px-4 py-3"
-                    style={i < apps.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
+                    style={
+                      i < apps.length - 1
+                        ? {
+                            borderBottomWidth: 1,
+                            borderBottomColor: theme.cardBorder,
+                          }
+                        : undefined
+                    }
                   >
                     <View className="pt-1">
                       <View
@@ -552,12 +574,15 @@ function SuggestionBanner({
   onAccept,
   onDismiss,
 }: SuggestionBannerProps) {
-  const theme = useAuroraTheme()
+  const theme = useAuroraTheme();
   const proj = projects.find((p) => p.id === suggestion.projectId);
   if (!proj) return null;
 
   return (
-    <View className="px-4 py-4 rounded-2xl border gap-3" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
+    <View
+      className="px-4 py-4 rounded-2xl border gap-3"
+      style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}
+    >
       {/* Header with project color and name */}
       <View className="flex-row items-center gap-3">
         <View
