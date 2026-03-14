@@ -1,4 +1,5 @@
 import { heroProgress } from "@/lib/hero-animation";
+import { scrubProgress } from "@/lib/playback";
 import { useProjects } from "@/stores/projects-store";
 import { Session, useSessionsStore } from "@/stores/sessions-store";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +10,10 @@ import Animated, {
   useSharedValue,
   withDelay,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
+
+const DAY_SECONDS = 24 * 3600;
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -22,6 +26,11 @@ const EDGE_BUFFER = 12;
 const MAX_ATTEMPTS = 20;
 const DRIFT_MIN_MS = 3000;
 const DRIFT_MAX_MS = 6000;
+
+function secondsSinceMidnight(isoString: string): number {
+  const d = new Date(isoString);
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+}
 
 function hashSessionId(id: string): number {
   let h = 5381;
@@ -144,12 +153,14 @@ interface ConstellationPointProps {
   layout: PointLayout;
   color: string;
   index: number;
+  sessionStartFraction: number;
 }
 
 function ConstellationPoint({
   layout,
   color,
   index,
+  sessionStartFraction,
 }: ConstellationPointProps) {
   const scale = useSharedValue(0);
   const offsetX = useSharedValue(0);
@@ -194,13 +205,20 @@ function ConstellationPoint({
     };
   }, [offsetX, offsetY, layout, index]);
 
-  const dotStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: layout.x + offsetX.value },
-      { translateY: layout.y + offsetY.value },
-      { scale: scale.value },
-    ],
-  }));
+  const dotStyle = useAnimatedStyle(() => {
+    const scrubSec = scrubProgress.value * DAY_SECONDS;
+    const sessionSec = sessionStartFraction * DAY_SECONDS;
+    const scrubOpacity = scrubSec >= sessionSec ? 1 : 0;
+
+    return {
+      transform: [
+        { translateX: layout.x + offsetX.value },
+        { translateY: layout.y + offsetY.value },
+        { scale: scale.value },
+      ],
+      opacity: withTiming(scrubOpacity, { duration: 150 }),
+    };
+  });
 
   return (
     <AnimatedView
@@ -283,12 +301,15 @@ export function SessionConstellation() {
       {layouts.map((layout, index) => {
         const session = todaySessions.find((s) => s.id === layout.sessionId)!;
         const project = projects.find((p) => p.id === session.projectId);
+        const sessionStartFraction =
+          secondsSinceMidnight(session.startTime) / DAY_SECONDS;
         return (
           <ConstellationPoint
             key={session.id}
             layout={layout}
             color={project?.color ?? "#ffffff"}
             index={index}
+            sessionStartFraction={sessionStartFraction}
           />
         );
       })}

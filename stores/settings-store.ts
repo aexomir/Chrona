@@ -7,6 +7,8 @@ type SettingsState = {
   setAuroraEnabled: (enabled: boolean) => void;
   constellationEnabled: boolean;
   setConstellationEnabled: (enabled: boolean) => void;
+  dailyGoalMinutes: number;
+  setDailyGoalMinutes: (minutes: number) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -16,6 +18,8 @@ export const useSettingsStore = create<SettingsState>()(
       setAuroraEnabled: (enabled) => set({ auroraEnabled: enabled }),
       constellationEnabled: true,
       setConstellationEnabled: (enabled) => set({ constellationEnabled: enabled }),
+      dailyGoalMinutes: 240,
+      setDailyGoalMinutes: (minutes) => set({ dailyGoalMinutes: minutes }),
     }),
     {
       name: "settings",

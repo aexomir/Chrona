@@ -1,6 +1,7 @@
 import { getAtmosphereColors } from "@/lib/atmosphereColors";
 import { detectAtmosphere } from "@/lib/atmosphereDetector";
 import { AURORA_SKSL, toFloat3 } from "@/lib/atmosphereShader";
+import { scrubProgress } from "@/lib/playback";
 import { Session } from "@/stores/sessions-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { Canvas, Fill, Shader, Skia } from "@shopify/react-native-skia";
@@ -64,11 +65,20 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
 
   // Build uniforms as derived value (Skia-side, no React re-renders per frame)
   const uniforms = useDerivedValue(() => {
-    const intensity = interpolate(
+    const baseIntensity = interpolate(
       stateValue.value,
       [0, 1, 2, 3],
       [0.0, 0.15, 0.5, 1.0],
     );
+    // When scrubProgress < 1 (auto-play or manual scrub), scale intensity proportionally
+    // floor at 0.2 so the atmosphere never goes completely dark
+    const scrubMult = interpolate(
+      scrubProgress.value,
+      [0, 0.3, 1],
+      [0.2, 0.5, 1.0],
+      "clamp",
+    );
+    const intensity = baseIntensity * scrubMult;
     const speed = interpolate(
       stateValue.value,
       [0, 1, 2, 3],

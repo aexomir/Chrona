@@ -1,15 +1,27 @@
 import { heroProgress } from "@/lib/hero-animation";
+import { scrubProgress, scrubActive } from "@/lib/playback";
 import { useSessionsStore } from "@/stores/sessions-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useTimerStore } from "@/stores/timer-store";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedStyle,
+  withTiming,
+  useAnimatedProps,
+  useSharedValue,
+  withSpring,
+  runOnJS,
 } from "react-native-reanimated";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
 import Svg, { Circle } from "react-native-svg";
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 const AnimatedView = Animated.createAnimatedComponent(View);
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 const SVG_SIZE = 280;
 const RING_RADIUS = 110;
@@ -17,6 +29,9 @@ const RING_STROKE_WIDTH = 8;
 const CENTER = SVG_SIZE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const DAY_SECONDS = 24 * 3600; // full 24-hour day
+
+type InfoMode = "total" | "goal" | "sessions" | "longest";
+const INFO_MODES: InfoMode[] = ["total", "goal", "sessions", "longest"];
 
 const styles = StyleSheet.create({
   container: {
@@ -50,26 +65,20 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: 0.5,
   },
-  indicatorsRow: {
-    flexDirection: "row",
-    gap: 40,
-    marginTop: 40,
-  },
-  indicatorBox: {
+  ringGestureContainer: {
     alignItems: "center",
   },
-  indicatorValue: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "white",
-    marginBottom: 2,
+  timeLabelContainer: {
+    position: "absolute",
+    top: 12,
+    left: 0,
+    right: 0,
+    alignItems: "center",
   },
-  indicatorLabel: {
-    fontSize: 11,
-    color: "rgba(255, 255, 255, 0.5)",
-    fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
+  timeLabelText: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.7)",
+    fontWeight: "600",
   },
 });
 
@@ -89,13 +98,106 @@ type SegmentProps = {
   id: string;
   dash: number;
   offset: number;
+  sessionStartSec: number;
 };
+
+interface SegmentCircleProps {
+  seg: SegmentProps;
+}
+
+function SegmentCircle({ seg }: SegmentCircleProps) {
+  const animatedProps = useAnimatedProps(() => {
+    const scrubSec = scrubProgress.value * DAY_SECONDS;
+    return {
+      opacity: scrubSec >= seg.sessionStartSec ? 0.85 : 0,
+    };
+  });
+
+  return (
+    <AnimatedCircle
+      cx={CENTER}
+      cy={CENTER}
+      r={RING_RADIUS}
+      stroke="rgba(255,255,255,0.85)"
+      strokeWidth={RING_STROKE_WIDTH}
+      fill="none"
+      strokeDasharray={`${seg.dash} ${CIRCUMFERENCE}`}
+      strokeDashoffset={seg.offset}
+      strokeLinecap="butt"
+      transform={`rotate(-90, ${CENTER}, ${CENTER})`}
+      animatedProps={animatedProps}
+    />
+  );
+}
 
 export function FocusRing() {
   const { sessions } = useSessionsStore();
   const { isTracking, startTimestamp } = useTimerStore();
+  const { dailyGoalMinutes } = useSettingsStore();
+  const dailyGoalSeconds = dailyGoalMinutes * 60;
   const [liveTotal, setLiveTotal] = useState(0);
   const [liveSegment, setLiveSegment] = useState<SegmentProps | null>(null);
+  const [infoMode, setInfoMode] = useState<InfoMode>("total");
+  const [fadeKey, setFadeKey] = useState(0);
+  const [scrubTimeLabel, setScrubTimeLabel] = useState("");
+
+  const scrubStartX = useSharedValue(0);
+  const scrubStartY = useSharedValue(0);
+
+  // Helper to update scrub time label
+  const updateLabel = (fraction: number) => {
+    const sec = fraction * DAY_SECONDS;
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    setScrubTimeLabel(`${h12}:${String(m).padStart(2, "0")} ${period}`);
+  };
+
+  // Helper to trigger haptic feedback
+  const triggerHaptic = () =>
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+  // Handle tap to cycle info modes
+  function handleTap() {
+    const currentIndex = INFO_MODES.indexOf(infoMode);
+    const nextIndex = (currentIndex + 1) % INFO_MODES.length;
+    setInfoMode(INFO_MODES[nextIndex]);
+    setFadeKey((k) => k + 1);
+  }
+
+  // Gesture handlers
+  const panGesture = Gesture.Pan()
+    .activateAfterLongPress(400)
+    .onStart((e) => {
+      scrubStartX.value = e.x;
+      scrubStartY.value = e.y;
+      scrubActive.value = withTiming(1, { duration: 200 });
+      runOnJS(triggerHaptic)();
+    })
+    .onUpdate((e) => {
+      const cx = scrubStartX.value + e.translationX;
+      const cy = scrubStartY.value + e.translationY;
+      const dx = cx - CENTER;
+      const dy = cy - CENTER;
+      // Map angle (0 = top/midnight, clockwise) to day fraction
+      let angle = Math.atan2(dy, dx) + Math.PI / 2;
+      if (angle < 0) angle += 2 * Math.PI;
+      const fraction = angle / (2 * Math.PI);
+      scrubProgress.value = fraction;
+      runOnJS(updateLabel)(fraction);
+    })
+    .onEnd(() => {
+      scrubActive.value = withTiming(0, { duration: 400 });
+      scrubProgress.value = withSpring(1, { damping: 20, stiffness: 80 });
+    });
+
+  const tapGesture = Gesture.Tap().onStart(() => {
+    runOnJS(handleTap)();
+  });
+
+  // Pan (long-press) takes priority over tap
+  const composed = Gesture.Exclusive(panGesture, tapGesture);
 
   // Get today's sessions sorted by start time
   const todaySessions = useMemo(() => {
@@ -125,14 +227,39 @@ export function FocusRing() {
       todaySessions.map((s) => {
         const startFraction = secondsSinceMidnight(s.startTime) / DAY_SECONDS;
         const lengthFraction = s.duration / DAY_SECONDS;
+        const sessionStartSec = secondsSinceMidnight(s.startTime);
         return {
           id: s.id,
           dash: lengthFraction * CIRCUMFERENCE,
           offset: -(startFraction * CIRCUMFERENCE),
+          sessionStartSec,
         };
       }),
     [todaySessions],
   );
+
+
+  // Get display text for current mode
+  function getDisplayText() {
+    const percentage = Math.round((liveTotal / dailyGoalSeconds) * 100);
+
+    switch (infoMode) {
+      case "total":
+        return { title: formatDuration(liveTotal), label: "TODAY" };
+      case "goal":
+        return {
+          title: `${percentage}%`,
+          label: "TO GOAL",
+        };
+      case "sessions":
+        return { title: String(completedStats.count), label: "SESSIONS" };
+      case "longest":
+        return {
+          title: formatDuration(completedStats.longest),
+          label: "LONGEST SESSION",
+        };
+    }
+  }
 
   // Real-time tick — updates center text and live segment every second
   useEffect(() => {
@@ -152,99 +279,115 @@ export function FocusRing() {
       // Compute live segment
       const startFraction = secondsSinceMidnight(startTimestamp) / DAY_SECONDS;
       const lengthFraction = elapsed / DAY_SECONDS;
+      const sessionStartSec = secondsSinceMidnight(startTimestamp);
       setLiveSegment({
         id: "live",
         dash: lengthFraction * CIRCUMFERENCE,
         offset: -(startFraction * CIRCUMFERENCE),
+        sessionStartSec,
       });
     };
 
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [isTracking, startTimestamp, completedStats.total]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isTracking, startTimestamp, completedStats.total]);
 
   // Ring container opacity (fade in with hero animation)
   const ringContainerStyle = useAnimatedStyle(() => ({
     opacity: interpolate(heroProgress.value, [0.3, 0.8], [0, 1]),
   }));
 
+  // Text fade transition — fade out then back in on mode change
+  const fadeOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    fadeOpacity.value = 0;
+    fadeOpacity.value = withTiming(1, { duration: 300 });
+  }, [fadeKey, fadeOpacity]);
+
+  const textFadeStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+  }));
+
+  // Center text suppression during scrub
+  const centerFadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrubActive.value, [0, 1], [1, 0.2]),
+  }));
+
+  // Time label visibility during scrub
+  const timeLabelStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(scrubActive.value, { duration: 200 }),
+  }));
+
+  const displayText = getDisplayText();
+
   return (
     <AnimatedView style={[styles.container, ringContainerStyle]}>
-      {/* SVG Ring */}
-      <View style={styles.svgWrapper}>
-        <Svg
-          width={SVG_SIZE}
-          height={SVG_SIZE}
-          viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-        >
-          {/* Background track — full ring, very faint */}
-          <Circle
-            cx={CENTER}
-            cy={CENTER}
-            r={RING_RADIUS}
-            stroke="rgba(255, 255, 255, 0.08)"
-            strokeWidth={RING_STROKE_WIDTH}
-            fill="none"
-          />
+      {/* Ring (GestureDetector) */}
+      <GestureDetector gesture={composed}>
+        <View style={styles.ringGestureContainer}>
+          <View style={styles.svgWrapper}>
+            <Svg
+              width={SVG_SIZE}
+              height={SVG_SIZE}
+              viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
+            >
+              {/* Background track — full ring, very faint */}
+              <Circle
+                cx={CENTER}
+                cy={CENTER}
+                r={RING_RADIUS}
+                stroke="rgba(255, 255, 255, 0.08)"
+                strokeWidth={RING_STROKE_WIDTH}
+                fill="none"
+              />
 
-          {/* Completed session segments */}
-          {completedSegments.map((seg) => (
-            <Circle
-              key={seg.id}
-              cx={CENTER}
-              cy={CENTER}
-              r={RING_RADIUS}
-              stroke="rgba(255, 255, 255, 0.85)"
-              strokeWidth={RING_STROKE_WIDTH}
-              fill="none"
-              strokeDasharray={`${seg.dash} ${CIRCUMFERENCE}`}
-              strokeDashoffset={seg.offset}
-              strokeLinecap="butt"
-              transform={`rotate(-90, ${CENTER}, ${CENTER})`}
-            />
-          ))}
+              {/* Completed session segments */}
+              {completedSegments.map((seg) => (
+                <SegmentCircle key={seg.id} seg={seg} />
+              ))}
 
-          {/* Live session segment (updates every second) */}
-          {isTracking && liveSegment && (
-            <Circle
-              cx={CENTER}
-              cy={CENTER}
-              r={RING_RADIUS}
-              stroke="rgba(255, 255, 255, 0.6)"
-              strokeWidth={RING_STROKE_WIDTH}
-              fill="none"
-              strokeDasharray={`${liveSegment.dash} ${CIRCUMFERENCE}`}
-              strokeDashoffset={liveSegment.offset}
-              strokeLinecap="butt"
-              transform={`rotate(-90, ${CENTER}, ${CENTER})`}
-            />
-          )}
-        </Svg>
+              {/* Live session segment (updates every second, suppressed during scrub) */}
+              {isTracking && liveSegment && scrubActive.value === 0 && (
+                <Circle
+                  cx={CENTER}
+                  cy={CENTER}
+                  r={RING_RADIUS}
+                  stroke="rgba(255, 255, 255, 0.6)"
+                  strokeWidth={RING_STROKE_WIDTH}
+                  fill="none"
+                  strokeDasharray={`${liveSegment.dash} ${CIRCUMFERENCE}`}
+                  strokeDashoffset={liveSegment.offset}
+                  strokeLinecap="butt"
+                  transform={`rotate(-90, ${CENTER}, ${CENTER})`}
+                />
+              )}
+            </Svg>
 
-        {/* Center content */}
-        <View style={styles.centerContent}>
-          <Text style={styles.centerTitle}>{formatDuration(liveTotal)}</Text>
-          <Text style={styles.centerLabel}>TODAY</Text>
+            {/* Time label — visible during scrub */}
+            <Animated.View style={[styles.timeLabelContainer, timeLabelStyle]}>
+              <Text style={styles.timeLabelText}>{scrubTimeLabel}</Text>
+            </Animated.View>
+
+            {/* Center content — tap to cycle through info modes */}
+            <Animated.View style={[styles.centerContent, centerFadeStyle]}>
+              <AnimatedText
+                key={`title-${fadeKey}`}
+                style={[styles.centerTitle, textFadeStyle]}
+              >
+                {displayText.title}
+              </AnimatedText>
+              <AnimatedText
+                key={`label-${fadeKey}`}
+                style={[styles.centerLabel, textFadeStyle]}
+              >
+                {displayText.label}
+              </AnimatedText>
+            </Animated.View>
+          </View>
         </View>
-      </View>
-
-      {/* Secondary indicators */}
-      <View style={styles.indicatorsRow}>
-        {/* Sessions count */}
-        <View style={styles.indicatorBox}>
-          <Text style={styles.indicatorValue}>{completedStats.count}</Text>
-          <Text style={styles.indicatorLabel}>Sessions</Text>
-        </View>
-
-        {/* Longest block */}
-        <View style={styles.indicatorBox}>
-          <Text style={styles.indicatorValue}>
-            {formatDuration(completedStats.longest)}
-          </Text>
-          <Text style={styles.indicatorLabel}>Longest Block</Text>
-        </View>
-      </View>
+      </GestureDetector>
     </AnimatedView>
   );
 }
