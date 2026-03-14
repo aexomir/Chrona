@@ -107,12 +107,8 @@ function circleXForIndexInWidth(idx: number, width: number): number {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function DatePill({ date }: { date: Date }) {
-  const theme = useAuroraTheme();
   return (
-    <View
-      className="rounded-full px-4 py-1.5"
-      style={{ backgroundColor: theme.chip }}
-    >
+    <View className="rounded-full px-4 py-1.5">
       <Text className="text-white text-sm font-medium">{formatDate(date)}</Text>
     </View>
   );
