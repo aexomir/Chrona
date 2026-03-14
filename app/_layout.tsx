@@ -59,7 +59,15 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="settings"
-                options={{ headerShown: false }}
+                options={{
+                  title: "Settings",
+                  headerTransparent: true,
+                  headerTitleStyle: {
+                    color: "white",
+                    fontSize: 17,
+                    fontWeight: "600",
+                  },
+                }}
               />
             </Stack>
             <StatusBar style="light" />

@@ -1,8 +1,7 @@
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, Stack } from "expo-router";
 import { Switch } from "heroui-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useCalendarStore } from "@/stores/calendar-store";
 import { calendarStatusLabel } from "@/lib/calendar";
 import { useMeetingStore } from "@/stores/meeting-store";
@@ -10,6 +9,7 @@ import { meetingStatusLabel } from "@/lib/meetingDetection";
 import { useSettingsStore } from "@/stores/settings-store";
 import { StaticAuraBackground } from "@/components/static-aura-background";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -102,7 +102,6 @@ function SettingsDivider() {
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const theme = useAuroraTheme();
   const { permissionStatus, isEnabled } = useCalendarStore();
   const { isEnabled: meetingEnabled, selectedAppIds } = useMeetingStore();
@@ -116,24 +115,13 @@ export default function SettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StaticAuraBackground />
-      <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 20 }}>
-        <View className="flex-row items-center mb-8">
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={16}
-            style={{ marginLeft: -6 }}
-          >
-            <Text className="text-white text-4xl">‹</Text>
-          </Pressable>
-          <Text className="text-white text-4xl font-bold flex-1 ml-3">
-            Settings
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        className="flex-1"
+      <Stack.Toolbar placement="left">
+        <Stack.Toolbar.Button
+          icon="chevron.left"
+          onPress={() => router.back()}
+        />
+      </Stack.Toolbar>
+      <AnimatedHeaderScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
       >
         {/* ATMOSPHERE */}
@@ -225,7 +213,7 @@ export default function SettingsScreen() {
             />
           </SettingsCard>
         </View>
-      </ScrollView>
+      </AnimatedHeaderScrollView>
     </View>
   );
 }
