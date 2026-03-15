@@ -15,6 +15,7 @@ import { BarChart24 } from "@/components/stats/bar-chart24";
 import { ProjectDistribution } from "@/components/stats/project-distribution";
 import { StreakCallout } from "@/components/stats/streak-callout";
 import { AiInsightCard } from "@/components/stats/ai-insight-card";
+import { SuggestedFollowUps } from "@/components/stats/suggested-follow-ups";
 
 // Stores
 import { useSessionsStore } from "@/stores/sessions-store";
@@ -29,7 +30,13 @@ import type { InferenceResult } from "@/stores/inference-store";
  * AIComponentRenderer resolves AI-generated component specs into real React Native components.
  * Handles store lookups, local state, and type-safe rendering.
  */
-export function AIComponentRenderer({ spec }: { spec: AIComponentSpec }) {
+export function AIComponentRenderer({
+  spec,
+  onSelectFollowUp,
+}: {
+  spec: AIComponentSpec;
+  onSelectFollowUp?: (query: string) => void;
+}) {
   const { sessions } = useSessionsStore();
   const { events: calendarEvents } = useCalendarStore();
   const { projects } = useProjects();
@@ -164,6 +171,15 @@ export function AIComponentRenderer({ spec }: { spec: AIComponentSpec }) {
         onRefresh={() => {
           // No-op: generative UI displays cached insight; re-inference is out of scope
         }}
+      />
+    );
+  }
+
+  if (spec.type === "suggested_follow_ups") {
+    return (
+      <SuggestedFollowUps
+        queries={spec.queries}
+        onSelectQuery={onSelectFollowUp || (() => {})}
       />
     );
   }

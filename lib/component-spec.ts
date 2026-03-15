@@ -76,6 +76,14 @@ export type AiInsightCardSpec = {
   generatedAt: string; // ISO string
 };
 
+export type SuggestedFollowUpsSpec = {
+  type: "suggested_follow_ups";
+  queries: Array<{
+    text: string;
+    icon: string; // SF symbol name
+  }>;
+};
+
 // ──── Discriminated Union ────
 
 export type AIComponentSpec =
@@ -89,4 +97,5 @@ export type AIComponentSpec =
   | BarChart24Spec
   | ProjectDistributionSpec
   | StreakCalloutSpec
-  | AiInsightCardSpec;
+  | AiInsightCardSpec
+  | SuggestedFollowUpsSpec;

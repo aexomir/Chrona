@@ -108,6 +108,7 @@ export function useSearchQuery(): UseSearchQueryReturn {
         allSessions,
         projects,
         now,
+        query,
       );
       setSpecs(resultSpecs);
     } catch {

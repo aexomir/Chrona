@@ -310,7 +310,10 @@ export default function SearchScreen() {
                 key={i}
                 entering={FadeInDown.delay(i * 50).duration(400)}
               >
-                <AIComponentRenderer spec={spec} />
+                <AIComponentRenderer
+                  spec={spec}
+                  onSelectFollowUp={(query) => handleChipTap(query)}
+                />
               </Animated.View>
             ))}
           </View>

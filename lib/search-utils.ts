@@ -14,6 +14,10 @@ import {
   computeStreak,
   type Timeframe,
 } from '@/lib/stats-utils';
+import {
+  generateContextualHeadline,
+  generateFollowUpSuggestions,
+} from '@/lib/search-generation';
 
 /**
  * Timeframe string from query to Timeframe type mapping
@@ -39,24 +43,30 @@ export function buildSearchSpecs(
   queryTimeframe: 'today' | 'week' | 'month' | 'all',
   allSessions: Session[],
   projects: Project[],
-  now: Date
+  now: Date,
+  query?: string,
 ): AIComponentSpec[] {
   const specs: AIComponentSpec[] = [];
+
+  // Get timeframe-based session data for context
+  const tf = queryTimeframeToTimeframe(queryTimeframe);
+  const { start, end } = getRange(tf, now);
+  const sessions = filterSessions(allSessions, start, end);
+
+  // Generate contextual headline if query provided
+  const { headline, tip } = query
+    ? generateContextualHeadline(query, queryTimeframe, sessions, projects)
+    : { headline: result.headline, tip: result.tip };
 
   // 1. Always push ai_insight_card at top
   specs.push({
     type: 'ai_insight_card',
-    headline: result.headline,
+    headline,
     body: result.body,
-    tip: result.tip,
+    tip,
     sentiment: result.sentiment,
     generatedAt: now.toISOString(),
   });
-
-  // Get timeframe-based session data
-  const tf = queryTimeframeToTimeframe(queryTimeframe);
-  const { start, end } = getRange(tf, now);
-  const sessions = filterSessions(allSessions, start, end);
 
   // 2. Timeline: date pill + session rows with gap separators
   if (result.show_timeline && sessions.length > 0) {
@@ -187,6 +197,17 @@ export function buildSearchSpecs(
     }
   }
 
+  // 7. Add follow-up suggestions at the end
+  if (query) {
+    const followUps = generateFollowUpSuggestions(query);
+    if (followUps.length > 0) {
+      specs.push({
+        type: 'suggested_follow_ups',
+        queries: followUps,
+      });
+    }
+  }
+
   return specs;
 }
 
@@ -264,6 +285,15 @@ export function buildFallbackSearchSpecs(
         }
       }
     }
+  }
+
+  // Add follow-up suggestions
+  const followUps = generateFollowUpSuggestions(query);
+  if (followUps.length > 0) {
+    specs.push({
+      type: 'suggested_follow_ups',
+      queries: followUps,
+    });
   }
 
   return specs;
