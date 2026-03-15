@@ -21,6 +21,20 @@ export const InsightSchema = z.object({
 
 export type Insight = z.infer<typeof InsightSchema>;
 
+export const SearchResultSchema = z.object({
+  headline: z.string().max(60),
+  body: z.string().max(200),
+  tip: z.string().max(120).optional(),
+  sentiment: z.enum(['positive', 'neutral', 'cautionary']),
+  show_timeline: z.boolean(),
+  show_metrics: z.boolean(),
+  show_chart: z.boolean(),
+  show_projects: z.boolean(),
+  show_streak: z.boolean(),
+});
+
+export type SearchResult = z.infer<typeof SearchResultSchema>;
+
 // ──── Session Serialization ────────────────────────────────────────────
 
 function formatTime(isoString: string): string {
@@ -120,4 +134,33 @@ export function buildInsightUserMessage(
 ${serialized}
 
 Provide a structured JSON response.`;
+}
+
+export function buildSearchSystemPrompt(): string {
+  return `You are an AI assistant analyzing user focus session data to answer natural language questions.
+Based on the focus sessions provided, determine which visualizations best answer the user's question.
+Respond with a JSON object containing: headline, body, optional tip, sentiment, and boolean flags for which components to show (show_timeline, show_metrics, show_chart, show_projects, show_streak).
+Be concise and insightful.`;
+}
+
+export function buildSearchUserMessage(
+  query: string,
+  sessions: Session[],
+  projects: Project[]
+): string {
+  const serialized = serializeSessions(sessions, projects);
+  return `User question: "${query}"
+
+Focus sessions data:
+${serialized}
+
+Answer the question by analyzing the sessions. Provide a JSON response with headline, body, optional tip, sentiment, and boolean flags for visualization components.`;
+}
+
+export function parseQueryTimeframe(query: string): 'today' | 'week' | 'month' | 'all' {
+  const lowerQuery = query.toLowerCase();
+  if (lowerQuery.includes('today') || lowerQuery.includes('today')) return 'today';
+  if (lowerQuery.includes('week') || lowerQuery.includes('this week')) return 'week';
+  if (lowerQuery.includes('month') || lowerQuery.includes('this month')) return 'month';
+  return 'week'; // default to week
 }
