@@ -58,6 +58,14 @@ export default function RootLayout() {
                 options={{ presentation: "modal", headerShown: false }}
               />
               <Stack.Screen
+                name="untracked"
+                options={{ presentation: "modal", headerShown: false }}
+              />
+              <Stack.Screen
+                name="tracking-rules"
+                options={{ presentation: "modal", headerShown: false }}
+              />
+              <Stack.Screen
                 name="settings"
                 options={{
                   title: "Settings",

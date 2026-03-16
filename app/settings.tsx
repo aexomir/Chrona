@@ -7,6 +7,7 @@ import { calendarStatusLabel } from "@/lib/calendar";
 import { useMeetingStore } from "@/stores/meeting-store";
 import { meetingStatusLabel } from "@/lib/meetingDetection";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useTrackingRulesStore } from "@/stores/tracking-rules-store";
 import { StaticAuraBackground } from "@/components/static-aura-background";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
@@ -111,6 +112,7 @@ export default function SettingsScreen() {
     constellationEnabled,
     setConstellationEnabled,
   } = useSettingsStore();
+  const { rules } = useTrackingRulesStore();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -166,6 +168,16 @@ export default function SettingsScreen() {
               suffix={
                 <ValueSuffix
                   value={meetingStatusLabel(meetingEnabled, selectedAppIds)}
+                />
+              }
+            />
+            <SettingsDivider />
+            <SettingsRow
+              label="Tracking Rules"
+              onPress={() => router.push("/tracking-rules")}
+              suffix={
+                <ValueSuffix
+                  value={`${rules.length} rule${rules.length !== 1 ? "s" : ""}`}
                 />
               }
             />

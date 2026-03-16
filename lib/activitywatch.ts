@@ -109,3 +109,56 @@ export async function getAppUsage(
     return [];
   }
 }
+
+export type CurrentApp = {
+  app: string;
+  title: string | null;
+};
+
+/**
+ * Fetch the currently active app from the last 60 seconds
+ */
+export async function getCurrentApp(): Promise<CurrentApp | null> {
+  try {
+    const bucketId = await getWindowBucketId();
+    if (!bucketId) return null;
+
+    const now = new Date();
+    const sixtySecondsAgo = new Date(now.getTime() - 60_000);
+
+    const params = new URLSearchParams({
+      start: sixtySecondsAgo.toISOString(),
+      end: now.toISOString(),
+      limit: "20",
+    });
+
+    const res = await fetch(
+      `${AW_BASE}/api/0/buckets/${bucketId}/events?${params}`,
+      { method: "GET" }
+    );
+
+    if (!res.ok) return null;
+
+    const events: AwEvent[] = await res.json();
+    if (events.length === 0) return null;
+
+    // Return the event with the latest timestamp
+    const latestEvent = events.reduce((latest, current) => {
+      const latestTime = new Date(latest.timestamp).getTime();
+      const currentTime = new Date(current.timestamp).getTime();
+      return currentTime > latestTime ? current : latest;
+    });
+
+    const app = latestEvent.data.app;
+    const title = latestEvent.data.title ?? null;
+
+    if (!app || typeof app !== "string") return null;
+
+    return {
+      app,
+      title: typeof title === "string" ? title : null,
+    };
+  } catch {
+    return null;
+  }
+}

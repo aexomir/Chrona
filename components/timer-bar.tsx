@@ -1,11 +1,15 @@
 import { detectMissedCalendarEvent } from "@/lib/detectMissedCalendarEvent";
 import { detectMissedTime } from "@/lib/detectMissedTime";
+import { getCurrentApp } from "@/lib/activitywatch";
 import { useCalendarStore } from "@/stores/calendar-store";
 import { useProjects } from "@/stores/projects-store";
 import { useRecoveryStore } from "@/stores/recovery-store";
 import { useSessionsStore } from "@/stores/sessions-store";
 import { useSuggestionsStore } from "@/stores/suggestions-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useTimerStore } from "@/stores/timer-store";
+import { useTrackingRulesStore } from "@/stores/tracking-rules-store";
+import { useAutoTrackingStore } from "@/stores/auto-tracking-store";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -24,8 +28,9 @@ function formatTime(seconds: number): string {
 export function TimerBar() {
   const { isTracking, title, projectId, startTimestamp } = useTimerStore();
   const { projects } = useProjects();
-  const { sessions } = useSessionsStore();
-  const { suggestProject } = useSuggestionsStore();
+  const { sessions, addSession } = useSessionsStore();
+  const { suggestProject, learnFromSession } = useSuggestionsStore();
+  const { autoTrackingEnabled } = useSettingsStore();
   const { pending, set: setRecovery } = useRecoveryStore();
   const {
     isEnabled: calendarEnabled,
@@ -35,14 +40,46 @@ export function TimerBar() {
     getActiveEventSuggestion,
     fetchEvents: fetchCalendarEvents,
   } = useCalendarStore();
+  const { rules, matchRule, addRule } = useTrackingRulesStore();
+  const {
+    isAutoTracking,
+    autoStartTimestamp,
+    detectedApp,
+    detectedTitle,
+    matchedRuleId,
+    consecutiveOfflineCount,
+    startAutoTracking,
+    stopAutoTracking,
+    setDetectedApp,
+    incrementOfflineCount,
+    resetOfflineCount,
+  } = useAutoTrackingStore();
   const project = projects.find((p) => p.id === projectId) ?? null;
   const [elapsed, setElapsed] = useState(0);
+  const [autoElapsed, setAutoElapsed] = useState(0);
   const [calendarSuggestion, setCalendarSuggestion] = useState<{
     eventTitle: string;
     projectId: string;
   } | null>(null);
+  const [untrackedApp, setUntrackedApp] = useState<string | null>(null);
+  const [untrackedTitle, setUntrackedTitle] = useState<string | null>(null);
+  const [untrackedDismissed, setUntrackedDismissed] = useState(false);
+  const [ruleCreationOffer, setRuleCreationOffer] = useState<{
+    app: string;
+    projectId: string;
+  } | null>(null);
   const hasDetectedRef = useRef(false);
   const hasCheckCalendarRef = useRef(false);
+  const isAutoTrackingRef = useRef(isAutoTracking);
+  const matchedRuleIdRef = useRef(matchedRuleId);
+  const consecutiveOfflineCountRef = useRef(consecutiveOfflineCount);
+  const untrackedDismissedRef = useRef(untrackedDismissed);
+
+  // Sync refs (read inside effects)
+  isAutoTrackingRef.current = isAutoTracking;
+  matchedRuleIdRef.current = matchedRuleId;
+  consecutiveOfflineCountRef.current = consecutiveOfflineCount;
+  untrackedDismissedRef.current = untrackedDismissed;
 
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
@@ -57,6 +94,132 @@ export function TimerBar() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [isTracking, startTimestamp]);
+
+  // Auto-elapsed effect: update when auto-tracking
+  useEffect(() => {
+    if (!isAutoTracking || !autoStartTimestamp) {
+      setAutoElapsed(0);
+      return;
+    }
+    const tick = () =>
+      setAutoElapsed(
+        Math.floor((Date.now() - new Date(autoStartTimestamp).getTime()) / 1000),
+      );
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [isAutoTracking, autoStartTimestamp]);
+
+  // saveAutoSession helper: save and reset auto-tracking state
+  const saveAutoSession = () => {
+    const session = stopAutoTracking();
+    if (!session || session.duration < 60) return; // Discard sessions < 60s
+    const rule = rules.find((r) => r.id === session.ruleId);
+    if (!rule) return;
+    addSession({
+      id: Date.now().toString(),
+      title: rule.defaultTitle || session.app,
+      projectId: rule.projectId,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      duration: session.duration,
+      auto: true,
+    });
+    learnFromSession([{ app: session.app, duration: session.duration }], rule.projectId);
+  };
+
+  // Reset untracked hint when tracking starts or sessions change
+  useEffect(() => {
+    if (isTracking) {
+      setUntrackedDismissed(false);
+      setUntrackedApp(null);
+    }
+  }, [isTracking, sessions]);
+
+  // Offer to create rule after manual session is logged
+  useEffect(() => {
+    if (isTracking || sessions.length === 0 || !autoTrackingEnabled) {
+      setRuleCreationOffer(null);
+      return;
+    }
+
+    const lastSession = sessions[0];
+    // Only offer for manual sessions (not auto-tracked)
+    if (lastSession.auto) {
+      setRuleCreationOffer(null);
+      return;
+    }
+
+    (async () => {
+      const current = await getCurrentApp();
+      if (!current || !lastSession.projectId) {
+        setRuleCreationOffer(null);
+        return;
+      }
+
+      // Check if app already has a rule
+      const existingRule = matchRule(current.app, current.title);
+      if (existingRule) {
+        setRuleCreationOffer(null);
+        return;
+      }
+
+      // Offer to create rule
+      setRuleCreationOffer({
+        app: current.app,
+        projectId: lastSession.projectId,
+      });
+    })();
+  }, [sessions, isTracking, autoTrackingEnabled]);
+
+  // Polling effect: auto-track apps when idle (if enabled)
+  useEffect(() => {
+    if (isTracking || !autoTrackingEnabled) {
+      if (isAutoTrackingRef.current) saveAutoSession();
+      setUntrackedApp(null);
+      setUntrackedDismissed(false);
+      return;
+    }
+
+    const poll = async () => {
+      const current = await getCurrentApp();
+      if (!current) {
+        incrementOfflineCount();
+        if (consecutiveOfflineCountRef.current >= 2 && isAutoTrackingRef.current) {
+          saveAutoSession();
+        }
+        setDetectedApp(null, null);
+        return;
+      }
+
+      resetOfflineCount();
+      setDetectedApp(current.app, current.title);
+
+      const rule = matchRule(current.app, current.title);
+      if (rule) {
+        setUntrackedApp(null);
+        setUntrackedDismissed(false);
+        if (isAutoTrackingRef.current && matchedRuleIdRef.current !== rule.id) {
+          saveAutoSession();
+        }
+        if (!isAutoTrackingRef.current) {
+          startAutoTracking(current.app, current.title, rule.id);
+        }
+      } else {
+        if (isAutoTrackingRef.current) {
+          saveAutoSession();
+        }
+        if (!untrackedDismissedRef.current) {
+          setUntrackedApp(current.app);
+          setUntrackedTitle(current.title);
+        }
+      }
+    };
+
+    poll();
+    const id = setInterval(poll, 30_000);
+    return () => clearInterval(id);
+  }, [isTracking, autoTrackingEnabled]);
 
   // Detection effect: run both AW and calendar detection sequentially when not tracking
   useEffect(() => {
@@ -161,12 +324,25 @@ export function TimerBar() {
   const calendarProj = calendarSuggestion
     ? projects.find((p) => p.id === calendarSuggestion.projectId)
     : null;
+  const autoRule = isAutoTracking ? rules.find((r) => r.id === matchedRuleId) : null;
+  const autoProject = autoRule ? projects.find((p) => p.id === autoRule.projectId) : null;
 
   return (
     <Pressable
       style={styles.container}
       onPress={() => {
-        if (pending) {
+        if (ruleCreationOffer) {
+          // Don't navigate when rule creation is offered - let inline actions handle it
+          return;
+        } else if (isAutoTracking) {
+          router.push("/timer");
+        } else if (untrackedApp && !untrackedDismissed) {
+          router.push(
+            `/untracked?app=${encodeURIComponent(untrackedApp)}${
+              untrackedTitle ? `&title=${encodeURIComponent(untrackedTitle)}` : ""
+            }`,
+          );
+        } else if (pending) {
           router.push("/recover");
         } else if (calendarSuggestion && calendarProj) {
           router.push(
@@ -202,6 +378,32 @@ export function TimerBar() {
             {formatTime(elapsed)}
           </Text>
         </View>
+      ) : ruleCreationOffer ? (
+        <View className="flex-row items-center justify-center gap-2">
+          <View className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+          <Text className="text-blue-400 text-sm shrink" numberOfLines={1}>
+            Create rule for {ruleCreationOffer.app}?
+          </Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              addRule(ruleCreationOffer.app, ruleCreationOffer.projectId);
+              setRuleCreationOffer(null);
+            }}
+            hitSlop={8}
+          >
+            <Text className="text-blue-400 text-sm font-semibold">✓</Text>
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              setRuleCreationOffer(null);
+            }}
+            hitSlop={8}
+          >
+            <Text className="text-blue-400/50 text-sm font-semibold">×</Text>
+          </Pressable>
+        </View>
       ) : pending ? (
         pending.source === "calendar" ? (
           <View className="flex-row items-center justify-center gap-2">
@@ -236,6 +438,36 @@ export function TimerBar() {
             hitSlop={8}
           >
             <Text className="text-white/50 text-sm font-semibold">×</Text>
+          </Pressable>
+        </View>
+      ) : isAutoTracking && autoProject ? (
+        <View className="flex-row items-center justify-center gap-2">
+          <Image
+            source={`sf:${autoProject.icon}`}
+            style={[styles.icon, { tintColor: autoProject.color }]}
+          />
+          <Text className="text-white text-sm shrink" numberOfLines={1}>
+            {autoProject.name}
+          </Text>
+          <Text className="text-neutral-500 text-sm shrink-0">Auto</Text>
+          <Text className="text-white text-sm font-mono font-semibold shrink-0">
+            {formatTime(autoElapsed)}
+          </Text>
+        </View>
+      ) : untrackedApp && !untrackedDismissed ? (
+        <View className="flex-row items-center justify-center gap-2">
+          <View className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
+          <Text className="text-neutral-400 text-sm shrink" numberOfLines={1}>
+            {untrackedApp} · Untracked
+          </Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              setUntrackedDismissed(true);
+            }}
+            hitSlop={8}
+          >
+            <Text className="text-neutral-500 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
       ) : (
