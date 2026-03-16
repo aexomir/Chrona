@@ -13,6 +13,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   runOnJS,
+  withRepeat,
 } from "react-native-reanimated";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
@@ -58,12 +59,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "white",
     marginBottom: 4,
+    letterSpacing: -1.5,
   },
   centerLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: "rgba(255, 255, 255, 0.6)",
     fontWeight: "500",
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
   },
   ringGestureContainer: {
     alignItems: "center",
@@ -109,7 +111,7 @@ function SegmentCircle({ seg }: SegmentCircleProps) {
   const animatedProps = useAnimatedProps(() => {
     const scrubSec = scrubProgress.value * DAY_SECONDS;
     return {
-      opacity: scrubSec >= seg.sessionStartSec ? 0.85 : 0,
+      opacity: scrubSec >= seg.sessionStartSec ? 0.92 : 0,
     };
   });
 
@@ -118,12 +120,12 @@ function SegmentCircle({ seg }: SegmentCircleProps) {
       cx={CENTER}
       cy={CENTER}
       r={RING_RADIUS}
-      stroke="rgba(255,255,255,0.85)"
+      stroke="rgba(255, 255, 255, 0.9)"
       strokeWidth={RING_STROKE_WIDTH}
       fill="none"
       strokeDasharray={`${seg.dash} ${CIRCUMFERENCE}`}
       strokeDashoffset={seg.offset}
-      strokeLinecap="butt"
+      strokeLinecap="round"
       transform={`rotate(-90, ${CENTER}, ${CENTER})`}
       animatedProps={animatedProps}
     />
@@ -143,6 +145,7 @@ export function FocusRing() {
 
   const scrubStartX = useSharedValue(0);
   const scrubStartY = useSharedValue(0);
+  const liveSegmentOpacity = useSharedValue(0.7);
 
   // Helper to update scrub time label
   const updateLabel = (fraction: number) => {
@@ -266,8 +269,16 @@ export function FocusRing() {
     if (!isTracking || !startTimestamp) {
       setLiveTotal(completedStats.total);
       setLiveSegment(null);
+      liveSegmentOpacity.value = 0.7;
       return;
     }
+
+    // Start pulse animation when tracking
+    liveSegmentOpacity.value = withRepeat(
+      withTiming(1.0, { duration: 1400 }),
+      -1,
+      true,
+    );
 
     const tick = () => {
       const elapsed = Math.floor(
@@ -291,7 +302,7 @@ export function FocusRing() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [isTracking, startTimestamp, completedStats.total]);
+  }, [isTracking, startTimestamp, completedStats.total, liveSegmentOpacity]);
 
   // Ring container opacity (fade in with hero animation)
   const ringContainerStyle = useAnimatedStyle(() => ({
@@ -320,6 +331,11 @@ export function FocusRing() {
     opacity: withTiming(scrubActive.value, { duration: 200 }),
   }));
 
+  // Live segment pulse animation
+  const liveSegmentAnimatedProps = useAnimatedProps(() => ({
+    opacity: liveSegmentOpacity.value,
+  }));
+
   const displayText = getDisplayText();
 
   return (
@@ -338,7 +354,7 @@ export function FocusRing() {
                 cx={CENTER}
                 cy={CENTER}
                 r={RING_RADIUS}
-                stroke="rgba(255, 255, 255, 0.08)"
+                stroke="rgba(255, 255, 255, 0.11)"
                 strokeWidth={RING_STROKE_WIDTH}
                 fill="none"
               />
@@ -350,18 +366,35 @@ export function FocusRing() {
 
               {/* Live session segment (updates every second, suppressed during scrub) */}
               {isTracking && liveSegment && scrubActive.value === 0 && (
-                <Circle
-                  cx={CENTER}
-                  cy={CENTER}
-                  r={RING_RADIUS}
-                  stroke="rgba(255, 255, 255, 0.6)"
-                  strokeWidth={RING_STROKE_WIDTH}
-                  fill="none"
-                  strokeDasharray={`${liveSegment.dash} ${CIRCUMFERENCE}`}
-                  strokeDashoffset={liveSegment.offset}
-                  strokeLinecap="butt"
-                  transform={`rotate(-90, ${CENTER}, ${CENTER})`}
-                />
+                <>
+                  {/* Glow halo */}
+                  <Circle
+                    cx={CENTER}
+                    cy={CENTER}
+                    r={RING_RADIUS}
+                    stroke="rgba(255, 255, 255, 0.15)"
+                    strokeWidth={18}
+                    fill="none"
+                    strokeDasharray={`${liveSegment.dash} ${CIRCUMFERENCE}`}
+                    strokeDashoffset={liveSegment.offset}
+                    strokeLinecap="round"
+                    transform={`rotate(-90, ${CENTER}, ${CENTER})`}
+                  />
+                  {/* Live segment with pulse */}
+                  <AnimatedCircle
+                    cx={CENTER}
+                    cy={CENTER}
+                    r={RING_RADIUS}
+                    stroke="rgba(255, 255, 255, 1.0)"
+                    strokeWidth={RING_STROKE_WIDTH}
+                    fill="none"
+                    strokeDasharray={`${liveSegment.dash} ${CIRCUMFERENCE}`}
+                    strokeDashoffset={liveSegment.offset}
+                    strokeLinecap="round"
+                    transform={`rotate(-90, ${CENTER}, ${CENTER})`}
+                    animatedProps={liveSegmentAnimatedProps}
+                  />
+                </>
               )}
             </Svg>
 
