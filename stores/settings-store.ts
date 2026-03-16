@@ -11,6 +11,8 @@ type SettingsState = {
   setAutoTrackingEnabled: (enabled: boolean) => void;
   dailyGoalMinutes: number;
   setDailyGoalMinutes: (minutes: number) => void;
+  developerMode: boolean;
+  setDeveloperMode: (enabled: boolean) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -20,10 +22,12 @@ export const useSettingsStore = create<SettingsState>()(
       setAuroraEnabled: (enabled) => set({ auroraEnabled: enabled }),
       constellationEnabled: true,
       setConstellationEnabled: (enabled) => set({ constellationEnabled: enabled }),
-      autoTrackingEnabled: true,
+      autoTrackingEnabled: false,
       setAutoTrackingEnabled: (enabled) => set({ autoTrackingEnabled: enabled }),
       dailyGoalMinutes: 240,
       setDailyGoalMinutes: (minutes) => set({ dailyGoalMinutes: minutes }),
+      developerMode: false,
+      setDeveloperMode: (enabled) => set({ developerMode: enabled }),
     }),
     {
       name: "settings",

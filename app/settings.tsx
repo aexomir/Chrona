@@ -11,6 +11,8 @@ import { useTrackingRulesStore } from "@/stores/tracking-rules-store";
 import { StaticAuraBackground } from "@/components/static-aura-background";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
+import { SoonBadge } from "@/components/wip-badge";
+import { useState } from "react";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -111,8 +113,11 @@ export default function SettingsScreen() {
     setAuroraEnabled,
     constellationEnabled,
     setConstellationEnabled,
+    developerMode,
+    setDeveloperMode,
   } = useSettingsStore();
   const { rules } = useTrackingRulesStore();
+  const [devTapCount, setDevTapCount] = useState(0);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -161,26 +166,40 @@ export default function SettingsScreen() {
                 <ValueSuffix value={calendarStatusLabel(permissionStatus, isEnabled)} />
               }
             />
-            <SettingsDivider />
-            <SettingsRow
-              label="Meetings"
-              onPress={() => router.push("/meeting-settings")}
-              suffix={
-                <ValueSuffix
-                  value={meetingStatusLabel(meetingEnabled, selectedAppIds)}
+            {developerMode && (
+              <>
+                <SettingsDivider />
+                <SettingsRow
+                  label="Meetings"
+                  onPress={() => router.push("/meeting-settings")}
+                  suffix={
+                    <View className="flex-row items-center gap-2">
+                      <SoonBadge />
+                      <ValueSuffix
+                        value={meetingStatusLabel(meetingEnabled, selectedAppIds)}
+                      />
+                    </View>
+                  }
                 />
-              }
-            />
-            <SettingsDivider />
-            <SettingsRow
-              label="Tracking Rules"
-              onPress={() => router.push("/tracking-rules")}
-              suffix={
-                <ValueSuffix
-                  value={`${rules.length} rule${rules.length !== 1 ? "s" : ""}`}
+              </>
+            )}
+            {developerMode && (
+              <>
+                <SettingsDivider />
+                <SettingsRow
+                  label="Tracking Rules"
+                  onPress={() => router.push("/tracking-rules")}
+                  suffix={
+                    <View className="flex-row items-center gap-2">
+                      <SoonBadge />
+                      <ValueSuffix
+                        value={`${rules.length} rule${rules.length !== 1 ? "s" : ""}`}
+                      />
+                    </View>
+                  }
                 />
-              }
-            />
+              </>
+            )}
           </SettingsCard>
         </View>
 
@@ -204,7 +223,20 @@ export default function SettingsScreen() {
 
         {/* ABOUT */}
         <View className="mt-10 mb-8">
-          <SectionLabel>About</SectionLabel>
+          <Pressable
+            onPress={() => {
+              setDevTapCount((prev) => {
+                const next = prev + 1;
+                if (next === 5) {
+                  setDeveloperMode(!developerMode);
+                  setDevTapCount(0);
+                }
+                return next % 6;
+              });
+            }}
+          >
+            <SectionLabel>About</SectionLabel>
+          </Pressable>
           <SettingsCard>
             <SettingsRow
               label="Privacy Policy"
