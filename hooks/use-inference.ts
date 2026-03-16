@@ -4,23 +4,19 @@ import type { RnExecutorchError, Message } from 'react-native-executorch';
 import type { Session } from '@/stores/sessions-store';
 import type { Project } from '@/constants/projects';
 import {
-  ProductivityScoreSchema,
   InsightSchema,
-  buildProductivitySystemPrompt,
   buildInsightSystemPrompt,
-  buildProductivityUserMessage,
   buildInsightUserMessage,
   computeFingerprint,
 } from '@/lib/inference';
 import { useInferenceStore, type InferenceResult } from '@/stores/inference-store';
-import type { ProductivityScore, Insight } from '@/lib/inference';
+import type { Insight } from '@/lib/inference';
 
 export interface UseInferenceReturn {
   isReady: boolean;
   isGenerating: boolean;
   downloadProgress: number;
   error: RnExecutorchError | null;
-  productivityScore: InferenceResult<ProductivityScore> | null;
   insight: InferenceResult<Insight> | null;
   isAiEnabled: boolean;
   generateInsights(
@@ -47,57 +43,17 @@ export function useInference(): UseInferenceReturn {
     const fingerprint = computeFingerprint(sessions.map((s) => s.id));
     const now = new Date().toISOString();
 
-    // Check if score is stale
-    const scoreIsStale = store.isScoreStale(fingerprint, timeframe);
+    // Check if insight is stale
     const insightIsStale = store.isInsightStale(fingerprint, timeframe);
 
-    if (!scoreIsStale && !insightIsStale) {
-      // Both cached and fresh
+    if (!insightIsStale) {
+      // Cached and fresh
       return;
     }
 
     setIsGenerating(true);
 
     try {
-      // Generate productivity score
-      if (scoreIsStale) {
-        const scoreSystemPrompt = buildProductivitySystemPrompt();
-        const scoreUserMessage = buildProductivityUserMessage(
-          sessions,
-          projects,
-          timeframe
-        );
-
-        llm.configure({
-          chatConfig: {
-            systemPrompt: scoreSystemPrompt,
-            contextWindowLength: 1,
-            initialMessageHistory: [],
-          },
-        });
-
-        const scoreMessages: Message[] = [
-          { role: 'user', content: scoreUserMessage + '\n\n' + getStructuredOutputPrompt(ProductivityScoreSchema) },
-        ];
-
-        try {
-          const scoreResponse = await llm.generate(scoreMessages);
-          const parsedScore = fixAndValidateStructuredOutput(
-            scoreResponse,
-            ProductivityScoreSchema
-          ) as ProductivityScore;
-
-          store.setProductivityScore({
-            data: parsedScore,
-            fingerprint,
-            timeframe,
-            generatedAt: now,
-          });
-        } catch {
-          // Silent fail on score generation
-        }
-      }
-
       // Generate insight
       if (insightIsStale) {
         const insightSystemPrompt = buildInsightSystemPrompt();
@@ -146,7 +102,6 @@ export function useInference(): UseInferenceReturn {
     isGenerating,
     downloadProgress: llm.downloadProgress,
     error: llm.error,
-    productivityScore: store.productivityScore,
     insight: store.insight,
     isAiEnabled: store.isAiEnabled,
     generateInsights,

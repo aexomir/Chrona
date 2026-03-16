@@ -165,3 +165,29 @@ export function computeStreak(sessions: Session[]) {
   }
   return { current, ongoing: hasToday };
 }
+
+export function computeFocusConsistency(
+  sessions: Session[],
+  start: Date,
+  end: Date,
+): { percentage: number; daysWithSessions: number; totalDays: number } {
+  if (sessions.length === 0)
+    return { percentage: 0, daysWithSessions: 0, totalDays: 0 };
+
+  const sessionDays = new Set(
+    sessions.map((s) => {
+      const d = new Date(s.startTime);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }),
+  );
+
+  // Count total days in range
+  const totalMs = end.getTime() - start.getTime();
+  const totalDays = Math.ceil(totalMs / (1000 * 60 * 60 * 24)) + 1;
+
+  const daysWithSessions = sessionDays.size;
+  const percentage =
+    totalDays > 0 ? Math.round((daysWithSessions / totalDays) * 100) : 0;
+
+  return { percentage, daysWithSessions, totalDays };
+}

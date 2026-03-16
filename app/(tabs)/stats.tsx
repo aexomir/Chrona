@@ -38,6 +38,7 @@ import {
   getHourBuckets,
   getProjectTotals,
   computeStreak,
+  computeFocusConsistency,
 } from "@/lib/stats-utils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -108,6 +109,9 @@ export default function StatsScreen() {
   const hourBuckets = getHourBuckets(sessions);
   const projectTotals = getProjectTotals(sessions, projects);
   const streak = computeStreak(allSessions);
+  const consistency = computeFocusConsistency(sessions, start, end);
+  const prevConsistency = computeFocusConsistency(prevSessions, prevStart, prevEnd);
+  const consistencyDelta = getDelta(consistency.percentage, prevConsistency.percentage);
   const isEmpty = sessions.length === 0;
 
   const pillLayouts = useRef<{ x: number; width: number }[]>([]);
@@ -196,7 +200,11 @@ export default function StatsScreen() {
                     value={formatFocusTime(totalSeconds)}
                     delta={delta}
                   />
-                  <MetricCard label="Productivity Score" noData />
+                  <MetricCard
+                    label="Focus Consistency"
+                    value={`${consistency.percentage}%`}
+                    delta={consistencyDelta}
+                  />
                 </View>
               </Animated.View>
 

@@ -4,14 +4,6 @@ import type { Project } from '@/constants/projects';
 
 // ──── Schemas ────────────────────────────────────────────────────────────
 
-export const ProductivityScoreSchema = z.object({
-  score: z.number().min(0).max(100),
-  grade: z.enum(['A', 'B', 'C', 'D', 'F']),
-  rationale: z.string().max(120),
-});
-
-export type ProductivityScore = z.infer<typeof ProductivityScoreSchema>;
-
 export const InsightSchema = z.object({
   headline: z.string().max(60),
   body: z.string().max(200),
@@ -96,12 +88,6 @@ export function computeFingerprint(sessionIds: string[]): string {
 
 // ──── System Prompts ───────────────────────────────────────────────────
 
-export function buildProductivitySystemPrompt(): string {
-  return `You are an AI coach analyzing focus session data to compute a productivity score.
-You evaluate sessions based on focus duration, project variety, and consistency.
-Respond with a JSON object containing: score (0-100), grade (A/B/C/D/F), and rationale (max 120 chars).`;
-}
-
 export function buildInsightSystemPrompt(): string {
   return `You are an AI coach providing actionable insights about productivity patterns.
 Analyze focus session data and provide personalized, encouraging insights.
@@ -109,19 +95,6 @@ Respond with a JSON object containing: headline (max 60 chars), body (max 200 ch
 }
 
 // ──── User Messages ────────────────────────────────────────────────────
-
-export function buildProductivityUserMessage(
-  sessions: Session[],
-  projects: Project[],
-  timeframeLabel: string
-): string {
-  const serialized = serializeSessions(sessions, projects);
-  return `Analyze these ${timeframeLabel} focus sessions and compute a productivity score:
-
-${serialized}
-
-Provide a structured JSON response.`;
-}
 
 export function buildInsightUserMessage(
   sessions: Session[],
