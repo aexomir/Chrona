@@ -68,12 +68,12 @@ function findGaps(
 }
 
 /**
- * Main detection function: finds the strongest missed time period
+ * Main detection function: finds all missed time periods grouped by project
  */
 export async function detectMissedTime(
   sessions: Session[],
   suggestProject: (apps: AppUsage[]) => { projectId: string; matchedApps: string[] } | null
-): Promise<RecoveryPeriod | null> {
+): Promise<RecoveryPeriod[]> {
   try {
     const now = new Date();
     const lookBackWindow = new Date(now.getTime() - LOOK_BACK_MS);
@@ -81,7 +81,9 @@ export async function detectMissedTime(
     // Find gaps in session coverage
     const gaps = findGaps(sessions, lookBackWindow, now);
 
-    if (gaps.length === 0) return null;
+    if (gaps.length === 0) return [];
+
+    const results: RecoveryPeriod[] = [];
 
     // Evaluate gaps sequentially (AW is local HTTP, no need for concurrency)
     for (const gap of gaps) {
@@ -95,22 +97,37 @@ export async function detectMissedTime(
       const totalDuration = apps.reduce((sum, a) => sum + a.duration, 0);
       if (totalDuration < MIN_AW_USAGE_S) continue;
 
-      // Try to get a project suggestion
-      const suggestion = suggestProject(apps);
-      if (!suggestion) continue;
+      // Group apps by individual project suggestions
+      const projectMap = new Map<string, AppUsage[]>();
 
-      // Found a valid recovery period
-      return {
-        startTime: gap.start.toISOString(),
-        endTime: adjustedEnd.toISOString(),
-        apps,
-        suggestion,
-      };
+      for (const app of apps) {
+        const suggestion = suggestProject([app]);
+        if (!suggestion) continue; // Skip apps with no valid suggestion
+
+        const projectId = suggestion.projectId;
+        if (!projectMap.has(projectId)) {
+          projectMap.set(projectId, []);
+        }
+        projectMap.get(projectId)!.push(app);
+      }
+
+      // Emit a RecoveryPeriod for each project group
+      for (const [projectId, groupedApps] of projectMap) {
+        results.push({
+          startTime: gap.start.toISOString(),
+          endTime: adjustedEnd.toISOString(),
+          apps: groupedApps,
+          suggestion: {
+            projectId,
+            matchedApps: groupedApps.map((a) => a.app),
+          },
+        });
+      }
     }
 
-    return null;
+    return results;
   } catch {
     // Silent fail: AW offline, network error, etc.
-    return null;
+    return [];
   }
 }

@@ -31,7 +31,7 @@ export function TimerBar() {
   const { sessions, addSession } = useSessionsStore();
   const { suggestProject, learnFromSession } = useSuggestionsStore();
   const { autoTrackingEnabled } = useSettingsStore();
-  const { pending, set: setRecovery } = useRecoveryStore();
+  const { pending, add: addRecovery, set: setPending } = useRecoveryStore();
   const {
     isEnabled: calendarEnabled,
     permissionStatus,
@@ -233,35 +233,42 @@ export function TimerBar() {
   }, [isTracking, sessions]);
 
   // Validate pending recovery against current sessions
-  // If a newly logged session overlaps with the pending period, clear it
+  // Remove periods that overlap with newly logged sessions
   useEffect(() => {
-    if (!pending) return;
+    if (pending.length === 0) return;
 
-    const pendingStart = new Date(pending.startTime);
-    const pendingEnd = new Date(pending.endTime);
+    const notOverlapped = pending.filter((period) => {
+      const pendingStart = new Date(period.startTime);
+      const pendingEnd = new Date(period.endTime);
 
-    // Check if any session overlaps with the pending period
-    const isOverlapped = sessions.some((s) => {
-      const sStart = new Date(s.startTime);
-      const sEnd = new Date(s.endTime);
-      return sStart < pendingEnd && sEnd > pendingStart;
+      // Check if any session overlaps with this period
+      const isOverlapped = sessions.some((s) => {
+        const sStart = new Date(s.startTime);
+        const sEnd = new Date(s.endTime);
+        return sStart < pendingEnd && sEnd > pendingStart;
+      });
+
+      return !isOverlapped;
     });
 
-    if (isOverlapped) {
-      setRecovery(null as any); // Clear pending
+    if (notOverlapped.length !== pending.length) {
+      // Rebuild the array with only non-overlapped periods
+      setPending(notOverlapped);
     }
-  }, [sessions, pending, setRecovery]);
+  }, [sessions, pending, setPending]);
 
   // Separate effect for running detection when conditions are met
   useEffect(() => {
-    if (isTracking || hasDetectedRef.current || pending) return;
+    if (isTracking || hasDetectedRef.current || pending.length > 0) return;
 
     hasDetectedRef.current = true;
     (async () => {
       // Pass 1: AW gap-based detection
-      const awResult = await detectMissedTime(sessions, suggestProject);
-      if (awResult) {
-        setRecovery(awResult);
+      const awResults = await detectMissedTime(sessions, suggestProject);
+      if (awResults.length > 0) {
+        for (const result of awResults) {
+          addRecovery(result);
+        }
         return;
       }
 
@@ -273,7 +280,7 @@ export function TimerBar() {
         sessions,
       );
       if (calResult) {
-        setRecovery(calResult);
+        addRecovery(calResult);
       }
     })();
   }, [
@@ -281,7 +288,7 @@ export function TimerBar() {
     sessions,
     suggestProject,
     pending,
-    setRecovery,
+    addRecovery,
     calendarEnabled,
     permissionStatus,
     calendarEvents,
@@ -290,7 +297,7 @@ export function TimerBar() {
 
   // Calendar event suggestion effect: check when not tracking
   useEffect(() => {
-    if (isTracking || pending || !calendarEnabled) {
+    if (isTracking || pending.length > 0 || !calendarEnabled) {
       hasCheckCalendarRef.current = false;
       setCalendarSuggestion(null);
       return;
@@ -342,7 +349,7 @@ export function TimerBar() {
               untrackedTitle ? `&title=${encodeURIComponent(untrackedTitle)}` : ""
             }`,
           );
-        } else if (pending) {
+        } else if (pending.length > 0) {
           router.push("/recover");
         } else if (calendarSuggestion && calendarProj) {
           router.push(
@@ -404,12 +411,12 @@ export function TimerBar() {
             <Text className="text-blue-400/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
-      ) : pending ? (
-        pending.source === "calendar" ? (
+      ) : pending.length > 0 && pending[0] ? (
+        pending[0].source === "calendar" ? (
           <View className="flex-row items-center justify-center gap-2">
             <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
             <Text className="text-amber-400 text-sm" numberOfLines={1}>
-              {pending.eventTitle} · Tap to log
+              {pending[0].eventTitle} · Tap to log
             </Text>
           </View>
         ) : (

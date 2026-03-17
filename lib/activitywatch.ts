@@ -22,6 +22,31 @@ interface AwEvent {
   };
 }
 
+const SYSTEM_APP_DENYLIST = new Set([
+  "loginwindow",         // macOS login window
+  "finder",              // file browser
+  "systemuiserver",      // menu bar / status items
+  "controlcenter",       // control center
+  "notificationcenter",  // notification center
+  "dock",                // Dock process
+  "windowserver",        // compositor
+  "screensaver",         // screen saver engine
+  "universalaccessd",    // accessibility daemon
+  "coreaudiod",          // audio daemon
+  "spotlight",           // Spotlight
+  "sharingd",            // sharing daemon
+]);
+
+const MIN_APP_DURATION_S = 2 * 60; // 2 minutes per-app minimum
+
+/**
+ * Check if an app is a system process and should be filtered
+ */
+function isSystemApp(app: string): boolean {
+  if (app.startsWith(".")) return true;
+  return SYSTEM_APP_DENYLIST.has(app.toLowerCase());
+}
+
 /**
  * Fetch all buckets and find the window watcher bucket
  */
@@ -75,7 +100,7 @@ export async function getAppUsage(
     >();
     for (const event of events) {
       const app = event.data.app;
-      if (app && typeof app === "string") {
+      if (app && typeof app === "string" && !isSystemApp(app)) {
         const entry = appMap.get(app) ?? {
           duration: 0,
           titleMap: new Map(),
@@ -91,7 +116,7 @@ export async function getAppUsage(
       }
     }
 
-    // Convert to AppUsage[] and sort by duration descending
+    // Convert to AppUsage[], filter by minimum duration, and sort by duration descending
     const result: AppUsage[] = Array.from(
       appMap,
       ([app, { duration, titleMap }]) => ({
@@ -102,7 +127,9 @@ export async function getAppUsage(
           .slice(0, 3)
           .map(([t]) => t),
       })
-    ).sort((a, b) => b.duration - a.duration);
+    )
+      .filter((entry) => entry.duration >= MIN_APP_DURATION_S)
+      .sort((a, b) => b.duration - a.duration);
 
     return result;
   } catch {
@@ -142,7 +169,7 @@ export async function getCurrentApp(): Promise<CurrentApp | null> {
     const events: AwEvent[] = await res.json();
     if (events.length === 0) return null;
 
-    // Return the event with the latest timestamp
+    // Return the event with the latest timestamp (skip system apps)
     const latestEvent = events.reduce((latest, current) => {
       const latestTime = new Date(latest.timestamp).getTime();
       const currentTime = new Date(current.timestamp).getTime();
@@ -152,7 +179,7 @@ export async function getCurrentApp(): Promise<CurrentApp | null> {
     const app = latestEvent.data.app;
     const title = latestEvent.data.title ?? null;
 
-    if (!app || typeof app !== "string") return null;
+    if (!app || typeof app !== "string" || isSystemApp(app)) return null;
 
     return {
       app,

@@ -48,19 +48,21 @@ export default function RecoverScreen() {
   const insets = useSafeAreaInsets();
   const theme = useAuroraTheme()
   const { projects } = useProjects();
-  const { pending, clear } = useRecoveryStore();
+  const { pending, removeFirst } = useRecoveryStore();
   const { addSession } = useSessionsStore();
   const { learnFromSession, associations } = useSuggestionsStore();
 
   const [title, setTitle] = useState(() => {
-    if (pending?.source === "calendar" && pending?.eventTitle) {
-      return pending.eventTitle;
+    const p = pending[0];
+    if (p?.source === "calendar" && p?.eventTitle) {
+      return p.eventTitle;
     }
     return "";
   });
   const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>(() => {
-    if (!pending?.suggestion.projectId) return undefined;
-    const proj = projects.find((p) => p.id === pending.suggestion.projectId);
+    const p = pending[0];
+    if (!p?.suggestion.projectId) return undefined;
+    const proj = projects.find((p) => p.id === pending[0].suggestion.projectId);
     return proj ? { value: proj.id, label: proj.name } : undefined;
   });
   const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
@@ -68,29 +70,39 @@ export default function RecoverScreen() {
 
   // Redirect back if no pending recovery
   useEffect(() => {
-    if (!pending) {
+    if (pending.length === 0) {
       router.back();
     }
   }, [pending]);
 
-  // Initialize smart-selected apps on mount
+  // Initialize smart-selected apps when pending[0] changes
   useEffect(() => {
-    if (!pending || hasInitializedApps.current) return;
-    hasInitializedApps.current = true;
+    if (pending.length === 0) {
+      hasInitializedApps.current = false;
+      return;
+    }
+    const currentPeriod = pending[0];
+    hasInitializedApps.current = false; // Reset flag to reinitialize when period changes
+
     const defaults = getSmartDefaultApps(
-      pending.apps,
-      pending.suggestion.projectId,
+      currentPeriod.apps,
+      currentPeriod.suggestion.projectId,
       associations
     );
     setSelectedApps(defaults);
-  }, [pending, associations]);
+    setTitle(currentPeriod.source === "calendar" && currentPeriod.eventTitle ? currentPeriod.eventTitle : "");
+    setSelectedProject(() => {
+      const proj = projects.find((p) => p.id === currentPeriod.suggestion.projectId);
+      return proj ? { value: proj.id, label: proj.name } : undefined;
+    });
+  }, [pending, associations, projects]);
 
-  if (!pending) {
+  if (pending.length === 0 || !pending[0]) {
     return null;
   }
 
   const selectedProj = projects.find((p) => p.id === selectedProject?.value);
-  const selected = pending.apps.filter((a) => selectedApps.has(a.app));
+  const selected = pending[0].apps.filter((a) => selectedApps.has(a.app));
   const durationSeconds = Math.floor(
     selected.reduce((sum, a) => sum + a.duration, 0)
   );
@@ -108,15 +120,16 @@ export default function RecoverScreen() {
   const handleLog = () => {
     if (!title.trim() || !selectedProject) return;
 
+    const p = pending[0];
     // Adjust endTime to match selected apps' duration
-    const startDate = new Date(pending.startTime);
+    const startDate = new Date(p.startTime);
     const adjustedEndTime = new Date(startDate.getTime() + durationSeconds * 1000).toISOString();
 
     addSession({
       id: Date.now().toString(),
       title: title.trim(),
       projectId: selectedProject.value,
-      startTime: pending.startTime,
+      startTime: p.startTime,
       endTime: adjustedEndTime,
       duration: durationSeconds,
       apps: selected.length > 0 ? selected : undefined,
@@ -127,12 +140,12 @@ export default function RecoverScreen() {
       learnFromSession(selected, selectedProject.value);
     }
 
-    clear();
+    removeFirst();
     router.back();
   };
 
   const handleDismiss = () => {
-    clear();
+    removeFirst();
     router.back();
   };
 
@@ -154,7 +167,7 @@ export default function RecoverScreen() {
 
       <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 px-6">
         {/* Header card: calendar-specific or AW-based */}
-        {pending.source === "calendar" ? (
+        {pending[0].source === "calendar" ? (
           <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
             <View className="flex-row items-center gap-2 mb-3">
               <Image
@@ -166,10 +179,10 @@ export default function RecoverScreen() {
               </Text>
             </View>
             <Text className="text-white text-lg font-semibold mb-1">
-              {pending.eventTitle}
+              {pending[0].eventTitle}
             </Text>
             <Text className="text-zinc-400 text-sm mb-2">
-              {formatTimeRange(pending.startTime, pending.endTime)}
+              {formatTimeRange(pending[0].startTime, pending[0].endTime)}
             </Text>
             <Text className="text-zinc-500 text-sm">
               {formatDuration(durationSeconds)}
@@ -187,7 +200,7 @@ export default function RecoverScreen() {
               </Text>
             </View>
             <Text className="text-white text-lg font-semibold mb-2">
-              {formatTimeRange(pending.startTime, pending.endTime)}
+              {formatTimeRange(pending[0].startTime, pending[0].endTime)}
             </Text>
             <Text className="text-zinc-400 text-sm">
               {formatDuration(durationSeconds)}
@@ -255,13 +268,13 @@ export default function RecoverScreen() {
         {/* Apps section */}
         <View className="mb-6">
           <Text className="text-white text-base font-semibold mb-3">Apps Detected</Text>
-          {pending.apps.length === 0 ? (
+          {pending[0].apps.length === 0 ? (
             <View className="items-center justify-center py-8 rounded-2xl border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               <Text className="text-zinc-400 text-base">No activity detected</Text>
             </View>
           ) : (
             <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
-              {pending.apps.map((app, i) => {
+              {pending[0].apps.map((app, i) => {
                 const isSelected = selectedApps.has(app.app);
                 const titles = app.titles ?? [];
                 return (
@@ -269,7 +282,7 @@ export default function RecoverScreen() {
                     key={app.app}
                     onPress={() => handleToggleApp(app.app)}
                     className="flex-row items-start gap-3 px-4 py-3"
-                    style={i < pending.apps.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
+                    style={i < pending[0].apps.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
                   >
                     <View className="pt-1">
                       <View
