@@ -50,6 +50,20 @@
         {
           "calendarPermission": "Focus uses your calendar to suggest projects for upcoming events."
         }
+      ],
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "FocusTimeWidget",
+              "displayName": "Focus Time",
+              "description": "See your daily focus time at a glance.",
+              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "contentMarginsDisabled": false
+            }
+          ]
+        }
       ]
     ],
     "experiments": {
