@@ -1,5 +1,6 @@
 import { TimerBar } from "@/components/timer-bar";
 import { TabBarContext } from "@/context/TabBarContext";
+import { useWidgetInteraction } from "@/hooks/use-widget-interaction";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useState } from "react";
@@ -7,6 +8,7 @@ import { useState } from "react";
 export default function TabLayout() {
   const [isTabBarHidden, setIsTabBarHidden] = useState(false);
   useWidgetSync();
+  useWidgetInteraction();
 
   return (
     <TabBarContext value={{ setIsTabBarHidden }}>
