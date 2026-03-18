@@ -58,7 +58,7 @@
             {
               "name": "FocusTimeWidget",
               "displayName": "Focus Time",
-              "description": "See your daily focus time at a glance.",
+              "description": "See your daily focus time and start tracking.",
               "supportedFamilies": ["systemSmall", "systemMedium"],
               "contentMarginsDisabled": true
             },
@@ -67,13 +67,6 @@
               "displayName": "Focus Streak",
               "description": "Track your daily focus streak.",
               "supportedFamilies": ["systemSmall"],
-              "contentMarginsDisabled": true
-            },
-            {
-              "name": "GoalProgressWidget",
-              "displayName": "Focus Goal",
-              "description": "Track your progress toward today's focus goal.",
-              "supportedFamilies": ["systemSmall", "systemMedium"],
               "contentMarginsDisabled": true
             }
           ]

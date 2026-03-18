@@ -1,35 +1,40 @@
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
-import { useRouter } from 'expo-router';
-import { addUserInteractionListener } from 'expo-widgets';
-import { useTimerStore } from '@/stores/timer-store';
-import { useSessionsStore } from '@/stores/sessions-store';
-import { suggestProjectByTime } from '@/lib/time-suggestion';
+import { suggestProjectByTime } from "@/lib/time-suggestion";
+import { useSessionsStore } from "@/stores/sessions-store";
+import { useTimerStore } from "@/stores/timer-store";
+import { useRouter } from "expo-router";
+import { addUserInteractionListener } from "expo-widgets";
+import { useEffect } from "react";
+import { Platform } from "react-native";
 
 export function useWidgetInteraction() {
   const router = useRouter();
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== "ios") return;
 
     const subscription = addUserInteractionListener((event) => {
-      if (event.source !== 'FocusTimeWidget') return;
+      if (event.source !== "FocusTimeWidget") return;
 
       const { isTracking, stopTimer } = useTimerStore.getState();
       const { sessions, addSession } = useSessionsStore.getState();
 
+      // If tracking, stop and save the session
       if (isTracking) {
         const session = stopTimer();
         if (session) {
           addSession({ id: Date.now().toString(), ...session });
         }
-      } else {
+        return;
+      }
+
+      if (event.target === "start-suggested") {
         const hour = new Date().getHours();
         const suggestedId = suggestProjectByTime(sessions, hour);
-        const path = suggestedId
-          ? (`/timer?suggestProjectId=${suggestedId}` as const)
-          : '/timer';
-        router.push(path as any);
+        if (suggestedId) {
+          router.push(`/timer?suggestProjectId=${suggestedId}` as any);
+        }
+      } else if (event.target === "start-manual") {
+        router.push("/timer" as any);
       }
     });
 
