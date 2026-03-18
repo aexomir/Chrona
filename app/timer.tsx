@@ -2,11 +2,6 @@ import { StaticAuraBackground } from "@/components/static-aura-background";
 import type { Project } from "@/constants/projects";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { getAppUsage } from "@/lib/activitywatch";
-import {
-  endSessionActivity,
-  startSessionActivity,
-  updateSessionActivity,
-} from "@/lib/session-activity";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
 import {
@@ -112,7 +107,6 @@ export default function TimerScreen() {
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
       setElapsed(0);
-      endSessionActivity();
       return;
     }
     const tick = () => {
@@ -120,19 +114,6 @@ export default function TimerScreen() {
         (Date.now() - new Date(startTimestamp).getTime()) / 1000,
       );
       setElapsed(newElapsed);
-      // Update live activity
-      const projectName =
-        projects.find((p) => p.id === projectId)?.name || "Untitled";
-      console.log("🫵🏻Updating activity with:", {
-        projectName,
-        elapsed: newElapsed,
-        title,
-      });
-      updateSessionActivity({
-        projectName,
-        elapsed: newElapsed,
-        title: title || "Session",
-      });
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -157,21 +138,11 @@ export default function TimerScreen() {
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
-    const projId = selectedProject?.value ?? null;
-    startTimer(taskTitle.trim(), projId);
-    // Start live activity
-    const projectName =
-      projects.find((p) => p.id === projId)?.name || "Untitled";
-    startSessionActivity({
-      projectName,
-      elapsed: 0,
-      title: taskTitle.trim(),
-    });
+    startTimer(taskTitle.trim(), selectedProject?.value ?? null);
     router.back();
   };
 
   const handleStop = async () => {
-    endSessionActivity();
     const session = stopTimer();
     if (!session) {
       router.back();

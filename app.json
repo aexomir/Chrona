@@ -50,34 +50,6 @@
         {
           "calendarPermission": "Focus uses your calendar to suggest projects for upcoming events."
         }
-      ],
-      [
-        "expo-widgets",
-        {
-          "widgets": [
-            {
-              "name": "FocusTimeWidget",
-              "displayName": "Focus Time",
-              "description": "See your daily focus time and start tracking.",
-              "supportedFamilies": ["systemSmall", "systemMedium"],
-              "contentMarginsDisabled": true
-            },
-            {
-              "name": "StreakWidget",
-              "displayName": "Focus Streak",
-              "description": "Track your daily focus streak.",
-              "supportedFamilies": ["systemSmall"],
-              "contentMarginsDisabled": true
-            }
-          ],
-          "liveActivities": [
-            {
-              "name": "SessionActivity",
-              "displayName": "Session Activity",
-              "description": "Track your current session on the lock screen."
-            }
-          ]
-        }
       ]
     ],
     "experiments": {
