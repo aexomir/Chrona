@@ -69,6 +69,13 @@
               "supportedFamilies": ["systemSmall"],
               "contentMarginsDisabled": true
             }
+          ],
+          "liveActivities": [
+            {
+              "name": "SessionActivity",
+              "displayName": "Session Activity",
+              "description": "Track your current session on the lock screen."
+            }
           ]
         }
       ]

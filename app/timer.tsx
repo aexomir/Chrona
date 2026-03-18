@@ -2,6 +2,11 @@ import { StaticAuraBackground } from "@/components/static-aura-background";
 import type { Project } from "@/constants/projects";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { getAppUsage } from "@/lib/activitywatch";
+import {
+  endSessionActivity,
+  startSessionActivity,
+  updateSessionActivity,
+} from "@/lib/session-activity";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
 import {
@@ -107,16 +112,32 @@ export default function TimerScreen() {
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
       setElapsed(0);
+      endSessionActivity();
       return;
     }
-    const tick = () =>
-      setElapsed(
-        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000),
+    const tick = () => {
+      const newElapsed = Math.floor(
+        (Date.now() - new Date(startTimestamp).getTime()) / 1000,
       );
+      setElapsed(newElapsed);
+      // Update live activity
+      const projectName =
+        projects.find((p) => p.id === projectId)?.name || "Untitled";
+      console.log("🫵🏻Updating activity with:", {
+        projectName,
+        elapsed: newElapsed,
+        title,
+      });
+      updateSessionActivity({
+        projectName,
+        elapsed: newElapsed,
+        title: title || "Session",
+      });
+    };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [isTracking, startTimestamp]);
+  }, [isTracking, startTimestamp, projectId, title, projects]);
 
   // AW query for suggestions when entering non-tracking mode
   useEffect(() => {
@@ -136,11 +157,21 @@ export default function TimerScreen() {
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
-    startTimer(taskTitle.trim(), selectedProject?.value ?? null);
+    const projId = selectedProject?.value ?? null;
+    startTimer(taskTitle.trim(), projId);
+    // Start live activity
+    const projectName =
+      projects.find((p) => p.id === projId)?.name || "Untitled";
+    startSessionActivity({
+      projectName,
+      elapsed: 0,
+      title: taskTitle.trim(),
+    });
     router.back();
   };
 
   const handleStop = async () => {
+    endSessionActivity();
     const session = stopTimer();
     if (!session) {
       router.back();
