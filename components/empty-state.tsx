@@ -1,4 +1,5 @@
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { Neutral } from "@/constants/theme";
 import { Image } from "expo-image";
 import { Button } from "heroui-native";
 import { Text, View } from "react-native";
@@ -32,7 +33,7 @@ export function EmptyState({
           <Image
             source={`sf:${icon}`}
             style={{ width: 30, height: 30 }}
-            tintColor="#52525b"
+            tintColor={Neutral.z600}
           />
         </View>
       </View>

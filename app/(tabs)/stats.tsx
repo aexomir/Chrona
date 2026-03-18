@@ -1,6 +1,28 @@
+import { EmptyState } from "@/components/empty-state";
+import { StaticAuraBackground } from "@/components/static-aura-background";
+import { BarChart24 } from "@/components/stats/bar-chart24";
+import { MetricCard } from "@/components/stats/metric-card";
+import { ProjectDistribution } from "@/components/stats/project-distribution";
+import { SectionHeader } from "@/components/stats/section-header";
+import { StreakCallout } from "@/components/stats/streak-callout";
+import { TextAlpha } from "@/constants/theme";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import {
+  TIMEFRAMES,
+  type Timeframe,
+  computeFocusConsistency,
+  computeStreak,
+  filterSessions,
+  formatFocusTime,
+  getDelta,
+  getHourBuckets,
+  getPrevRange,
+  getProjectTotals,
+  getRange,
+  getTotalSeconds,
+} from "@/lib/stats-utils";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore } from "@/stores/sessions-store";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { GlassView } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,27 +41,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StaticAuraBackground } from "@/components/static-aura-background";
-import { EmptyState } from "@/components/empty-state";
-import { SectionHeader } from "@/components/stats/section-header";
-import { BarChart24 } from "@/components/stats/bar-chart24";
-import { MetricCard } from "@/components/stats/metric-card";
-import { ProjectDistribution } from "@/components/stats/project-distribution";
-import { StreakCallout } from "@/components/stats/streak-callout";
-import {
-  TIMEFRAMES,
-  type Timeframe,
-  getRange,
-  getPrevRange,
-  filterSessions,
-  getTotalSeconds,
-  formatFocusTime,
-  getDelta,
-  getHourBuckets,
-  getProjectTotals,
-  computeStreak,
-  computeFocusConsistency,
-} from "@/lib/stats-utils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -58,12 +59,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   compactTitle: {
-    color: "rgba(255,255,255,0.85)",
+    color: TextAlpha.primary,
     fontSize: 15,
     fontWeight: "600",
   },
   compactTitleSecondary: {
-    color: "rgba(255,255,255,0.45)",
+    color: TextAlpha.tertiary,
     fontWeight: "400",
   },
   pillContainer: {
@@ -110,8 +111,15 @@ export default function StatsScreen() {
   const projectTotals = getProjectTotals(sessions, projects);
   const streak = computeStreak(allSessions);
   const consistency = computeFocusConsistency(sessions, start, end);
-  const prevConsistency = computeFocusConsistency(prevSessions, prevStart, prevEnd);
-  const consistencyDelta = getDelta(consistency.percentage, prevConsistency.percentage);
+  const prevConsistency = computeFocusConsistency(
+    prevSessions,
+    prevStart,
+    prevEnd,
+  );
+  const consistencyDelta = getDelta(
+    consistency.percentage,
+    prevConsistency.percentage,
+  );
   const isEmpty = sessions.length === 0;
 
   const pillLayouts = useRef<{ x: number; width: number }[]>([]);
@@ -323,9 +331,7 @@ export default function StatsScreen() {
                       styles.pillButtonText,
                       {
                         color:
-                          activeIndex === idx
-                            ? "#000"
-                            : "rgba(255,255,255,0.45)",
+                          activeIndex === idx ? "#000" : TextAlpha.tertiary,
                       },
                     ]}
                   >

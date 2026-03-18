@@ -1,4 +1,5 @@
 import { GlassCard } from "./glass-card";
+import { Semantic } from "@/constants/theme";
 import { Image } from "expo-image";
 import { Text, View } from "react-native";
 
@@ -31,15 +32,12 @@ export function MetricCard({
                   style={{
                     width: 10,
                     height: 10,
-                    tintColor: delta.dir === "up" ? "#4ade80" : "#ef4444",
+                    tintColor: delta.dir === "up" ? Semantic.successBright : Semantic.danger,
                   }}
                 />
                 <Text
-                  className={
-                    delta.dir === "up"
-                      ? "text-green-400 text-xs"
-                      : "text-red-400 text-xs"
-                  }
+                  style={{ color: delta.dir === "up" ? Semantic.successBright : Semantic.danger }}
+                  className="text-xs"
                 >
                   {delta.pct}%
                 </Text>

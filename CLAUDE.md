@@ -42,7 +42,7 @@ app/
 - `components/ui/icon-symbol.tsx` + `.ios.tsx` — SF Symbols (iOS) / Material Icons (Android) abstraction
 - `components/haptic-tab.tsx` — haptic feedback wrapper for tab presses
 - `hooks/use-color-scheme.ts` — color scheme detection (has `.web.ts` platform variant)
-- `constants/theme.ts` — `Colors` object with `light` and `dark` keys (`background`, `text`, `tint`)
+- `constants/theme.ts` — Design token system: `Colors` (nav theme), `Semantic` (status colors: warning/success/danger/info), `TextAlpha` (text hierarchy on dark surfaces), `Neutral` (zinc scale for icon tints and fallbacks)
 
 ### Conventions
 

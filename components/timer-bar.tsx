@@ -10,6 +10,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { useTimerStore } from "@/stores/timer-store";
 import { useTrackingRulesStore } from "@/stores/tracking-rules-store";
 import { useAutoTrackingStore } from "@/stores/auto-tracking-store";
+import { Neutral } from "@/constants/theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -432,7 +433,7 @@ export function TimerBar() {
           <Text className="text-white/50 text-sm shrink-0">Suggested:</Text>
           <View
             className="w-1 h-1 rounded-full shrink-0"
-            style={{ backgroundColor: calendarProj?.color || "#888" }}
+            style={{ backgroundColor: calendarProj?.color ?? Neutral.z600 }}
           />
           <Text className="text-white text-sm shrink" numberOfLines={1}>
             {calendarSuggestion.eventTitle}
