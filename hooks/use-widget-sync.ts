@@ -1,92 +1,45 @@
-import { computeStreak, getTotalSeconds } from "@/lib/stats-utils";
-import { suggestProjectByTime } from "@/lib/time-suggestion";
-import { useProjects } from "@/stores/projects-store";
+import { syncWidgetData } from "@/storage/widget-storage";
 import { useSessionsStore } from "@/stores/sessions-store";
 import { useTimerStore } from "@/stores/timer-store";
-import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { useProjects } from "@/stores/projects-store";
+import { useEffect } from "react";
 
 export function useWidgetSync() {
-  const sessions = useSessionsStore((s) => s.sessions);
-  const isTracking = useTimerStore((s) => s.isTracking);
-  const startTimestamp = useTimerStore((s) => s.startTimestamp);
-  const projectId = useTimerStore((s) => s.projectId);
-  const projects = useProjects((s) => s.projects);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   useEffect(() => {
-    if (Platform.OS !== "ios") return;
-
     const sync = () => {
-      const today = new Date();
-      const startOfDay = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-      ).getTime();
-      const todaySessions = sessions.filter(
-        (s) => new Date(s.startTime).getTime() >= startOfDay,
-      );
-      const todayMinutes = Math.round(getTotalSeconds(todaySessions) / 60);
-      const streak = computeStreak(sessions);
+      const { sessions } = useSessionsStore.getState();
+      const { isTracking, startTimestamp, title, projectId } =
+        useTimerStore.getState();
+      const { projects } = useProjects.getState();
 
-      const elapsedMinutes =
-        isTracking && startTimestamp
-          ? Math.floor(
-              (Date.now() - new Date(startTimestamp).getTime()) / 60000,
-            )
-          : 0;
-
-      let suggestedProjectName = "";
-      let suggestedProjectId = "";
-
-      if (isTracking && projectId) {
-        const project = projects.find((p) => p.id === projectId);
-        suggestedProjectName = project?.name ?? "";
-        suggestedProjectId = projectId;
-      } else if (!isTracking) {
-        const hour = today.getHours();
-        const suggested = suggestProjectByTime(sessions, hour);
-        if (suggested) {
-          const project = projects.find((p) => p.id === suggested);
-          suggestedProjectName = project?.name ?? "";
-          suggestedProjectId = suggested;
-        }
+      // Use the active project, or fall back to the most recent session's project today
+      let resolvedProjectId = projectId;
+      if (!isTracking || !resolvedProjectId) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const lastToday = sessions.find(
+          (s) => new Date(s.startTime) >= today && s.projectId
+        );
+        resolvedProjectId = lastToday?.projectId ?? null;
       }
 
-      const suggestedProject = projects.find(
-        (p) => p.id === suggestedProjectId,
-      );
-      const suggestedProjectColor = suggestedProject?.color ?? "";
+      const project = resolvedProjectId
+        ? (projects.find((p) => p.id === resolvedProjectId) ?? null)
+        : null;
 
-      import("@/widgets/FocusTimeWidget").then((mod) => {
-        mod.default.updateSnapshot({
-          todayMinutes,
-          streakDays: streak.current,
-          isTracking,
-          elapsedMinutes,
-          suggestedProjectName,
-          suggestedProjectId,
-          suggestedProjectColor,
-        });
-      });
-
-      import("@/widgets/StreakWidget").then((mod) => {
-        mod.default.updateSnapshot({ streakDays: streak.current });
-      });
+      syncWidgetData(sessions, isTracking, startTimestamp, title, project);
     };
 
     sync();
 
-    if (isTracking) {
-      intervalRef.current = setInterval(sync, 5 * 60 * 1000);
-    }
+    const unsubSessions = useSessionsStore.subscribe(sync);
+    const unsubTimer = useTimerStore.subscribe(sync);
+    const unsubProjects = useProjects.subscribe(sync);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      unsubSessions();
+      unsubTimer();
+      unsubProjects();
     };
-  }, [sessions, isTracking, startTimestamp, projectId, projects]);
+  }, []);
 }

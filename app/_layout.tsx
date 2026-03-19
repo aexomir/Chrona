@@ -1,4 +1,5 @@
 import { HeroOverlay } from "@/components/hero-overlay";
+import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { heroProgress } from "@/lib/hero-animation";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
@@ -18,6 +19,8 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  useWidgetSync();
+
   useEffect(() => {
     SplashScreen.hideAsync().then(() => {
       requestAnimationFrame(() => {

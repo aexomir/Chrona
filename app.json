@@ -8,10 +8,15 @@
     "scheme": "focus",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "appleTeamId": "998C8ZCRMH",
       "supportsTablet": true,
       "bundleIdentifier": "com.aexomir.Focus",
       "infoPlist": {
-        "NSCalendarsUsageDescription": "Focus uses your calendar to suggest projects for upcoming events."
+        "NSCalendarsUsageDescription": "Focus uses your calendar to suggest projects for upcoming events.",
+        "AppGroupIdentifier": "group.com.aexomir.Focus"
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.aexomir.Focus"]
       }
     },
     "android": {
@@ -50,7 +55,8 @@
         {
           "calendarPermission": "Focus uses your calendar to suggest projects for upcoming events."
         }
-      ]
+      ],
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true,
