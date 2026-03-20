@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.aexomir.Focus",
       "infoPlist": {
         "NSCalendarsUsageDescription": "Focus uses your calendar to suggest projects for upcoming events.",
-        "AppGroupIdentifier": "group.com.aexomir.Focus"
+        "AppGroupIdentifier": "group.com.aexomir.Focus",
+        "NSSupportsLiveActivities": true
       },
       "entitlements": {
         "com.apple.security.application-groups": ["group.com.aexomir.Focus"]

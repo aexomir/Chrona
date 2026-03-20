@@ -1,11 +1,14 @@
+import ActivityController from "@/modules/activity-controller";
 import { syncTimelineData, syncWidgetData } from "@/storage/widget-storage";
 import { useCalendarStore } from "@/stores/calendar-store";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore } from "@/stores/sessions-store";
 import { useTimerStore } from "@/stores/timer-store";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export function useWidgetSync() {
+  const wasTrackingRef = useRef(false);
+
   useEffect(() => {
     const sync = () => {
       const { sessions } = useSessionsStore.getState();
@@ -45,6 +48,24 @@ export function useWidgetSync() {
         title,
         currentProject,
       );
+
+      // ── Live Activity ─────────────────────────────────────────────
+      if (process.env.EXPO_OS === "ios") {
+        const wasTracking = wasTrackingRef.current;
+        wasTrackingRef.current = isTracking;
+
+        if (isTracking && !wasTracking && startTimestamp) {
+          ActivityController.startActivity({
+            title,
+            projectName: currentProject?.name ?? "",
+            projectIcon: currentProject?.icon ?? "",
+            projectColor: currentProject?.color ?? "",
+            startTimestamp,
+          }).catch(() => {});
+        } else if (!isTracking && wasTracking) {
+          ActivityController.endActivity().catch(() => {});
+        }
+      }
     };
 
     sync();
