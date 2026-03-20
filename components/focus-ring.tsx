@@ -1,7 +1,6 @@
 import { heroProgress } from "@/lib/hero-animation";
 import { scrubProgress, scrubActive } from "@/lib/playback";
 import { useSessionsStore } from "@/stores/sessions-store";
-import { useSettingsStore } from "@/stores/settings-store";
 import { useTimerStore } from "@/stores/timer-store";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -31,8 +30,8 @@ const CENTER = SVG_SIZE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const DAY_SECONDS = 24 * 3600; // full 24-hour day
 
-type InfoMode = "total" | "goal" | "sessions" | "longest";
-const INFO_MODES: InfoMode[] = ["total", "goal", "sessions", "longest"];
+type InfoMode = "total" | "sessions" | "longest";
+const INFO_MODES: InfoMode[] = ["total", "sessions", "longest"];
 
 const styles = StyleSheet.create({
   container: {
@@ -135,8 +134,6 @@ function SegmentCircle({ seg }: SegmentCircleProps) {
 export function FocusRing() {
   const { sessions } = useSessionsStore();
   const { isTracking, startTimestamp } = useTimerStore();
-  const { dailyGoalMinutes } = useSettingsStore();
-  const dailyGoalSeconds = dailyGoalMinutes * 60;
   const [liveTotal, setLiveTotal] = useState(0);
   const [liveSegment, setLiveSegment] = useState<SegmentProps | null>(null);
   const [infoMode, setInfoMode] = useState<InfoMode>("total");
@@ -244,16 +241,9 @@ export function FocusRing() {
 
   // Get display text for current mode
   function getDisplayText() {
-    const percentage = Math.round((liveTotal / dailyGoalSeconds) * 100);
-
     switch (infoMode) {
       case "total":
         return { title: formatDuration(liveTotal), label: "TODAY" };
-      case "goal":
-        return {
-          title: `${percentage}%`,
-          label: "TO GOAL",
-        };
       case "sessions":
         return { title: String(completedStats.count), label: "SESSIONS" };
       case "longest":
