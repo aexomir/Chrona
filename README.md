@@ -1,50 +1,161 @@
-# Welcome to your Expo app 👋
+# Focus
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A minimal, dark-first time tracking app for people who want to be intentional about how they spend their time. Built with Expo 55 / React Native 0.83 / React 19.
 
-## Get started
+**Design ethos:** Calm · Precise · Minimal. Like a high-end watch — nothing superfluous, every element earns its place.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## Features
 
-2. Start the app
+- **Focus Timer** — Start sessions tied to projects, with live tracking and iOS Live Activities support
+- **ActivityWatch Integration** — Automatically captures app usage during sessions and learns which apps belong to which projects
+- **Smart Suggestions** — Learns from past sessions to suggest the right project when you switch context; integrates with active calendar events
+- **Missed Time Recovery** — Detects gaps >= 15 minutes in tracked time (up to 8h back) and prompts you to log them
+- **Calendar Integration** — Map calendar events to projects; get prompted to start a session when a mapped event is active
+- **Streak System** — Daily streak tracking with loss-aversion mechanics: badge, at-risk warning at 5pm, flash reward on save
+- **Timeline** — Chronological view of sessions interleaved with calendar event markers
+- **Stats & Insights** — On-device AI inference via ExecutorTorch for trend analysis and personalized insights
+- **Widgets** — iOS home screen widgets showing focus ring and timeline
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## Tech Stack
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+| Layer | Choice |
+|---|---|
+| Framework | Expo SDK 55, React 19.2, React Native 0.83.2 |
+| Routing | `expo-router` with `NativeTabs` (unstable-native-tabs) |
+| UI Components | `heroui-native` (default component library) |
+| Styling | `uniwind` (Tailwind v4 via `className`) |
+| State | Zustand 5 + MMKV (via `react-native-mmkv`) |
+| Animations | Reanimated v4 (60fps), Gesture Handler |
+| Canvas | `@shopify/react-native-skia` (aurora shader background) |
+| On-device AI | `react-native-executorch` |
+| Calendar | `expo-calendar` |
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## Project Structure
 
-When you're ready, run:
+```
+app/
+├── _layout.tsx              # Root Stack + DarkTheme provider
+├── timer.tsx                # Timer modal (start/review/save flow)
+├── recover.tsx              # Missed-time recovery modal
+├── projects.tsx             # Project management
+├── calendar-settings.tsx    # Calendar integration settings
+├── meeting-settings.tsx     # Meeting detection settings
+├── tracking-rules.tsx       # Tracking rules
+├── untracked.tsx            # Untracked session review
+└── (tabs)/
+    ├── _layout.tsx          # NativeTabs (5 tabs, minimizeBehavior="onScrollDown")
+    ├── index/index.tsx      # Dashboard (FocusRing, streak badge, recent sessions)
+    ├── timeline/index.tsx   # Timeline (sessions + calendar events)
+    ├── timeline/[id].tsx    # Session detail
+    ├── stats.tsx            # Statistics + AI insights
+    ├── settings.tsx         # Settings (integrations, data, preferences)
+    └── search.tsx           # Search (icon-only tab)
 
-```bash
-npm run reset-project
+components/
+├── timer-bar.tsx            # Persistent bottom bar (suggestions, recovery hint, streak)
+├── atmosphere.tsx           # Aurora shader background
+├── focus-ring.tsx           # Animated circular progress ring
+├── session-constellation.tsx
+├── animated-header-scroll-view.tsx
+├── stats/                   # Stats-specific components
+└── timeline/                # Timeline-specific components (rows, markers, pills)
+
+stores/
+├── sessions-store.ts        # Session CRUD + persistence
+├── projects-store.ts        # Project CRUD
+├── timer-store.ts           # Active timer state
+├── settings-store.ts        # User preferences
+├── suggestions-store.ts     # Learning-based project suggestions
+├── recovery-store.ts        # Missed time recovery (ephemeral)
+├── calendar-store.ts        # Calendar events + mappings
+├── tracking-rules-store.ts  # Tracking rules
+├── meeting-store.ts         # Meeting detection
+├── inference-store.ts       # AI inference results
+└── stride-flash-store.ts    # Streak flash animation (ephemeral)
+
+lib/
+├── activitywatch.ts         # ActivityWatch API integration
+├── detectMissedTime.ts      # Gap detection (8h lookback, 15m min gap)
+├── calendar.ts              # Calendar utilities + active event matching
+├── meetingDetection.ts      # Meeting detection logic
+├── inference.ts             # On-device AI inference
+├── stats-utils.ts           # Statistics calculations
+└── atmosphereShader.ts      # Aurora shader definition
+
+storage/
+└── index.ts                 # MMKV adapter for Zustand persist
+
+constants/
+└── theme.ts                 # Design tokens: Colors, Semantic, TextAlpha, Neutral
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## Development
 
-To learn more about developing your project with Expo, look at the following resources:
+> **Custom dev build required.** `expo-router/unstable-native-tabs` uses native APIs not available in Expo Go. `expo-calendar` also requires a native build.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+# Install dependencies
+bun install
 
-## Join the community
+# Build and run (first time or after native changes)
+npx expo run:ios
+npx expo run:android
 
-Join our community of developers creating universal apps.
+# Start dev server (after native build exists)
+bun run ios
+bun run android
+bun run web
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Lint
+bun run lint
+```
+
+---
+
+## Key Conventions
+
+- **Path alias**: `@/` maps to the project root — use `@/components/...`, `@/stores/...`, etc.
+- **Icons**: `expo-image` with `source="sf:name"` for SF Symbols (not `expo-symbols` or vector icons)
+- **Platform detection**: `process.env.EXPO_OS` instead of `Platform.OS`
+- **Context**: `React.use()` instead of `React.useContext()`
+- **Safe area**: `ScrollView` with `contentInsetAdjustmentBehavior="automatic"` instead of `SafeAreaView`
+- **Styling**: `className` (Tailwind via uniwind) — no `StyleSheet.create`
+- **Memoization**: Don't use `useMemo`/`useCallback` — React Compiler (`reactCompiler: true`) handles it
+- **heroui-native**: `className` for styling; `style` overrides `className`; some props are animated by Reanimated and override `className` (check IDE hover)
+
+### Critical dependency note
+
+`react-native-worklets` is pinned to `0.7.2` in both `dependencies` and `resolutions`. **Do not change this.** heroui-native ships `0.5.1` internally; the `resolutions` field forces `0.7.2` everywhere to match the compiled native binary.
+
+---
+
+## Architecture Notes
+
+### Storage
+All persistent state uses Zustand with MMKV via the adapter in `storage/index.ts`. Recovery and streak-flash stores are ephemeral (no persist) — they reset on app restart by design.
+
+### ActivityWatch Integration
+`lib/activitywatch.ts` — `getAppUsage(startTime, endTime)` returns aggregated app usage with top 3 window titles per app. Used in the timer review screen and for missed-time detection.
+
+### Missed Time Detection
+`lib/detectMissedTime.ts` — Looks back 8 hours, finds gaps >= 15 minutes, skips gaps with < 10 minutes of AW data, applies a 5-minute end buffer. Returns the best gap with a project suggestion, or null.
+
+### TimerBar
+`components/timer-bar.tsx` — Persistent element rendered as `BottomAccessory` in NativeTabs. Priority order of what it displays (highest to lowest):
+1. Streak flash reward (2s after saving a session)
+2. Streak at-risk warning (5pm+ with no session today)
+3. Missed time recovery hint (amber)
+4. Calendar event suggestion
+5. App-pattern suggestion (from learning store)
+6. Default "Tap to start" prompt
+
+### Navigation
+Root is a single `Stack`. `(tabs)` is the only stack screen. Five tab triggers: Dashboard, Timeline, Stats, Settings, Search (icon-only, `role="search"`).
