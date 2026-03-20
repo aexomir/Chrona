@@ -62,6 +62,13 @@ export function useWidgetSync() {
             projectColor: currentProject?.color ?? "",
             startTimestamp,
           }).catch(() => {});
+        } else if (isTracking && wasTracking) {
+          ActivityController.updateActivity({
+            title,
+            projectName: currentProject?.name ?? "",
+            projectIcon: currentProject?.icon ?? "",
+            projectColor: currentProject?.color ?? "",
+          }).catch(() => {});
         } else if (!isTracking && wasTracking) {
           ActivityController.endActivity().catch(() => {});
         }
