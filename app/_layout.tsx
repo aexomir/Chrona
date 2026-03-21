@@ -1,4 +1,5 @@
 import { HeroOverlay } from "@/components/hero-overlay";
+import { useWatchMessages } from "@/hooks/use-watch";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { heroProgress } from "@/lib/hero-animation";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
@@ -7,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { HeroUINativeProvider } from "heroui-native";
 import { useEffect } from "react";
+import { Alert } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { withSpring } from "react-native-reanimated";
@@ -20,6 +22,10 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   useWidgetSync();
+  useWatchMessages(
+    () => Alert.alert("[Watch] start pressed"),
+    () => Alert.alert("[Watch] stop pressed"),
+  );
 
   useEffect(() => {
     SplashScreen.hideAsync().then(() => {
