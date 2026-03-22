@@ -2,7 +2,7 @@ import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-vi
 import { StaticAuraBackground } from "@/components/static-aura-background";
 import { DevBadge, SoonBadge } from "@/components/wip-badge";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
-import { checkAwAvailability } from "@/lib/aw-adapter";
+import { checkAwAvailability, getCurrentApp } from "@/lib/aw-adapter";
 import { calendarStatusLabel } from "@/lib/calendar";
 import { meetingStatusLabel } from "@/lib/meetingDetection";
 import { useCalendarStore } from "@/stores/calendar-store";
@@ -124,11 +124,21 @@ export default function SettingsScreen() {
   const { rules } = useTrackingRulesStore();
   const [devTapCount, setDevTapCount] = useState(0);
   const [awAvailable, setAwAvailable] = useState<boolean | null>(null);
+  const [activeApp, setActiveApp] = useState<{ app: string; title: string | null } | null>(null);
 
   useEffect(() => {
     setAwAvailable(null);
     checkAwAvailability().then(setAwAvailable);
   }, [awAdapterMode]);
+
+  useEffect(() => {
+    if (!developerMode) return;
+    let cancelled = false;
+    const poll = () => getCurrentApp().then((r) => { if (!cancelled) setActiveApp(r); });
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [developerMode]);
 
   function handleAwModeToggle(streamEnabled: boolean) {
     setAwAdapterMode(streamEnabled ? "stream" : "localhost");
@@ -265,6 +275,36 @@ export default function SettingsScreen() {
                   </View>
                 </>
               )}
+              <SettingsDivider />
+              <View className="flex-row items-center justify-between py-4 px-5">
+                <View className="flex-row items-center gap-2 flex-1">
+                  <View
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: 4,
+                      backgroundColor: activeApp ? "#4ade80" : "#3f3f46",
+                    }}
+                  />
+                  <Text className="text-white text-base font-medium">Active App</Text>
+                </View>
+                <View className="items-end" style={{ maxWidth: "55%" }}>
+                  {activeApp ? (
+                    <>
+                      <Text className="text-white text-sm font-medium" numberOfLines={1}>
+                        {activeApp.app}
+                      </Text>
+                      {activeApp.title ? (
+                        <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
+                          {activeApp.title}
+                        </Text>
+                      ) : null}
+                    </>
+                  ) : (
+                    <Text className="text-neutral-600 text-sm">—</Text>
+                  )}
+                </View>
+              </View>
               <SettingsDivider />
               <SettingsRow
                 label="Meetings"
