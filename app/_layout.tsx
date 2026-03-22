@@ -1,11 +1,11 @@
 import { HeroOverlay } from "@/components/hero-overlay";
 import { useAwStream } from "@/features/activity-watch/use-aw-stream";
-import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
-import { useWidgetSync } from "@/features/watch/use-widget-sync";
-import { heroProgress } from "@/lib/hero-animation";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
+import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
+import { useWidgetSync } from "@/features/watch/use-widget-sync";
+import { heroProgress } from "@/lib/hero-animation";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -14,7 +14,7 @@ import { HeroUINativeProvider } from "heroui-native";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { withSpring } from "react-native-reanimated";
+import { Easing, withTiming } from "react-native-reanimated";
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
@@ -59,43 +59,56 @@ export default function RootLayout() {
   const syncWatch = useSyncWatch();
 
   useEffect(() => {
-    if (process.env.EXPO_OS !== 'ios') return;
+    if (process.env.EXPO_OS !== "ios") return;
 
     const sync = () => {
-      const { isTracking, startTimestamp, title, projectId } = useTimerStore.getState();
+      const { isTracking, startTimestamp, title, projectId } =
+        useTimerStore.getState();
       const { sessions } = useSessionsStore.getState();
       const { projects } = useProjects.getState();
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todaySessions = sessions.filter(s => new Date(s.startTime) >= today);
-      const todaySeconds = todaySessions.reduce((sum, s) => sum + s.duration, 0);
+      const todaySessions = sessions.filter(
+        (s) => new Date(s.startTime) >= today,
+      );
+      const todaySeconds = todaySessions.reduce(
+        (sum, s) => sum + s.duration,
+        0,
+      );
 
-      const currentProject = projectId ? projects.find(p => p.id === projectId) ?? null : null;
+      const currentProject = projectId
+        ? (projects.find((p) => p.id === projectId) ?? null)
+        : null;
 
       syncWatch({
         isTracking,
-        title: title || '',
-        projectName: currentProject?.name ?? '',
-        projectColor: currentProject?.color ?? '',
-        startTimestamp: isTracking && startTimestamp ? startTimestamp : '',
+        title: title || "",
+        projectName: currentProject?.name ?? "",
+        projectColor: currentProject?.color ?? "",
+        startTimestamp: isTracking && startTimestamp ? startTimestamp : "",
         todayMinutes: Math.floor(todaySeconds / 60),
         todaySessions: todaySessions.length,
         recentProjects: JSON.stringify(
-          projects.slice(0, 6).map(p => ({ id: p.id, name: p.name, color: p.color, icon: p.icon }))
+          projects.slice(0, 6).map((p) => ({
+            id: p.id,
+            name: p.name,
+            color: p.color,
+            icon: p.icon,
+          })),
         ),
         recentSessions: JSON.stringify(
-          todaySessions.slice(0, 8).map(s => {
-            const project = projects.find(p => p.id === s.projectId);
+          todaySessions.slice(0, 8).map((s) => {
+            const project = projects.find((p) => p.id === s.projectId);
             return {
               id: s.id,
-              title: s.title || '',
-              projectName: project?.name ?? '',
-              projectColor: project?.color ?? '',
+              title: s.title || "",
+              projectName: project?.name ?? "",
+              projectColor: project?.color ?? "",
               startTime: s.startTime,
               duration: s.duration,
             };
-          })
+          }),
         ),
       });
     };
@@ -104,19 +117,19 @@ export default function RootLayout() {
     const unsubTimer = useTimerStore.subscribe(sync);
     const unsubSessions = useSessionsStore.subscribe(sync);
     const unsubProjects = useProjects.subscribe(sync);
-    return () => { unsubTimer(); unsubSessions(); unsubProjects(); };
+    return () => {
+      unsubTimer();
+      unsubSessions();
+      unsubProjects();
+    };
   }, [syncWatch]);
 
   useEffect(() => {
-    SplashScreen.hideAsync().then(() => {
-      requestAnimationFrame(() => {
-        heroProgress.value = withSpring(1, {
-          mass: 1.2,
-          damping: 22,
-          stiffness: 180,
-        });
-      });
+    heroProgress.value = withTiming(1, {
+      duration: 4000,
+      easing: Easing.bezier(0.25, 0.1, 0.15, 1.0),
     });
+    SplashScreen.hideAsync();
   }, []);
 
   return (
