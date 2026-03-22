@@ -77,6 +77,19 @@ final class EventBroadcaster: ObservableObject {
         isServerRunning = false
     }
 
+    // MARK: - Meeting state
+
+    /// Called by ActivityCoordinator whenever meeting detection state changes.
+    /// Meeting events are not buffered — they are sent immediately to all clients.
+    func broadcastMeeting(_ state: MeetingState) {
+        let payload = MeetingPayload(
+            isInMeeting:    state.isInMeeting,
+            appId:          state.appId,
+            appDisplayName: state.appDisplayName
+        )
+        broadcast(StreamEnvelope(type: "meeting", payload: payload))
+    }
+
     // MARK: - Queueing
 
     /// Called by ActivityCoordinator after each successful DataStore write.

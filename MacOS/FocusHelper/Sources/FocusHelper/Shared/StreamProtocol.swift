@@ -41,3 +41,11 @@ struct StatusPayload: Encodable {
     let eventsToday: Int
     let isPolling: Bool
 }
+
+/// Broadcast immediately whenever meeting detection state changes.
+/// Not buffered — sent as soon as the transition is detected.
+struct MeetingPayload: Encodable {
+    let isInMeeting: Bool
+    let appId: String?
+    let appDisplayName: String?
+}

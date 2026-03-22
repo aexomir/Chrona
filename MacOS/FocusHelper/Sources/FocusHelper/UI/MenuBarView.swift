@@ -3,6 +3,7 @@ import Combine
 
 struct MenuBarView: View {
     @EnvironmentObject var coordinator: ActivityCoordinator
+    @EnvironmentObject var meetings: MeetingDetector
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -13,6 +14,8 @@ struct MenuBarView: View {
             streamSection
             Divider().padding(.horizontal, 8)
             sourceSection
+            Divider().padding(.horizontal, 8)
+            meetingsSection
             Divider().padding(.horizontal, 8)
             controls
             Divider().padding(.horizontal, 8).padding(.vertical, 2)
@@ -100,6 +103,49 @@ struct MenuBarView: View {
                 StatRow(label: "Host", value: coordinator.streamHostnameAddress)
             } else {
                 StatRow(label: "Stream", value: "Server offline", valueColor: .secondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private var meetingsSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "video.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                Text("Meeting Detection")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Toggle("", isOn: $meetings.isEnabled)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .labelsHidden()
+            }
+
+            if meetings.isEnabled {
+                if meetings.meetingState.isInMeeting,
+                   let name = meetings.meetingState.appDisplayName {
+                    StatRow(label: "In meeting", value: name, valueColor: .orange)
+                } else {
+                    StatRow(label: "Status", value: "No active meeting")
+                }
+                ForEach(MeetingAppRegistry.all) { def in
+                    let isOn = meetings.monitoredIds.contains(def.id)
+                    HStack {
+                        Text(def.displayName)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: isOn ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 11))
+                            .foregroundStyle(isOn ? Color.accentColor : Color.secondary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { meetings.toggleApp(def.id) }
+                }
             }
         }
         .padding(.horizontal, 14)

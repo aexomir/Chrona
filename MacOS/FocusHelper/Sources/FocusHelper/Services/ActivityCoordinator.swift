@@ -64,6 +64,7 @@ final class ActivityCoordinator: ObservableObject {
     // MARK: - Sub-systems
 
     let healthMonitor: HealthMonitor     // weak-refs self; safe
+    let meetingDetector = MeetingDetector()
 
     // MARK: - Private – infrastructure
 
@@ -167,6 +168,16 @@ final class ActivityCoordinator: ObservableObject {
             .compactMap { $0 }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] r in self?.health = r }
+            .store(in: &infraCancellables)
+
+        meetingDetector.$meetingState
+            .dropFirst()    // skip the initial .none published at init
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                guard let self else { return }
+                self.broadcaster.broadcastMeeting(state)
+                Logger.meetings.info("Meeting state broadcast — inMeeting=\(state.isInMeeting)")
+            }
             .store(in: &infraCancellables)
 
         do {

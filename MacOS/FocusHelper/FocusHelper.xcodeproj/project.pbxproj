@@ -12,7 +12,9 @@
 		2F33C06EBB7A706EA7E5D792 /* HealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 292964E97BE3EADFA8401E62 /* HealthMonitor.swift */; };
 		31DD35A06872E64B8CE430F1 /* ActivityCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D603B687AEDE2A278F8148D /* ActivityCoordinator.swift */; };
 		362FA0D3166C316998C870F8 /* ActivitySource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82D433FD41D4F40B4A170255 /* ActivitySource.swift */; };
+		3BB3A4121EEA262CCA58997A /* MeetingDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0772A398EF2722AF8050545E /* MeetingDomain.swift */; };
 		472D2F5C30FB04B1A4FCB753 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66BE3CF7AC9BE8413FE63D98 /* MenuBarView.swift */; };
+		554798D6B206CB453D1909A2 /* MeetingDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9F60166CF76AA366DACC2D /* MeetingDetector.swift */; };
 		6DD9186E7B8E1F4605A46411 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A86750B6CC7388F8F3FDE4 /* AppLogger.swift */; };
 		6EF6205ED9216B5AE8F95A81 /* EventBroadcaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A69651EB574859A6A551A4 /* EventBroadcaster.swift */; };
 		6F2253A247E12A4920CEE3A0 /* StreamProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A564DC96EB6C0D32CE7030D /* StreamProtocol.swift */; };
@@ -29,7 +31,9 @@
 
 /* Begin PBXFileReference section */
 		04A86750B6CC7388F8F3FDE4 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
+		0772A398EF2722AF8050545E /* MeetingDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDomain.swift; sourceTree = "<group>"; };
 		1A564DC96EB6C0D32CE7030D /* StreamProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamProtocol.swift; sourceTree = "<group>"; };
+		1F9F60166CF76AA366DACC2D /* MeetingDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetector.swift; sourceTree = "<group>"; };
 		265634DA674CDF12AD564DAD /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
 		292964E97BE3EADFA8401E62 /* HealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMonitor.swift; sourceTree = "<group>"; };
 		4DDE03625C6AB1AE01BA576E /* EmbeddedActivitySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedActivitySource.swift; sourceTree = "<group>"; };
@@ -60,6 +64,7 @@
 				56A69651EB574859A6A551A4 /* EventBroadcaster.swift */,
 				7E347A0936BDEADA3F7F5186 /* ExternalActivitySource.swift */,
 				292964E97BE3EADFA8401E62 /* HealthMonitor.swift */,
+				1F9F60166CF76AA366DACC2D /* MeetingDetector.swift */,
 				A65F11F8F65477715E74D353 /* NativeWindowWatcher.swift */,
 				7A8F8EE33C680523118347EB /* PermissionManager.swift */,
 			);
@@ -110,6 +115,7 @@
 			children = (
 				8826B3440127F9A3594DC02A /* ActivityDomain.swift */,
 				82D433FD41D4F40B4A170255 /* ActivitySource.swift */,
+				0772A398EF2722AF8050545E /* MeetingDomain.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -220,6 +226,8 @@
 				D8C873297FA68869861C066C /* FocusHelperApp.swift in Sources */,
 				2F33C06EBB7A706EA7E5D792 /* HealthMonitor.swift in Sources */,
 				FF3AE5D33E14B8D379E9BF80 /* InstanceGuard.swift in Sources */,
+				554798D6B206CB453D1909A2 /* MeetingDetector.swift in Sources */,
+				3BB3A4121EEA262CCA58997A /* MeetingDomain.swift in Sources */,
 				472D2F5C30FB04B1A4FCB753 /* MenuBarView.swift in Sources */,
 				C85ADB7E608A8B356CFA82AF /* Models.swift in Sources */,
 				8A44ED0FE7462A12EDCD5F5B /* NativeWindowWatcher.swift in Sources */,

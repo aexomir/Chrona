@@ -27,6 +27,7 @@ struct FocusHelperApp: App {
         MenuBarExtra {
             MenuBarView()
                 .environmentObject(coordinator)
+                .environmentObject(coordinator.meetingDetector)
         } label: {
             menuBarIcon
         }

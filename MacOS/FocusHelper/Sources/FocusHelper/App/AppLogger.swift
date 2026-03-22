@@ -32,4 +32,7 @@ extension Logger {
 
     /// HealthMonitor — periodic checks, staleness, component verdicts.
     static let health    = Logger(subsystem: subsystem, category: "HealthMonitor")
+
+    /// MeetingDetector — meeting app detection and state transitions.
+    static let meetings  = Logger(subsystem: subsystem, category: "MeetingDetector")
 }
