@@ -48,61 +48,41 @@ export default function RecoverScreen() {
   const insets = useSafeAreaInsets();
   const theme = useAuroraTheme()
   const { projects } = useProjects();
-  const { pending, removeFirst } = useRecoveryStore();
+  const { period, dismiss } = useRecoveryStore();
   const { addSession } = useSessionsStore();
   const { learnFromSession, associations } = useSuggestionsStore();
 
   const [title, setTitle] = useState(() => {
-    const p = pending[0];
-    if (p?.source === "calendar" && p?.eventTitle) {
-      return p.eventTitle;
-    }
+    if (period?.source === "calendar" && period?.eventTitle) return period.eventTitle;
     return "";
   });
   const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>(() => {
-    const p = pending[0];
-    if (!p?.suggestion.projectId) return undefined;
-    const proj = projects.find((p) => p.id === pending[0].suggestion.projectId);
+    if (!period?.suggestion.projectId) return undefined;
+    const proj = projects.find((p) => p.id === period.suggestion.projectId);
     return proj ? { value: proj.id, label: proj.name } : undefined;
   });
   const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
-  const hasInitializedApps = useRef(false);
 
-  // Redirect back if no pending recovery
+
+  // Redirect back if no period
   useEffect(() => {
-    if (pending.length === 0) {
-      router.back();
-    }
-  }, [pending]);
+    if (!period) router.back();
+  }, [period]);
 
-  // Initialize smart-selected apps when pending[0] changes
+  // Initialize smart-selected apps when period changes
   useEffect(() => {
-    if (pending.length === 0) {
-      hasInitializedApps.current = false;
-      return;
-    }
-    const currentPeriod = pending[0];
-    hasInitializedApps.current = false; // Reset flag to reinitialize when period changes
-
-    const defaults = getSmartDefaultApps(
-      currentPeriod.apps,
-      currentPeriod.suggestion.projectId,
-      associations
-    );
+    if (!period) return;
+    const defaults = getSmartDefaultApps(period.apps, period.suggestion.projectId, associations);
     setSelectedApps(defaults);
-    setTitle(currentPeriod.source === "calendar" && currentPeriod.eventTitle ? currentPeriod.eventTitle : "");
-    setSelectedProject(() => {
-      const proj = projects.find((p) => p.id === currentPeriod.suggestion.projectId);
-      return proj ? { value: proj.id, label: proj.name } : undefined;
-    });
-  }, [pending, associations, projects]);
+    setTitle(period.source === "calendar" && period.eventTitle ? period.eventTitle : "");
+    const proj = projects.find((p) => p.id === period.suggestion.projectId);
+    setSelectedProject(proj ? { value: proj.id, label: proj.name } : undefined);
+  }, [period, associations, projects]);
 
-  if (pending.length === 0 || !pending[0]) {
-    return null;
-  }
+  if (!period) return null;
 
   const selectedProj = projects.find((p) => p.id === selectedProject?.value);
-  const selected = pending[0].apps.filter((a) => selectedApps.has(a.app));
+  const selected = period.apps.filter((a) => selectedApps.has(a.app));
   const durationSeconds = Math.floor(
     selected.reduce((sum, a) => sum + a.duration, 0)
   );
@@ -118,34 +98,30 @@ export default function RecoverScreen() {
   };
 
   const handleLog = () => {
-    if (!title.trim() || !selectedProject) return;
+    if (!title.trim() || !selectedProject || !period) return;
 
-    const p = pending[0];
-    // Adjust endTime to match selected apps' duration
-    const startDate = new Date(p.startTime);
-    const adjustedEndTime = new Date(startDate.getTime() + durationSeconds * 1000).toISOString();
+    const adjustedEndTime = new Date(
+      new Date(period.startTime).getTime() + durationSeconds * 1000
+    ).toISOString();
 
     addSession({
       id: Date.now().toString(),
       title: title.trim(),
       projectId: selectedProject.value,
-      startTime: p.startTime,
+      startTime: period.startTime,
       endTime: adjustedEndTime,
       duration: durationSeconds,
       apps: selected.length > 0 ? selected : undefined,
     });
 
-    // Learn from session if we have app data
-    if (selected.length > 0) {
-      learnFromSession(selected, selectedProject.value);
-    }
+    if (selected.length > 0) learnFromSession(selected, selectedProject.value);
 
-    removeFirst();
+    dismiss();
     router.back();
   };
 
   const handleDismiss = () => {
-    removeFirst();
+    dismiss();
     router.back();
   };
 
@@ -167,7 +143,7 @@ export default function RecoverScreen() {
 
       <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 px-6">
         {/* Header card: calendar-specific or AW-based */}
-        {pending[0].source === "calendar" ? (
+        {period.source === "calendar" ? (
           <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
             <View className="flex-row items-center gap-2 mb-3">
               <Image
@@ -179,10 +155,10 @@ export default function RecoverScreen() {
               </Text>
             </View>
             <Text className="text-white text-lg font-semibold mb-1">
-              {pending[0].eventTitle}
+              {period.eventTitle}
             </Text>
             <Text className="text-zinc-400 text-sm mb-2">
-              {formatTimeRange(pending[0].startTime, pending[0].endTime)}
+              {formatTimeRange(period.startTime, period.endTime)}
             </Text>
             <Text className="text-zinc-500 text-sm">
               {formatDuration(durationSeconds)}
@@ -200,7 +176,7 @@ export default function RecoverScreen() {
               </Text>
             </View>
             <Text className="text-white text-lg font-semibold mb-2">
-              {formatTimeRange(pending[0].startTime, pending[0].endTime)}
+              {formatTimeRange(period.startTime, period.endTime)}
             </Text>
             <Text className="text-zinc-400 text-sm">
               {formatDuration(durationSeconds)}
@@ -268,13 +244,13 @@ export default function RecoverScreen() {
         {/* Apps section */}
         <View className="mb-6">
           <Text className="text-white text-base font-semibold mb-3">Apps Detected</Text>
-          {pending[0].apps.length === 0 ? (
+          {period.apps.length === 0 ? (
             <View className="items-center justify-center py-8 rounded-2xl border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
               <Text className="text-zinc-400 text-base">No activity detected</Text>
             </View>
           ) : (
             <View className="rounded-2xl border overflow-hidden" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
-              {pending[0].apps.map((app, i) => {
+              {period.apps.map((app, i) => {
                 const isSelected = selectedApps.has(app.app);
                 const titles = app.titles ?? [];
                 return (
@@ -282,7 +258,7 @@ export default function RecoverScreen() {
                     key={app.app}
                     onPress={() => handleToggleApp(app.app)}
                     className="flex-row items-start gap-3 px-4 py-3"
-                    style={i < pending[0].apps.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
+                    style={i < period.apps.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder } : undefined}
                   >
                     <View className="pt-1">
                       <View

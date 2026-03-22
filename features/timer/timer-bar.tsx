@@ -32,7 +32,7 @@ export function TimerBar() {
   const { sessions, addSession } = useSessionsStore();
   const { suggestProject, learnFromSession } = useSuggestionsStore();
   const { autoTrackingEnabled } = useSettingsStore();
-  const { pending, add: addRecovery, set: setPending } = useRecoveryStore();
+  const { period: recoveryPeriod, set: setRecovery, clear: clearRecovery, isDismissed } = useRecoveryStore();
   const {
     isEnabled: calendarEnabled,
     permissionStatus,
@@ -71,6 +71,8 @@ export function TimerBar() {
   } | null>(null);
   const hasDetectedRef = useRef(false);
   const hasCheckCalendarRef = useRef(false);
+  const prevIsTrackingRef = useRef(isTracking);
+  const prevSessionsRef = useRef(sessions);
   const isAutoTrackingRef = useRef(isAutoTracking);
   const matchedRuleIdRef = useRef(matchedRuleId);
   const consecutiveOfflineCountRef = useRef(consecutiveOfflineCount);
@@ -222,74 +224,44 @@ export function TimerBar() {
     return () => clearInterval(id);
   }, [isTracking, autoTrackingEnabled]);
 
-  // Detection effect: run both AW and calendar detection sequentially when not tracking
+  // If a newly logged session covers the pending recovery period, clear it
   useEffect(() => {
-    if (isTracking) {
-      hasDetectedRef.current = false;
-      return;
+    if (!recoveryPeriod) return;
+    const pStart = new Date(recoveryPeriod.startTime);
+    const pEnd = new Date(recoveryPeriod.endTime);
+    if (sessions.some((s) => new Date(s.startTime) < pEnd && new Date(s.endTime) > pStart)) {
+      clearRecovery();
     }
-    // Reset detection flag when sessions change so we re-validate pending recovery
-    // If a new session was logged, detection will re-run and find no gap
-    hasDetectedRef.current = false;
-  }, [isTracking, sessions]);
+  }, [sessions, recoveryPeriod, clearRecovery]);
 
-  // Validate pending recovery against current sessions
-  // Remove periods that overlap with newly logged sessions
+  // Detection: run once when idle. Reset only when tracking stops or sessions change.
+  // Never resets on dismiss — dismissed gaps are blocked via isDismissed().
   useEffect(() => {
-    if (pending.length === 0) return;
+    const trackingChanged = prevIsTrackingRef.current !== isTracking;
+    const sessionsChanged = prevSessionsRef.current !== sessions;
+    prevIsTrackingRef.current = isTracking;
+    prevSessionsRef.current = sessions;
 
-    const notOverlapped = pending.filter((period) => {
-      const pendingStart = new Date(period.startTime);
-      const pendingEnd = new Date(period.endTime);
+    if (trackingChanged || sessionsChanged) hasDetectedRef.current = false;
 
-      // Check if any session overlaps with this period
-      const isOverlapped = sessions.some((s) => {
-        const sStart = new Date(s.startTime);
-        const sEnd = new Date(s.endTime);
-        return sStart < pendingEnd && sEnd > pendingStart;
-      });
-
-      return !isOverlapped;
-    });
-
-    if (notOverlapped.length !== pending.length) {
-      // Rebuild the array with only non-overlapped periods
-      setPending(notOverlapped);
-    }
-  }, [sessions, pending, setPending]);
-
-  // Separate effect for running detection when conditions are met
-  useEffect(() => {
-    if (isTracking || hasDetectedRef.current || pending.length > 0) return;
+    if (isTracking || hasDetectedRef.current || recoveryPeriod !== null) return;
 
     hasDetectedRef.current = true;
     (async () => {
-      // Pass 1: AW gap-based detection
-      const awResults = await detectMissedTime(sessions, suggestProject);
-      if (awResults.length > 0) {
-        for (const result of awResults) {
-          addRecovery(result);
-        }
-        return;
-      }
+      const awResult = await detectMissedTime(sessions, suggestProject, isDismissed);
+      if (awResult) { setRecovery(awResult); return; }
 
-      // Pass 2: calendar-based detection (only if calendar enabled + granted)
       if (!calendarEnabled || permissionStatus !== "granted") return;
-      const calResult = await detectMissedCalendarEvent(
-        calendarEvents,
-        mappings,
-        sessions,
-      );
-      if (calResult) {
-        addRecovery(calResult);
-      }
+      const calResult = await detectMissedCalendarEvent(calendarEvents, mappings, sessions);
+      if (calResult) setRecovery(calResult);
     })();
   }, [
     isTracking,
     sessions,
     suggestProject,
-    pending,
-    addRecovery,
+    recoveryPeriod,
+    setRecovery,
+    isDismissed,
     calendarEnabled,
     permissionStatus,
     calendarEvents,
@@ -298,7 +270,7 @@ export function TimerBar() {
 
   // Calendar event suggestion effect: check when not tracking
   useEffect(() => {
-    if (isTracking || pending.length > 0 || !calendarEnabled) {
+    if (isTracking || recoveryPeriod !== null || !calendarEnabled) {
       hasCheckCalendarRef.current = false;
       setCalendarSuggestion(null);
       return;
@@ -313,7 +285,7 @@ export function TimerBar() {
         projectId: suggestion.projectId,
       });
     }
-  }, [isTracking, pending, calendarEnabled, getActiveEventSuggestion]);
+  }, [isTracking, recoveryPeriod, calendarEnabled, getActiveEventSuggestion]);
 
   // Periodic calendar refresh: refresh events every 5 minutes when idle
   useEffect(() => {
@@ -350,7 +322,7 @@ export function TimerBar() {
               untrackedTitle ? `&title=${encodeURIComponent(untrackedTitle)}` : ""
             }`,
           );
-        } else if (pending.length > 0) {
+        } else if (recoveryPeriod !== null) {
           router.push("/recover");
         } else if (calendarSuggestion && calendarProj) {
           router.push(
@@ -412,12 +384,12 @@ export function TimerBar() {
             <Text className="text-blue-400/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
-      ) : pending.length > 0 && pending[0] ? (
-        pending[0].source === "calendar" ? (
+      ) : recoveryPeriod !== null ? (
+        recoveryPeriod.source === "calendar" ? (
           <View className="flex-row items-center justify-center gap-2">
             <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
             <Text className="text-amber-400 text-sm" numberOfLines={1}>
-              {pending[0].eventTitle} · Tap to log
+              {recoveryPeriod.eventTitle} · Tap to log
             </Text>
           </View>
         ) : (

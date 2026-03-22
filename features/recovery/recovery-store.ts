@@ -2,21 +2,29 @@ import { create } from "zustand";
 import type { RecoveryPeriod } from "@/features/recovery/detectMissedTime";
 
 type RecoveryState = {
-  pending: RecoveryPeriod[];
-  add: (period: RecoveryPeriod) => void;
-  set: (periods: RecoveryPeriod[]) => void;
-  removeFirst: () => void;
+  period: RecoveryPeriod | null;
+  dismissedStarts: string[];
+  set: (period: RecoveryPeriod) => void;
+  dismiss: () => void;
   clear: () => void;
+  isDismissed: (startTime: string) => boolean;
 };
 
 /**
- * Ephemeral Zustand store for missed time recovery (no persist).
- * Resets on app launch — stale banners never resurface.
+ * Ephemeral store for missed time recovery (no persist).
+ * Holds at most one pending period. Dismissed periods never resurface this session.
  */
-export const useRecoveryStore = create<RecoveryState>()((set) => ({
-  pending: [],
-  add: (period) => set((state) => ({ pending: [...state.pending, period] })),
-  set: (periods) => set({ pending: periods }),
-  removeFirst: () => set((state) => ({ pending: state.pending.slice(1) })),
-  clear: () => set({ pending: [] }),
+export const useRecoveryStore = create<RecoveryState>()((set, get) => ({
+  period: null,
+  dismissedStarts: [],
+  set: (period) => set({ period }),
+  dismiss: () =>
+    set((state) => ({
+      period: null,
+      dismissedStarts: state.period
+        ? [...state.dismissedStarts, state.period.startTime]
+        : state.dismissedStarts,
+    })),
+  clear: () => set({ period: null }),
+  isDismissed: (startTime) => get().dismissedStarts.includes(startTime),
 }));
