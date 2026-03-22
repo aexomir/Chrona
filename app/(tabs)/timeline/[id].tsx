@@ -1,5 +1,4 @@
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
-import { TabBarContext } from "@/context/TabBarContext";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
@@ -14,12 +13,11 @@ import {
   Link,
   router,
   Stack,
-  useFocusEffect,
   useLocalSearchParams,
   useNavigation,
 } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
-import { use, useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -105,13 +103,6 @@ export default function SessionDetailScreen() {
   const [editingField, setEditingField] = useState<"start" | "end" | null>(
     null,
   );
-
-  const { setIsTabBarHidden } = use(TabBarContext);
-
-  useFocusEffect(() => {
-    setIsTabBarHidden(true);
-    return () => setIsTabBarHidden(false);
-  });
 
   const navigation = useNavigation();
 
