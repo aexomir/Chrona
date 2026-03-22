@@ -1,6 +1,6 @@
-import { detectMissedTime } from "@/lib/detectMissedTime";
-import { getAppUsage } from "@/lib/activitywatch";
-import type { Session, AppUsage } from "@/stores/sessions-store";
+import { detectMissedTime } from "@/features/recovery/detectMissedTime";
+import { getAppUsage } from "@/features/activity-watch/activitywatch";
+import type { Session, AppUsage } from "@/features/sessions/sessions-store";
 
 jest.mock("react-native-mmkv");
 jest.mock("react-native-reanimated", () =>
@@ -11,7 +11,7 @@ jest.mock("react-native-reanimated", () =>
 // Mocks
 // ---------------------------------------------------------------------------
 
-jest.mock("@/lib/activitywatch", () => ({
+jest.mock("@/features/activity-watch/activitywatch", () => ({
   getAppUsage: jest.fn(),
 }));
 

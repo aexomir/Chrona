@@ -1,7 +1,7 @@
-import { useTrackingRulesStore } from "@/stores/tracking-rules-store";
-import { useProjects } from "@/stores/projects-store";
-import { StaticAuraBackground } from "@/components/static-aura-background";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { useTrackingRulesStore } from "@/features/tracking-rules/tracking-rules-store";
+import { useProjects } from "@/features/projects/projects-store";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { Image } from "expo-image";
 import { useLocalSearchParams, router } from "expo-router";
 import { Button, Input, PortalHost, Select, Switch } from "heroui-native";

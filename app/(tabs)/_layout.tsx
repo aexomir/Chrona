@@ -1,4 +1,4 @@
-import { TimerBar } from "@/components/timer-bar";
+import { TimerBar } from "@/features/timer/timer-bar";
 import { TabBarContext } from "@/context/TabBarContext";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useState } from "react";

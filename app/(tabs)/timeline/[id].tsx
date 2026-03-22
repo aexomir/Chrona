@@ -1,12 +1,12 @@
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { TabBarContext } from "@/context/TabBarContext";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
-import { useProjects } from "@/stores/projects-store";
-import { useSessionsStore } from "@/stores/sessions-store";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
+import { useProjects } from "@/features/projects/projects-store";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
 import {
   getSmartDefaultApps,
   useSuggestionsStore,
-} from "@/stores/suggestions-store";
+} from "@/features/activity-watch/suggestions-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";

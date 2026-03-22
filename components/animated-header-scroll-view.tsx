@@ -1,4 +1,4 @@
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {

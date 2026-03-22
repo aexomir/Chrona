@@ -1,10 +1,10 @@
-import { StaticAuraBackground } from "@/components/static-aura-background";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { EmptyState } from "@/components/empty-state";
-import { DatePill } from "@/components/timeline/date-pill";
-import { GapSeparator } from "@/components/timeline/gap-separator";
-import { SessionRow } from "@/components/timeline/session-row";
-import { LiveSessionRow } from "@/components/timeline/live-session-row";
-import { CalendarEventMarker } from "@/components/timeline/calendar-event-marker";
+import { DatePill } from "@/features/timeline/components/date-pill";
+import { GapSeparator } from "@/features/timeline/components/gap-separator";
+import { SessionRow } from "@/features/timeline/components/session-row";
+import { LiveSessionRow } from "@/features/timeline/components/live-session-row";
+import { CalendarEventMarker } from "@/features/timeline/components/calendar-event-marker";
 import {
   getWeekStart,
   getWeekDays,
@@ -15,13 +15,13 @@ import {
   CIRCLE_EASING,
   CIRCLE_DURATION,
   DAY_ABBREVS,
-} from "@/lib/timeline-utils";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
-import type { CalendarEvent } from "@/lib/calendar";
-import { useCalendarStore } from "@/stores/calendar-store";
-import { useProjects } from "@/stores/projects-store";
-import { type Session, useSessionsStore } from "@/stores/sessions-store";
-import { useTimerStore } from "@/stores/timer-store";
+} from "@/features/timeline/timeline-utils";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
+import type { CalendarEvent } from "@/features/calendar/calendar";
+import { useCalendarStore } from "@/features/calendar/calendar-store";
+import { useProjects } from "@/features/projects/projects-store";
+import { type Session, useSessionsStore } from "@/features/sessions/sessions-store";
+import { useTimerStore } from "@/features/timer/timer-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";

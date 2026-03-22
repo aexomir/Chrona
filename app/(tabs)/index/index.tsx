@@ -1,10 +1,10 @@
-import { Atmosphere } from "@/components/atmosphere";
-import { FocusRing } from "@/components/focus-ring";
-import { SessionConstellation } from "@/components/session-constellation";
+import { Atmosphere } from "@/features/aurora/atmosphere";
+import { FocusRing } from "@/features/timer/focus-ring";
+import { SessionConstellation } from "@/features/analytics/session-constellation";
 import { heroProgress } from "@/lib/hero-animation";
-import { scrubProgress } from "@/lib/playback";
-import { useSessionsStore } from "@/stores/sessions-store";
-import { useSettingsStore } from "@/stores/settings-store";
+import { scrubProgress } from "@/features/timeline/playback";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ScrollView, View } from "react-native";

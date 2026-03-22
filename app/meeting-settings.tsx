@@ -1,6 +1,6 @@
-import { MEETING_APPS } from "@/lib/meetingDetection";
-import { useMeetingStore } from "@/stores/meeting-store";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { MEETING_APPS } from "@/features/meetings/meetingDetection";
+import { useMeetingStore } from "@/features/meetings/meeting-store";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { Image } from "expo-image";
 import { ListGroup, Separator } from "heroui-native";
 import {

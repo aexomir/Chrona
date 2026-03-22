@@ -2,7 +2,7 @@ import {
   getAppCategory,
   checkAwAvailability,
   APP_CATEGORIES,
-} from "@/lib/activitywatch";
+} from "@/features/activity-watch/activitywatch";
 
 jest.mock("react-native-mmkv");
 jest.mock("react-native-reanimated", () =>

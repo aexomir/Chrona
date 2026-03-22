@@ -1,9 +1,9 @@
 import { Image } from "expo-image";
-import { useTrackingRulesStore } from "@/stores/tracking-rules-store";
-import { useProjects } from "@/stores/projects-store";
-import { useSettingsStore } from "@/stores/settings-store";
-import { useAutoTrackingStore } from "@/stores/auto-tracking-store";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { useTrackingRulesStore } from "@/features/tracking-rules/tracking-rules-store";
+import { useProjects } from "@/features/projects/projects-store";
+import { useSettingsStore } from "@/features/settings/settings-store";
+import { useAutoTrackingStore } from "@/features/activity-watch/auto-tracking-store";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { ListGroup, Separator, Switch } from "heroui-native";
 import { useEffect, useState } from "react";
 import {

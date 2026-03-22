@@ -1,4 +1,4 @@
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { Neutral } from "@/constants/theme";
 import { Image } from "expo-image";
 import { Button } from "heroui-native";

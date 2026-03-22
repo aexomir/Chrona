@@ -1,12 +1,12 @@
-import { useSessionsStore } from "@/stores/sessions-store";
-import { useProjects } from "@/stores/projects-store";
-import { useRecoveryStore } from "@/stores/recovery-store";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
+import { useProjects } from "@/features/projects/projects-store";
+import { useRecoveryStore } from "@/features/recovery/recovery-store";
 import {
   useSuggestionsStore,
   getSmartDefaultApps,
-} from "@/stores/suggestions-store";
-import { StaticAuraBackground } from "@/components/static-aura-background";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+} from "@/features/activity-watch/suggestions-store";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";

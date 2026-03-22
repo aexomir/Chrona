@@ -1,12 +1,12 @@
 import { EmptyState } from "@/components/empty-state";
-import { StaticAuraBackground } from "@/components/static-aura-background";
-import { BarChart24 } from "@/components/stats/bar-chart24";
-import { MetricCard } from "@/components/stats/metric-card";
-import { ProjectDistribution } from "@/components/stats/project-distribution";
-import { SectionHeader } from "@/components/stats/section-header";
-import { StreakCallout } from "@/components/stats/streak-callout";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
+import { BarChart24 } from "@/features/analytics/components/bar-chart24";
+import { MetricCard } from "@/features/analytics/components/metric-card";
+import { ProjectDistribution } from "@/features/analytics/components/project-distribution";
+import { SectionHeader } from "@/features/analytics/components/section-header";
+import { StreakCallout } from "@/features/analytics/components/streak-callout";
 import { TextAlpha } from "@/constants/theme";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import {
   TIMEFRAMES,
   type Timeframe,
@@ -20,9 +20,9 @@ import {
   getProjectTotals,
   getRange,
   getTotalSeconds,
-} from "@/lib/stats-utils";
-import { useProjects } from "@/stores/projects-store";
-import { useSessionsStore } from "@/stores/sessions-store";
+} from "@/features/analytics/stats-utils";
+import { useProjects } from "@/features/projects/projects-store";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { GlassView } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";

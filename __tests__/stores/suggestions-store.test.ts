@@ -1,5 +1,5 @@
-import { getSmartDefaultApps, useSuggestionsStore } from "@/stores/suggestions-store";
-import type { AppUsage } from "@/stores/sessions-store";
+import { getSmartDefaultApps, useSuggestionsStore } from "@/features/activity-watch/suggestions-store";
+import type { AppUsage } from "@/features/sessions/sessions-store";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -14,7 +14,7 @@ jest.mock("react-native-reanimated", () =>
 );
 
 // Mock the getAppCategory used inside suggestProject
-jest.mock("@/lib/activitywatch", () => ({
+jest.mock("@/features/activity-watch/activitywatch", () => ({
   getAppCategory: (appName: string) => {
     const map: Record<string, string> = {
       chrome: "browser",

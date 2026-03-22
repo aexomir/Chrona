@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
-import { useProjects } from "@/stores/projects-store";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { useProjects } from "@/features/projects/projects-store";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { ListGroup, Separator } from "heroui-native";
 import { useState } from "react";
 import {

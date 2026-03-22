@@ -1,5 +1,5 @@
 import type { Project } from "@/constants/projects";
-import type { Session } from "@/stores/sessions-store";
+import type { Session } from "@/features/sessions/sessions-store";
 import { ExtensionStorage } from "@bacons/apple-targets";
 
 const APP_GROUP = "group.com.aexomir.Focus";

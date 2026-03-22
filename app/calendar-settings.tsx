@@ -2,10 +2,10 @@ import {
   calendarStatusLabel,
   getCalendars,
   type CalendarInfo,
-} from "@/lib/calendar";
-import { useCalendarStore } from "@/stores/calendar-store";
-import { useProjects } from "@/stores/projects-store";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+} from "@/features/calendar/calendar";
+import { useCalendarStore } from "@/features/calendar/calendar-store";
+import { useProjects } from "@/features/projects/projects-store";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { ListGroup, PortalHost, Select, Separator } from "heroui-native";

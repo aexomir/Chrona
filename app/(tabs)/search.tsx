@@ -1,9 +1,9 @@
-import { AIComponentRenderer } from "@/components/ai-component-renderer";
-import { StaticAuraBackground } from "@/components/static-aura-background";
-import { useSearchQuery } from "@/hooks/use-search-query";
-import { generateTrendingInsights } from "@/lib/trending-insights";
-import { useProjects } from "@/stores/projects-store";
-import { useSessionsStore } from "@/stores/sessions-store";
+import { AIComponentRenderer } from "@/features/search/ai-component-renderer";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
+import { useSearchQuery } from "@/features/search/use-search-query";
+import { generateTrendingInsights } from "@/features/analytics/trending-insights";
+import { useProjects } from "@/features/projects/projects-store";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { GlassView } from "expo-glass-effect";
 import { Image } from "expo-image";
 import { useMemo, useRef, useState } from "react";

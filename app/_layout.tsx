@@ -1,11 +1,11 @@
 import { HeroOverlay } from "@/components/hero-overlay";
-import { useAwStream } from "@/hooks/use-aw-stream";
-import { useSyncWatch, useWatchMessages } from "@/hooks/use-watch";
-import { useWidgetSync } from "@/hooks/use-widget-sync";
+import { useAwStream } from "@/features/activity-watch/use-aw-stream";
+import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
+import { useWidgetSync } from "@/features/watch/use-widget-sync";
 import { heroProgress } from "@/lib/hero-animation";
-import { useProjects } from "@/stores/projects-store";
-import { useSessionsStore } from "@/stores/sessions-store";
-import { useTimerStore } from "@/stores/timer-store";
+import { useProjects } from "@/features/projects/projects-store";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
+import { useTimerStore } from "@/features/timer/timer-store";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
