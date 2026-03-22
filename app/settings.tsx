@@ -4,9 +4,7 @@ import { DevBadge, SoonBadge } from "@/components/wip-badge";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { checkAwAvailability, getCurrentApp } from "@/features/activity-watch/aw-adapter";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
-import { meetingStatusLabel } from "@/features/meetings/meetingDetection";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
-import { useMeetingStore } from "@/features/meetings/meeting-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useTrackingRulesStore } from "@/features/tracking-rules/tracking-rules-store";
 import { Image } from "expo-image";
@@ -108,7 +106,6 @@ export default function SettingsScreen() {
   const router = useRouter();
   const theme = useAuroraTheme();
   const { permissionStatus, isEnabled } = useCalendarStore();
-  const { isEnabled: meetingEnabled, selectedAppIds } = useMeetingStore();
   const {
     auroraEnabled,
     setAuroraEnabled,
@@ -305,19 +302,6 @@ export default function SettingsScreen() {
                   )}
                 </View>
               </View>
-              <SettingsDivider />
-              <SettingsRow
-                label="Meetings"
-                onPress={() => router.push("/meeting-settings")}
-                suffix={
-                  <View className="flex-row items-center gap-2">
-                    <SoonBadge />
-                    <ValueSuffix
-                      value={meetingStatusLabel(meetingEnabled, selectedAppIds)}
-                    />
-                  </View>
-                }
-              />
               <SettingsDivider />
               <SettingsRow
                 label="Tracking Rules"
