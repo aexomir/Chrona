@@ -85,6 +85,7 @@ final class PermissionManager: ObservableObject {
     // MARK: - Private
 
     private var pollTask: Task<Void, Never>?
+    private var distributedObserver: NSObjectProtocol?
 
     // MARK: - Init
 
@@ -101,12 +102,17 @@ final class PermissionManager: ObservableObject {
     func startMonitoring() {
         guard pollTask == nil else { return }
         Logger.watcher.debug("PermissionManager: monitoring started")
+        subscribeToDistributedNotification()
         schedulePoll()
     }
 
     func stopMonitoring() {
         pollTask?.cancel()
         pollTask = nil
+        if let observer = distributedObserver {
+            DistributedNotificationCenter.default().removeObserver(observer)
+            distributedObserver = nil
+        }
         Logger.watcher.debug("PermissionManager: monitoring stopped")
     }
 
@@ -132,6 +138,23 @@ final class PermissionManager: ObservableObject {
         Logger.watcher.info("PermissionManager: opened System Settings > Accessibility")
         // After the user acts in Settings, ramp up polling to catch the change quickly.
         scheduleRapidRecheck(times: 8, interval: 3)
+    }
+
+    // MARK: - Private – distributed notification
+
+    /// macOS fires `com.apple.accessibility.api` on the distributed notification center
+    /// whenever the accessibility database changes (toggle on/off in System Settings).
+    /// Reacting to this gives near-instant detection without waiting for the next poll cycle.
+    private func subscribeToDistributedNotification() {
+        guard distributedObserver == nil else { return }
+        distributedObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.accessibility.api"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refresh() }
+        }
+        Logger.watcher.debug("PermissionManager: subscribed to distributed accessibility notification")
     }
 
     // MARK: - Private – permission evaluation

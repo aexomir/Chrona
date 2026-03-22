@@ -103,15 +103,17 @@ final class NativeWindowWatcher: ObservableObject {
     }
 
     /// Called by PermissionManager when state transitions to .granted.
-    /// Re-captures the current window immediately so the very next event
-    /// includes a window title rather than waiting for the next app switch.
+    /// Performs a full stop/start cycle so the watcher comes up cleanly with
+    /// `hasAccessibility = true` and a fresh NSWorkspace observer and flush timer.
+    /// This is safer than patching the live state because:
+    ///   - `frontmostApplication` can be nil at the exact moment permission is detected
+    ///     (System Settings is closing), which would leave `currentApp`/`sessionStart` nil
+    ///     and permanently silence event emission.
+    ///   - The flush timer and observer retain their correct state after the restart.
     private func recoverAfterGrant() {
-        hasAccessibility = true
-        // Flush the current session without title (it ran before access was granted),
-        // then start a fresh session that will capture the title.
-        emitCurrentSession()
-        captureCurrentWindow()
-        Logger.watcher.info("Recovery after accessibility grant — re-captured current window")
+        Logger.watcher.info("Recovery after accessibility grant — restarting watcher")
+        stop()   // flushes current session, clears state, removes old observers
+        start()  // re-registers everything with hasAccessibility = true
     }
 
     // MARK: - Private – observation
@@ -186,7 +188,8 @@ final class NativeWindowWatcher: ObservableObject {
             axApp, kAXFocusedWindowAttribute as CFString, &rawWindow
         ) == .success, let rawWindow else { return nil }
 
-        let windowElement = rawWindow as! AXUIElement  // swiftlint:disable:this force_cast
+        // swiftlint:disable:next force_cast
+        let windowElement = rawWindow as! AXUIElement
 
         var rawTitle: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
