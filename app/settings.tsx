@@ -12,7 +12,8 @@ import { StaticAuraBackground } from "@/components/static-aura-background";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { SoonBadge } from "@/components/wip-badge";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { checkAwAvailability } from "@/lib/activitywatch";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -118,6 +119,11 @@ export default function SettingsScreen() {
   } = useSettingsStore();
   const { rules } = useTrackingRulesStore();
   const [devTapCount, setDevTapCount] = useState(0);
+  const [awAvailable, setAwAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkAwAvailability().then(setAwAvailable);
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -164,6 +170,19 @@ export default function SettingsScreen() {
               onPress={() => router.push("/calendar-settings")}
               suffix={
                 <ValueSuffix value={calendarStatusLabel(permissionStatus, isEnabled)} />
+              }
+            />
+            <SettingsDivider />
+            <SettingsRow
+              label="Activity Tracking"
+              suffix={
+                <Text className="text-neutral-500 text-sm">
+                  {awAvailable === null
+                    ? "Checking..."
+                    : awAvailable
+                      ? "Connected"
+                      : "Not Available"}
+                </Text>
               }
             />
             {developerMode && (

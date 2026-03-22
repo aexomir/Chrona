@@ -2,6 +2,106 @@ import type { AppUsage } from "@/stores/sessions-store";
 
 const AW_BASE = "http://localhost:5600";
 
+export type AppCategory =
+  | "browser"
+  | "ide"
+  | "terminal"
+  | "communication"
+  | "meeting"
+  | "design"
+  | "productivity"
+  | "media";
+
+export const APP_CATEGORIES: Record<string, AppCategory> = {
+  // Browsers
+  "google chrome": "browser",
+  chrome: "browser",
+  safari: "browser",
+  firefox: "browser",
+  arc: "browser",
+  "brave browser": "browser",
+  "microsoft edge": "browser",
+  opera: "browser",
+  vivaldi: "browser",
+  // IDEs / editors
+  cursor: "ide",
+  code: "ide",
+  "visual studio code": "ide",
+  xcode: "ide",
+  "intellij idea": "ide",
+  webstorm: "ide",
+  pycharm: "ide",
+  "android studio": "ide",
+  "sublime text": "ide",
+  zed: "ide",
+  nova: "ide",
+  goland: "ide",
+  clion: "ide",
+  rubymine: "ide",
+  // Terminals
+  iterm2: "terminal",
+  terminal: "terminal",
+  warp: "terminal",
+  hyper: "terminal",
+  kitty: "terminal",
+  alacritty: "terminal",
+  // Communication
+  slack: "communication",
+  discord: "communication",
+  "microsoft teams": "communication",
+  telegram: "communication",
+  whatsapp: "communication",
+  messages: "communication",
+  mail: "communication",
+  airmail: "communication",
+  spark: "communication",
+  mimestream: "communication",
+  superhuman: "communication",
+  outlook: "communication",
+  // Meetings
+  zoom: "meeting",
+  facetime: "meeting",
+  "google meet": "meeting",
+  webex: "meeting",
+  around: "meeting",
+  // Design
+  figma: "design",
+  sketch: "design",
+  "adobe photoshop": "design",
+  "adobe illustrator": "design",
+  "affinity designer": "design",
+  "affinity photo": "design",
+  "pixelmator pro": "design",
+  // Productivity / writing
+  notion: "productivity",
+  obsidian: "productivity",
+  craft: "productivity",
+  bear: "productivity",
+  ulysses: "productivity",
+  "ia writer": "productivity",
+  "things 3": "productivity",
+  linear: "productivity",
+  asana: "productivity",
+  todoist: "productivity",
+  "microsoft word": "productivity",
+  pages: "productivity",
+  numbers: "productivity",
+  "microsoft excel": "productivity",
+  // Media
+  spotify: "media",
+  vlc: "media",
+  iina: "media",
+  "final cut pro": "media",
+  "davinci resolve": "media",
+  "logic pro": "media",
+  garageband: "media",
+  "ableton live": "media",
+};
+
+export function getAppCategory(appName: string): AppCategory | null {
+  return APP_CATEGORIES[appName.toLowerCase()] ?? null;
+}
+
 interface BucketMeta {
   id: string;
   type: string;
@@ -135,6 +235,10 @@ export async function getAppUsage(
   } catch {
     return [];
   }
+}
+
+export async function checkAwAvailability(): Promise<boolean> {
+  return (await getWindowBucketId()) !== null;
 }
 
 export type CurrentApp = {

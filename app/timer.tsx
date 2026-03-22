@@ -19,11 +19,16 @@ import {
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
@@ -34,6 +39,12 @@ type PendingSession = {
   startTime: string;
   endTime: string;
   duration: number;
+};
+
+type AutoConfirmState = {
+  session: PendingSession;
+  apps: AppUsage[];
+  selectedApps: AppUsage[];
 };
 
 function formatTime(seconds: number): string {
@@ -77,14 +88,12 @@ export default function TimerScreen() {
 
   const [taskTitle, setTaskTitle] = useState<string>(() => {
     if (title) return title;
-    // Pre-fill with event title if provided from calendar suggestion
     if (suggestEventTitle) return decodeURIComponent(suggestEventTitle);
     return "";
   });
   const [selectedProject, setSelectedProject] = useState<
     SelectOption | undefined
   >(() => {
-    // Use suggestProjectId if provided from calendar suggestion
     const projId = suggestProjectId || projectId;
     if (!projId) return undefined;
     const proj = projects.find((p) => p.id === projId);
@@ -98,11 +107,21 @@ export default function TimerScreen() {
     loading: boolean;
   } | null>(null);
 
+  const [autoConfirm, setAutoConfirm] = useState<AutoConfirmState | null>(null);
+  const autoConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [suggestion, setSuggestion] = useState<{
     projectId: string;
     matchedApps: string[];
   } | null>(null);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+
+  // Cleanup auto-confirm timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoConfirmTimerRef.current) clearTimeout(autoConfirmTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
@@ -142,6 +161,21 @@ export default function TimerScreen() {
     router.back();
   };
 
+  const handleSaveReview = (selectedApps: AppUsage[], pendingSession?: PendingSession) => {
+    const session = pendingSession ?? reviewData?.session;
+    if (!session) return;
+    addSession({
+      id: Date.now().toString(),
+      ...session,
+      apps: selectedApps.length > 0 ? selectedApps : undefined,
+    });
+    if (session.projectId !== null && selectedApps.length > 0) {
+      learnFromSession(selectedApps, session.projectId);
+    }
+    setReviewData(null);
+    router.back();
+  };
+
   const handleStop = async () => {
     const session = stopTimer();
     if (!session) {
@@ -152,24 +186,48 @@ export default function TimerScreen() {
     // Enter review state with loading
     setReviewData({ session, apps: [], loading: true });
 
-    // Query ActivityWatch in background
     const apps = await getAppUsage(session.startTime, session.endTime);
+    const totalDuration = apps.reduce((sum, a) => sum + a.duration, 0);
+
+    // Auto-confirm eligibility: project must match suggestion with high confidence + coverage
+    if (session.projectId && apps.length > 0 && totalDuration > 0) {
+      const result = suggestProject(apps);
+      const coverageRatio = result ? result.totalCoveredDuration / totalDuration : 0;
+
+      const isHighConfidence =
+        result !== null &&
+        result.projectId === session.projectId &&
+        result.score >= 5 &&
+        coverageRatio >= 0.6;
+
+      if (isHighConfidence) {
+        const defaultAppSet = getSmartDefaultApps(apps, session.projectId, associations);
+        const selected = apps.filter((a) => defaultAppSet.has(a.app));
+
+        setReviewData(null);
+        setAutoConfirm({ session, apps, selectedApps: selected });
+
+        autoConfirmTimerRef.current = setTimeout(() => {
+          handleSaveReview(selected, session);
+          setAutoConfirm(null);
+        }, 2500);
+
+        return;
+      }
+    }
+
     setReviewData((prev) => (prev ? { ...prev, apps, loading: false } : null));
   };
 
-  const handleSaveReview = (selectedApps: AppUsage[]) => {
-    if (!reviewData) return;
-    addSession({
-      id: Date.now().toString(),
-      ...reviewData.session,
-      apps: selectedApps.length > 0 ? selectedApps : undefined,
-    });
-    // Learn from session if we have both project and app data
-    if (reviewData.session.projectId !== null && selectedApps.length > 0) {
-      learnFromSession(selectedApps, reviewData.session.projectId);
+  const handleCancelAutoConfirm = () => {
+    if (autoConfirmTimerRef.current) {
+      clearTimeout(autoConfirmTimerRef.current);
+      autoConfirmTimerRef.current = null;
     }
-    setReviewData(null);
-    router.back();
+    if (autoConfirm) {
+      setReviewData({ session: autoConfirm.session, apps: autoConfirm.apps, loading: false });
+      setAutoConfirm(null);
+    }
   };
 
   const handleDiscardReview = () => {
@@ -204,6 +262,14 @@ export default function TimerScreen() {
   const selProj = projects.find((p) => p.id === selectedProject?.value);
   const theme = useAuroraTheme();
 
+  const navTitle = autoConfirm
+    ? "Saving..."
+    : reviewData
+      ? "Review"
+      : isTracking
+        ? "Tracking"
+        : "New Timer";
+
   return (
     <KeyboardAvoidingView
       behavior="padding"
@@ -216,13 +282,13 @@ export default function TimerScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Text className="text-neutral-400 text-base">Cancel</Text>
         </Pressable>
-        <Text className="text-white text-base font-semibold">
-          {reviewData ? "Review" : isTracking ? "Tracking" : "New Timer"}
-        </Text>
+        <Text className="text-white text-base font-semibold">{navTitle}</Text>
         <View className="w-14" />
       </View>
 
-      {reviewData ? (
+      {autoConfirm ? (
+        <AutoConfirmView autoConfirm={autoConfirm} onCancel={handleCancelAutoConfirm} />
+      ) : reviewData ? (
         <ReviewView
           reviewData={reviewData}
           associations={associations}
@@ -233,7 +299,13 @@ export default function TimerScreen() {
         <View className="flex-1 justify-center px-6 gap-5">
           <View
             className="items-center justify-center rounded-3xl py-8"
-            style={[styles.card, { backgroundColor: theme.card }]}
+            style={{
+              backgroundColor: theme.card,
+              shadowColor: "#000",
+              shadowOffset: { width: 6, height: 6 },
+              shadowOpacity: 0.6,
+              shadowRadius: 12,
+            }}
           >
             <Text className="text-neutral-500 text-xs uppercase tracking-widest mb-2">
               elapsed
@@ -267,7 +339,7 @@ export default function TimerScreen() {
                 {selProj && (
                   <Image
                     source={`sf:${selProj.icon}`}
-                    style={[styles.icon16, { tintColor: selProj.color }]}
+                    style={{ width: 16, height: 16, tintColor: selProj.color }}
                   />
                 )}
                 <Select.Value placeholder="Project (optional)" />
@@ -283,7 +355,7 @@ export default function TimerScreen() {
                     <View className="flex-row items-center gap-3 flex-1">
                       <Image
                         source={`sf:${p.icon}`}
-                        style={[styles.icon18, { tintColor: p.color }]}
+                        style={{ width: 18, height: 18, tintColor: p.color }}
                       />
                       <Select.ItemLabel />
                     </View>
@@ -327,7 +399,7 @@ export default function TimerScreen() {
                 {selProj && (
                   <Image
                     source={`sf:${selProj.icon}`}
-                    style={[styles.icon16, { tintColor: selProj.color }]}
+                    style={{ width: 16, height: 16, tintColor: selProj.color }}
                   />
                 )}
                 <Select.Value placeholder="Project (optional)" />
@@ -343,7 +415,7 @@ export default function TimerScreen() {
                     <View className="flex-row items-center gap-3 flex-1">
                       <Image
                         source={`sf:${p.icon}`}
-                        style={[styles.icon18, { tintColor: p.color }]}
+                        style={{ width: 18, height: 18, tintColor: p.color }}
                       />
                       <Select.ItemLabel />
                     </View>
@@ -365,6 +437,70 @@ export default function TimerScreen() {
       )}
       <PortalHost name="timer-modal" />
     </KeyboardAvoidingView>
+  );
+}
+
+type AutoConfirmViewProps = {
+  autoConfirm: AutoConfirmState;
+  onCancel: () => void;
+};
+
+function AutoConfirmView({ autoConfirm, onCancel }: AutoConfirmViewProps) {
+  const theme = useAuroraTheme();
+  const { session, selectedApps } = autoConfirm;
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: 2500, easing: Easing.linear });
+  }, []);
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * 100}%` as unknown as number,
+  }));
+
+  const appNames = selectedApps.map((a) => a.app).join(", ");
+
+  return (
+    <Animated.View
+      className="flex-1 justify-center px-6 gap-5"
+      entering={FadeInDown.duration(200)}
+    >
+      <View
+        className="rounded-3xl p-5 border gap-3"
+        style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}
+      >
+        <View className="flex-row items-center gap-2">
+          <Image
+            source="sf:checkmark.circle.fill"
+            style={{ width: 20, height: 20, tintColor: "#10b981" }}
+          />
+          <Text className="text-emerald-500 text-sm font-semibold">
+            Saving automatically
+          </Text>
+        </View>
+
+        <Text className="text-white text-lg font-semibold">{session.title}</Text>
+        <Text className="text-zinc-400 text-sm">{formatTime(session.duration)}</Text>
+
+        {appNames.length > 0 && (
+          <Text className="text-zinc-500 text-xs" numberOfLines={1}>
+            {appNames}
+          </Text>
+        )}
+
+        {/* Progress bar */}
+        <View className="h-px rounded-full overflow-hidden mt-1" style={{ backgroundColor: theme.cardBorder }}>
+          <Animated.View
+            className="h-full rounded-full bg-emerald-500"
+            style={progressStyle}
+          />
+        </View>
+      </View>
+
+      <Button variant="ghost" onPress={onCancel}>
+        <Button.Label>Cancel</Button.Label>
+      </Button>
+    </Animated.View>
   );
 }
 
@@ -551,9 +687,7 @@ function ReviewView({
       {/* Action buttons */}
       <View className="px-6 gap-2 py-4">
         <Button variant="primary" onPress={handleSave}>
-          <Button.Label>
-            {isEmpty ? "Save Session" : "Save Session"}
-          </Button.Label>
+          <Button.Label>Save Session</Button.Label>
         </Button>
         <Button variant="ghost" onPress={onDiscard}>
           <Button.Label>Discard</Button.Label>
@@ -628,14 +762,3 @@ function SuggestionBanner({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    shadowColor: "#000",
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-  },
-  icon16: { width: 16, height: 16 },
-  icon18: { width: 18, height: 18 },
-});

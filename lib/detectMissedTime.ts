@@ -8,13 +8,16 @@ export type RecoveryPeriod = {
   suggestion: { projectId: string; matchedApps: string[] };
   source?: "calendar"; // omitted = AW-based (default)
   eventTitle?: string; // calendar event title, present when source === "calendar"
+  confidence?: number; // 0..1, used for internal ranking
 };
 
 // Constants
 const LOOK_BACK_MS = 8 * 60 * 60 * 1000; // 8 hours
 const MIN_GAP_MS = 15 * 60 * 1000; // 15 minutes
 const MIN_AW_USAGE_S = 10 * 60; // 10 minutes
-const END_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
+const END_BUFFER_MS = 30 * 60 * 1000; // 30 minutes — skip very recent gaps
+const MIN_COVERAGE_RECOVERY = 0.5; // matched app duration vs total gap AW activity
+const MAX_SURFACED = 2; // cap surfaced recovery periods
 
 interface Gap {
   start: Date;
@@ -67,12 +70,16 @@ function findGaps(
   return gaps.filter((g) => g.end.getTime() - g.start.getTime() >= MIN_GAP_MS);
 }
 
+type SuggestProjectFn = (
+  apps: AppUsage[]
+) => { projectId: string; matchedApps: string[]; score: number; totalCoveredDuration: number } | null;
+
 /**
- * Main detection function: finds all missed time periods grouped by project
+ * Main detection function: finds high-confidence missed time periods grouped by project
  */
 export async function detectMissedTime(
   sessions: Session[],
-  suggestProject: (apps: AppUsage[]) => { projectId: string; matchedApps: string[] } | null
+  suggestProject: SuggestProjectFn
 ): Promise<RecoveryPeriod[]> {
   try {
     const now = new Date();
@@ -83,7 +90,7 @@ export async function detectMissedTime(
 
     if (gaps.length === 0) return [];
 
-    const results: RecoveryPeriod[] = [];
+    const candidates: RecoveryPeriod[] = [];
 
     // Evaluate gaps sequentially (AW is local HTTP, no need for concurrency)
     for (const gap of gaps) {
@@ -94,38 +101,55 @@ export async function detectMissedTime(
       const apps = await getAppUsage(gap.start.toISOString(), adjustedEnd.toISOString());
 
       // Skip if insufficient activity
-      const totalDuration = apps.reduce((sum, a) => sum + a.duration, 0);
-      if (totalDuration < MIN_AW_USAGE_S) continue;
+      const totalGapDuration = apps.reduce((sum, a) => sum + a.duration, 0);
+      if (totalGapDuration < MIN_AW_USAGE_S) continue;
 
       // Group apps by individual project suggestions
-      const projectMap = new Map<string, AppUsage[]>();
+      const projectMap = new Map<
+        string,
+        { apps: AppUsage[]; score: number; coveredDuration: number }
+      >();
 
       for (const app of apps) {
         const suggestion = suggestProject([app]);
-        if (!suggestion) continue; // Skip apps with no valid suggestion
+        if (!suggestion) continue;
 
-        const projectId = suggestion.projectId;
-        if (!projectMap.has(projectId)) {
-          projectMap.set(projectId, []);
-        }
-        projectMap.get(projectId)!.push(app);
+        const { projectId, score, totalCoveredDuration } = suggestion;
+        const entry = projectMap.get(projectId) ?? { apps: [], score: 0, coveredDuration: 0 };
+        entry.apps.push(app);
+        entry.score = Math.max(entry.score, score);
+        entry.coveredDuration += app.duration;
+        projectMap.set(projectId, entry);
       }
 
-      // Emit a RecoveryPeriod for each project group
-      for (const [projectId, groupedApps] of projectMap) {
-        results.push({
+      // Score and filter each project group
+      for (const [projectId, data] of projectMap) {
+        const coverageRatio = totalGapDuration > 0
+          ? data.coveredDuration / totalGapDuration
+          : 0;
+
+        if (coverageRatio < MIN_COVERAGE_RECOVERY) continue;
+
+        const normalizedScore = Math.min(data.score / 10, 1.0);
+        const confidence = 0.6 * normalizedScore + 0.4 * coverageRatio;
+
+        candidates.push({
           startTime: gap.start.toISOString(),
           endTime: adjustedEnd.toISOString(),
-          apps: groupedApps,
+          apps: data.apps,
           suggestion: {
             projectId,
-            matchedApps: groupedApps.map((a) => a.app),
+            matchedApps: data.apps.map((a) => a.app),
           },
+          confidence,
         });
       }
     }
 
-    return results;
+    // Return top high-confidence candidates
+    return candidates
+      .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+      .slice(0, MAX_SURFACED);
   } catch {
     // Silent fail: AW offline, network error, etc.
     return [];

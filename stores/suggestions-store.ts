@@ -1,13 +1,23 @@
 import { mmkvStorage } from "@/storage";
+import { getAppCategory } from "@/lib/activitywatch";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AppUsage } from "@/stores/sessions-store";
 
 export type AssociationMap = {
   [appName: string]: {
-    [projectId: string]: { count: number; totalDuration: number };
+    [projectId: string]: { count: number; totalDuration: number; lastUsed: number };
   };
 };
+
+function recencyMultiplier(lastUsed: number | undefined): number {
+  if (!lastUsed) return 0.5;
+  const ageMs = Date.now() - lastUsed;
+  const DAY = 86_400_000;
+  if (ageMs <= DAY) return 1.0;
+  if (ageMs <= 7 * DAY) return 0.8;
+  return 0.5;
+}
 
 export function getSmartDefaultApps(
   apps: AppUsage[],
@@ -42,12 +52,17 @@ export function getSmartDefaultApps(
   return new Set(apps.map((a) => a.app));
 }
 
+type SuggestionResult = {
+  projectId: string;
+  matchedApps: string[];
+  score: number;
+  totalCoveredDuration: number;
+};
+
 type SuggestionsState = {
   associations: AssociationMap;
   learnFromSession: (apps: AppUsage[], projectId: string) => void;
-  suggestProject: (
-    apps: AppUsage[]
-  ) => { projectId: string; matchedApps: string[] } | null;
+  suggestProject: (apps: AppUsage[]) => SuggestionResult | null;
 };
 
 export const useSuggestionsStore = create<SuggestionsState>()(
@@ -57,49 +72,86 @@ export const useSuggestionsStore = create<SuggestionsState>()(
       learnFromSession: (apps, projectId) => {
         set((state) => {
           const newAssociations = { ...state.associations };
+          const now = Date.now();
           for (const app of apps) {
             if (!newAssociations[app.app]) {
               newAssociations[app.app] = {};
             }
-            if (!newAssociations[app.app][projectId]) {
-              newAssociations[app.app][projectId] = {
-                count: 0,
-                totalDuration: 0,
-              };
-            }
-            newAssociations[app.app][projectId].count += 1;
-            newAssociations[app.app][projectId].totalDuration += app.duration;
+            const existing = newAssociations[app.app][projectId];
+            newAssociations[app.app][projectId] = {
+              count: (existing?.count ?? 0) + 1,
+              totalDuration: (existing?.totalDuration ?? 0) + app.duration,
+              lastUsed: now,
+            };
           }
           return { associations: newAssociations };
         });
       },
       suggestProject: (apps) => {
         const associations = get().associations;
+        const totalInputDuration = apps.reduce((sum, a) => sum + a.duration, 0);
+        if (totalInputDuration === 0) return null;
+
+        // Build category → stored app names index for enrichment
+        const categoryApps: Record<string, string[]> = {};
+        for (const storedApp of Object.keys(associations)) {
+          const cat = getAppCategory(storedApp);
+          if (cat) {
+            if (!categoryApps[cat]) categoryApps[cat] = [];
+            categoryApps[cat].push(storedApp);
+          }
+        }
+
         const projectScores: {
           [projectId: string]: {
             score: number;
             matchedApps: string[];
+            coveredDuration: number;
           };
         } = {};
 
         for (const app of apps) {
-          const appAssocs = associations[app.app];
-          if (!appAssocs) continue;
-
-          for (const [projectId, data] of Object.entries(appAssocs)) {
-            if (!projectScores[projectId]) {
-              projectScores[projectId] = { score: 0, matchedApps: [] };
+          // Direct associations
+          const direct = associations[app.app];
+          if (direct) {
+            for (const [projectId, data] of Object.entries(direct)) {
+              const mult = recencyMultiplier(data.lastUsed);
+              if (!projectScores[projectId]) {
+                projectScores[projectId] = { score: 0, matchedApps: [], coveredDuration: 0 };
+              }
+              projectScores[projectId].score += data.count * mult;
+              if (!projectScores[projectId].matchedApps.includes(app.app)) {
+                projectScores[projectId].matchedApps.push(app.app);
+                projectScores[projectId].coveredDuration += app.duration;
+              }
             }
-            projectScores[projectId].score += data.count;
-            if (!projectScores[projectId].matchedApps.includes(app.app)) {
-              projectScores[projectId].matchedApps.push(app.app);
+          }
+
+          // Category enrichment — score only, 0.5× weight, no coverage credit
+          const cat = getAppCategory(app.app);
+          if (cat) {
+            const related = categoryApps[cat] ?? [];
+            for (const relatedApp of related) {
+              if (relatedApp === app.app) continue; // already counted above
+              const relatedAssocs = associations[relatedApp];
+              if (!relatedAssocs) continue;
+              for (const [projectId, data] of Object.entries(relatedAssocs)) {
+                const mult = recencyMultiplier(data.lastUsed);
+                if (!projectScores[projectId]) {
+                  projectScores[projectId] = { score: 0, matchedApps: [], coveredDuration: 0 };
+                }
+                projectScores[projectId].score += data.count * mult * 0.5;
+              }
             }
           }
         }
 
-        // Filter by threshold (score >= 2) and sort
+        // Filter: score >= 3 AND direct-matched coverage >= 40%
         const candidates = Object.entries(projectScores)
-          .filter(([_, data]) => data.score >= 2)
+          .filter(([_, d]) => {
+            const coverage = d.coveredDuration / totalInputDuration;
+            return d.score >= 3 && coverage >= 0.4;
+          })
           .sort(([_, a], [__, b]) => b.score - a.score);
 
         if (candidates.length === 0) return null;
@@ -108,6 +160,8 @@ export const useSuggestionsStore = create<SuggestionsState>()(
         return {
           projectId,
           matchedApps: data.matchedApps,
+          score: data.score,
+          totalCoveredDuration: data.coveredDuration,
         };
       },
     }),
