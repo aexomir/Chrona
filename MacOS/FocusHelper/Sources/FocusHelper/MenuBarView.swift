@@ -5,9 +5,11 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
+            activityHeader
             Divider().padding(.horizontal, 8)
-            stats
+            activityStats
+            Divider().padding(.horizontal, 8)
+            streamSection
             Divider().padding(.horizontal, 8)
             controls
             Divider().padding(.horizontal, 8).padding(.vertical, 2)
@@ -16,13 +18,13 @@ struct MenuBarView: View {
             }
             .padding(.bottom, 4)
         }
-        .frame(width: 240)
+        .frame(width: 260)
         .background(Color(NSColor.windowBackgroundColor))
     }
 
     // MARK: - Sections
 
-    private var header: some View {
+    private var activityHeader: some View {
         HStack(spacing: 8) {
             Circle()
                 .fill(poller.isConnected ? Color.green : Color.red.opacity(0.8))
@@ -36,11 +38,10 @@ struct MenuBarView: View {
         .padding(.bottom, 8)
     }
 
-    private var stats: some View {
+    private var activityStats: some View {
         VStack(alignment: .leading, spacing: 4) {
             StatRow(label: "Today",    value: "\(poller.eventsLoggedToday) events")
-            StatRow(label: "All time", value: "\(poller.totalEvents) events")
-            StatRow(label: "Segments", value: segmentInfo)
+            StatRow(label: "All time", value: "\(poller.totalEvents) events · \(segmentInfo)")
             if poller.corruptedLines > 0 {
                 StatRow(
                     label: "Corrupted",
@@ -52,6 +53,37 @@ struct MenuBarView: View {
                 StatRow(label: "Last poll", value: relativeTime(last))
             }
             StatRow(label: "Status", value: poller.statusMessage)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private var streamSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Header row with stream status dot
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(poller.broadcaster.isServerRunning ? Color.blue : Color.gray)
+                    .frame(width: 6, height: 6)
+                Text("iOS Stream")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if poller.connectedClients > 0 {
+                    Text("\(poller.connectedClients) connected")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.blue)
+                }
+            }
+
+            // Connection address for the iOS app to use
+            let addr = poller.broadcaster.connectionAddress
+            if addr != "offline" {
+                StatRow(label: "IP", value: poller.broadcaster.connectionAddress)
+                StatRow(label: "Host", value: poller.broadcaster.hostnameAddress)
+            } else {
+                StatRow(label: "Stream", value: "Server offline", valueColor: .secondary)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)

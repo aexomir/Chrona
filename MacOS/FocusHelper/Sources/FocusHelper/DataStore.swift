@@ -115,23 +115,24 @@ final class DataStore {
 
     // MARK: - Write
 
-    /// Write a batch of normalized events, returning the count actually persisted.
+    /// Write a batch of normalized events.
     ///
+    /// Returns the StoredRecords actually persisted (after dedup).
     /// Events already in the seen index are silently dropped.
     /// Events are grouped by calendar day before writing so each daily segment
-    /// stays self-contained (important for incremental sync).
+    /// stays self-contained (important for incremental sync and streaming).
     @discardableResult
-    func write(batch events: [NormalizedEvent]) throws -> Int {
+    func write(batch events: [NormalizedEvent]) throws -> [StoredRecord] {
         // Filter duplicates before any I/O
         let novel = events.filter { !seen.contains(bucket: $0.bucket, srcId: $0.sourceEventId) }
-        guard !novel.isEmpty else { return 0 }
+        guard !novel.isEmpty else { return [] }
 
         // Group by local calendar day — most batches will be a single day
         let byDay = Dictionary(grouping: novel) { localDayKey(from: $0.timestamp) }
 
-        var written = 0
+        var written: [StoredRecord] = []
         for (day, dayEvents) in byDay {
-            written += try commitBatch(dayEvents, toSegment: day)
+            written.append(contentsOf: try commitBatch(dayEvents, toSegment: day))
         }
         return written
     }
@@ -144,7 +145,7 @@ final class DataStore {
     ///   3. Open the day segment with O_APPEND and write each line (atomic per POSIX)
     ///   4. Update in-memory stats and seen index; persist the seen index atomically
     ///   5. Delete staging file (cleanup)
-    private func commitBatch(_ events: [NormalizedEvent], toSegment day: String) throws -> Int {
+    private func commitBatch(_ events: [NormalizedEvent], toSegment day: String) throws -> [StoredRecord] {
         let segmentURL = eventsDir.appendingPathComponent("\(day).jsonl")
         let stagingURL = stagingDir.appendingPathComponent(".write-\(UUID().uuidString)")
 
@@ -194,7 +195,7 @@ final class DataStore {
         // Step 5 — cleanup staging file (non-fatal if it fails)
         try? FileManager.default.removeItem(at: stagingURL)
 
-        return records.count
+        return records
     }
 
     // MARK: - Read / Verification

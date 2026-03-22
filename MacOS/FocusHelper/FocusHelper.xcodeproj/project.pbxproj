@@ -13,6 +13,9 @@
 		AA000000000000000063 /* ActivityWatchClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000053 /* ActivityWatchClient.swift */; };
 		AA000000000000000064 /* ActivityPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000054 /* ActivityPoller.swift */; };
 		AA000000000000000065 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000055 /* DataStore.swift */; };
+		AA0000000000000000B0 /* StreamProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000A0 /* StreamProtocol.swift */; };
+		AA0000000000000000B1 /* StreamServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000A1 /* StreamServer.swift */; };
+		AA0000000000000000B2 /* EventBroadcaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000A2 /* EventBroadcaster.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +27,9 @@
 		AA000000000000000054 /* ActivityPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityPoller.swift; sourceTree = "<group>"; };
 		AA000000000000000055 /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
 		AA000000000000000056 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA0000000000000000A0 /* StreamProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamProtocol.swift; sourceTree = "<group>"; };
+		AA0000000000000000A1 /* StreamServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamServer.swift; sourceTree = "<group>"; };
+		AA0000000000000000A2 /* EventBroadcaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventBroadcaster.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +69,9 @@
 				AA000000000000000053 /* ActivityWatchClient.swift */,
 				AA000000000000000054 /* ActivityPoller.swift */,
 				AA000000000000000055 /* DataStore.swift */,
+				AA0000000000000000A0 /* StreamProtocol.swift */,
+				AA0000000000000000A1 /* StreamServer.swift */,
+				AA0000000000000000A2 /* EventBroadcaster.swift */,
 			);
 			path = FocusHelper;
 			sourceTree = "<group>";
@@ -144,6 +153,9 @@
 				AA000000000000000063 /* ActivityWatchClient.swift in Sources */,
 				AA000000000000000064 /* ActivityPoller.swift in Sources */,
 				AA000000000000000065 /* DataStore.swift in Sources */,
+				AA0000000000000000B0 /* StreamProtocol.swift in Sources */,
+				AA0000000000000000B1 /* StreamServer.swift in Sources */,
+				AA0000000000000000B2 /* EventBroadcaster.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
