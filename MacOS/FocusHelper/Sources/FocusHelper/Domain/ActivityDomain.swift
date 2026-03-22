@@ -7,7 +7,7 @@ import Foundation
 
 /// A completed period of user attention on one application and window.
 ///
-/// Produced by any `ActivitySource` implementation and consumed by `ActivityPoller`
+/// Produced by any `ActivitySource` implementation and consumed by `ActivityCoordinator`
 /// for storage and broadcasting. The type is intentionally value-like and free of
 /// persistence concerns — all storage details are added downstream.
 struct ActivityWindow {
@@ -65,7 +65,7 @@ enum ActivitySourceMode: String, CaseIterable {
 // MARK: - Internal conversion helper
 //
 // Bridges the clean domain type into the storage layer's NormalizedEvent.
-// Lives here so neither ActivityPoller nor ActivitySource ever import each other's
+// Lives here so neither ActivityCoordinator nor ActivitySource ever import each other's
 // implementation details — each only needs this one file and Models.swift.
 
 extension ActivityWindow {
@@ -79,7 +79,7 @@ extension ActivityWindow {
     func normalized(bucket: String, counter: Int) -> NormalizedEvent {
         NormalizedEvent(
             id:            id.uuidString,
-            timestamp:     AWDateFormatter.shared.string(from: startedAt),
+            timestamp:     ISO8601Formatter.shared.string(from: startedAt),
             app:           app,
             duration:      duration,
             title:         title,

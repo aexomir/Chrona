@@ -132,12 +132,12 @@ final class ExternalActivitySource: ActivitySource {
                 }
             }
 
-        } catch let err as AWRestError {
+        } catch let err as RestError {
             await MainActor.run {
-                Logger.external.error("Poll error: \(err.localizedDescription ?? "unknown")")
+                Logger.external.error("Poll error: \(err.localizedDescription)")
                 if case .notRunning = err { windowBucketId = nil }
                 if case .noWindowBucket = err { windowBucketId = nil }
-                setStatus(.failed(err.localizedDescription ?? "ActivityWatch unreachable"))
+                setStatus(.failed(err.localizedDescription))
             }
         } catch {
             await MainActor.run {
@@ -159,7 +159,7 @@ final class ExternalActivitySource: ActivitySource {
     // ActivityWatch's API contract into the clean `ActivityWindow` domain type and
     // are never visible outside this source.
 
-    private enum AWRestError: Error, LocalizedError {
+    private enum RestError: Error, LocalizedError {
         case notRunning
         case noWindowBucket
         case badResponse(Int)
@@ -188,7 +188,7 @@ final class ExternalActivitySource: ActivitySource {
         }
 
         var parsedTimestamp: Date? {
-            AWDateFormatter.shared.date(from: timestamp)
+            ISO8601Formatter.shared.date(from: timestamp)
         }
 
         /// Translates the raw AW event into the clean domain type.
@@ -209,7 +209,7 @@ final class ExternalActivitySource: ActivitySource {
         let data = try await fetch(url)
 
         guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw AWRestError.noWindowBucket
+            throw RestError.noWindowBucket
         }
         for (id, value) in dict {
             if let obj    = value as? [String: Any],
@@ -218,7 +218,7 @@ final class ExternalActivitySource: ActivitySource {
                 return id
             }
         }
-        throw AWRestError.noWindowBucket
+        throw RestError.noWindowBucket
     }
 
     private func fetchEvents(bucketId: String, since: Date) async throws -> [AWEvent] {
@@ -239,14 +239,14 @@ final class ExternalActivitySource: ActivitySource {
             // AW returns newest-first; reverse to chronological order.
             return try JSONDecoder().decode([AWEvent].self, from: data).reversed()
         } catch {
-            throw AWRestError.decodingFailed(error)
+            throw RestError.decodingFailed(error)
         }
     }
 
     private func fetch(_ url: URL) async throws -> Data {
         let (data, response) = try await session.data(from: url)
-        guard let http = response as? HTTPURLResponse else { throw AWRestError.notRunning }
-        guard http.statusCode == 200 else { throw AWRestError.badResponse(http.statusCode) }
+        guard let http = response as? HTTPURLResponse else { throw RestError.notRunning }
+        guard http.statusCode == 200 else { throw RestError.badResponse(http.statusCode) }
         return data
     }
 }

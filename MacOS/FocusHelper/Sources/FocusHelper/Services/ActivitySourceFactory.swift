@@ -4,7 +4,7 @@ import Foundation
 //
 // Single point of construction for `ActivitySource` implementations.
 // The chosen mode is persisted in UserDefaults so it survives app restarts.
-// `ActivityPoller` uses this factory; nothing else needs to know it exists.
+// `ActivityCoordinator` uses this factory; nothing else needs to know it exists.
 
 enum ActivitySourceFactory {
 

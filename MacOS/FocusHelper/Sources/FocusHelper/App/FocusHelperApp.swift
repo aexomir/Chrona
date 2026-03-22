@@ -12,7 +12,7 @@ struct FocusHelperApp: App {
 
     // MARK: - Core services
 
-    @StateObject private var poller = ActivityPoller()
+    @StateObject private var coordinator = ActivityCoordinator()
 
     // MARK: - Init
 
@@ -26,7 +26,7 @@ struct FocusHelperApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuBarView()
-                .environmentObject(poller)
+                .environmentObject(coordinator)
         } label: {
             menuBarIcon
         }
@@ -58,8 +58,8 @@ struct FocusHelperApp: App {
     private enum IconState { case running, degraded, unhealthy, stopped }
 
     private var iconState: IconState {
-        guard poller.isRunning else { return .stopped }
-        guard let h = poller.health else { return .running }
+        guard coordinator.isRunning else { return .stopped }
+        guard let h = coordinator.health else { return .running }
         switch h.verdict {
         case .healthy:          return .running
         case .degraded:         return .degraded

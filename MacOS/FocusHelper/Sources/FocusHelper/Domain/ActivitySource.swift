@@ -2,8 +2,8 @@ import Combine
 
 // MARK: - ActivitySource protocol
 //
-// The single seam between ActivityPoller and any activity-collection backend.
-// ActivityPoller only ever talks to this interface — it has no import of AppKit,
+// The single seam between ActivityCoordinator and any activity-collection backend.
+// ActivityCoordinator only ever talks to this interface — it has no import of AppKit,
 // ApplicationServices, or any ActivityWatch REST types.
 //
 // Replacing the backend (new watcher technology, cloud-based sync, test double)

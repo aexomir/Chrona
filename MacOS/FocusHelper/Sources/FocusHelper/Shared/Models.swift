@@ -55,7 +55,7 @@ struct StoredRecord: Codable {
         title  = event.title
         bucket = event.bucket
         srcId  = event.sourceEventId
-        wt     = AWDateFormatter.shared.string(from: Date())
+        wt     = ISO8601Formatter.shared.string(from: Date())
     }
 }
 
@@ -83,9 +83,9 @@ struct SeenIndex: Codable {
     private func key(_ bucket: String, _ srcId: Int) -> String { "\(bucket):\(srcId)" }
 }
 
-// MARK: - Cursor  (tracks polling position across restarts)
+// MARK: - PollingCursor  (tracks polling position across restarts)
 
-struct Cursor: Codable {
+struct PollingCursor: Codable {
     var lastEventTimestamp: Date
     var windowBucketId: String?
 }
@@ -102,10 +102,10 @@ struct SegmentReport {
 
 // MARK: - Shared date formatter
 
-/// ActivityWatch uses ISO8601 with microsecond precision and a UTC offset.
-/// This formatter handles both flavours (with and without fractional seconds).
-final class AWDateFormatter {
-    static let shared = AWDateFormatter()
+/// ISO8601 date formatter with microsecond precision, used for all event timestamps.
+/// Handles both formats: with and without fractional seconds.
+final class ISO8601Formatter {
+    static let shared = ISO8601Formatter()
 
     private let fmt: ISO8601DateFormatter
 

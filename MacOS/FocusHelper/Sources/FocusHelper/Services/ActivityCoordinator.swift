@@ -13,37 +13,61 @@ import os
 ///
 /// Runs on MainActor so @Published properties drive SwiftUI updates directly.
 @MainActor
-final class ActivityPoller: ObservableObject {
+final class ActivityCoordinator: ObservableObject {
 
     // MARK: - Published state
 
-    @Published var isRunning         = false
-    @Published var sourceStatus      = ActivitySourceStatus.idle
+    @Published var isRunning             = false
+    @Published var sourceStatus          = ActivitySourceStatus.idle
     @Published var lastEventTime: Date?
-    @Published var statusMessage     = "Idle"
-    @Published var sourceMode        = ActivitySourceFactory.currentMode
-    @Published var eventsLoggedToday = 0
-    @Published var totalEvents       = 0
-    @Published var corruptedLines    = 0
-    @Published var connectedClients  = 0
+    @Published var statusMessage         = "Idle"
+    @Published var sourceMode            = ActivitySourceFactory.currentMode
+    @Published var eventsLoggedToday     = 0
+    @Published var totalEvents           = 0
+    @Published var corruptedLines        = 0
+    @Published var connectedClients      = 0
+    @Published var isStreamServerRunning = false
     @Published var health: HealthReport?
-
-    // Convenience aliases kept for MenuBarView compatibility.
-    var isConnected: Bool { isRunning }
-    var isPolling:   Bool { isRunning }
 
     var hasTitleAccess: Bool {
         if case .running(let ta) = sourceStatus { return ta == .available }
         return false
     }
 
+    // MARK: - Stream info (forwarded from broadcaster)
+
+    var streamConnectionAddress: String { broadcaster.connectionAddress }
+    var streamHostnameAddress: String    { broadcaster.hostnameAddress }
+
+    // MARK: - Storage info
+
+    /// Summary of on-disk storage (segment count and total size).
+    var storeSummary: String {
+        guard let store else { return "—" }
+        return "\(store.segmentCount) files · \(store.totalSizeString)"
+    }
+
+    /// Opens the events data folder in Finder.
+    func openDataFolder() {
+        guard let store else { return }
+        NSWorkspace.shared.open(store.eventsDir)
+    }
+
+    // MARK: - Permission access
+
+    /// The permission manager for the current source, if any.
+    /// MenuBarView observes this to display the correct permission UI.
+    var permissionManager: PermissionManager? {
+        source.permissionManager
+    }
+
     // MARK: - Sub-systems
 
-    let broadcaster   = EventBroadcaster()
     let healthMonitor: HealthMonitor     // weak-refs self; safe
 
     // MARK: - Private – infrastructure
 
+    private let broadcaster = EventBroadcaster()
     private var source:  any ActivitySource
     private var store:   DataStore?
     private var eventCounter = 0
@@ -67,11 +91,11 @@ final class ActivityPoller: ObservableObject {
     init() {
         source        = ActivitySourceFactory.make()
         sourceMode    = ActivitySourceFactory.currentMode
-        healthMonitor = HealthMonitor()    // poller reference set below once self is ready
+        healthMonitor = HealthMonitor()    // coordinator reference set below once self is ready
 
-        // Wire poller reference into the health monitor now that all stored properties
+        // Wire coordinator reference into the health monitor now that all stored properties
         // have been initialised (Swift's two-phase init requirement).
-        healthMonitor.configure(poller: self)
+        healthMonitor.configure(coordinator: self)
 
         setUpInfrastructure()
         subscribeToSource()
@@ -80,7 +104,7 @@ final class ActivityPoller: ObservableObject {
         registerShutdownHandler()
 
         start()
-        Logger.poller.info("ActivityPoller initialised, mode=\(self.sourceMode.rawValue)")
+        Logger.poller.info("ActivityCoordinator initialised, mode=\(self.sourceMode.rawValue)")
     }
 
     // MARK: - Control
@@ -123,12 +147,6 @@ final class ActivityPoller: ObservableObject {
         source.requestTitleAccess()
     }
 
-    /// The permission manager for the current source, if any.
-    /// MenuBarView observes this to display the correct permission UI.
-    var permissionManager: PermissionManager? {
-        source.permissionManager
-    }
-
     /// Called by HealthMonitor to expose the latest report into the UI.
     func applyHealthReport(_ report: HealthReport) {
         health = report
@@ -139,6 +157,10 @@ final class ActivityPoller: ObservableObject {
     private func setUpInfrastructure() {
         broadcaster.$connectedClients
             .assign(to: \.connectedClients, on: self)
+            .store(in: &infraCancellables)
+
+        broadcaster.$isServerRunning
+            .assign(to: \.isStreamServerRunning, on: self)
             .store(in: &infraCancellables)
 
         healthMonitor.$report

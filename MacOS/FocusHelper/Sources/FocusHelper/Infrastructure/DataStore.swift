@@ -255,12 +255,12 @@ final class DataStore {
 
     // MARK: - Cursor
 
-    func loadCursor() -> Cursor? {
+    func loadCursor() -> PollingCursor? {
         guard let data = try? Data(contentsOf: indexDir.appendingPathComponent("cursor.json")) else { return nil }
-        return try? decoder.decode(Cursor.self, from: data)
+        return try? decoder.decode(PollingCursor.self, from: data)
     }
 
-    func saveCursor(_ cursor: Cursor) {
+    func saveCursor(_ cursor: PollingCursor) {
         guard let data = try? encoder.encode(cursor) else { return }
         // .atomic uses tmp + rename internally — safe across power loss
         try? data.write(to: indexDir.appendingPathComponent("cursor.json"), options: .atomic)
@@ -334,7 +334,7 @@ final class DataStore {
 
     /// Convert an ISO8601 UTC timestamp to a local calendar day key.
     private func localDayKey(from isoTimestamp: String) -> String {
-        guard let date = AWDateFormatter.shared.date(from: isoTimestamp) else {
+        guard let date = ISO8601Formatter.shared.date(from: isoTimestamp) else {
             return String(isoTimestamp.prefix(10))  // best-effort fallback
         }
         let f = DateFormatter()

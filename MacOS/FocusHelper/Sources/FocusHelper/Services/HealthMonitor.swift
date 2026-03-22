@@ -78,7 +78,7 @@ final class HealthMonitor {
 
     // MARK: - Inputs (weak to avoid retain cycles)
 
-    private weak var pollerRef: ActivityPoller?
+    private weak var coordinatorRef: ActivityCoordinator?
 
     // MARK: - Private
 
@@ -87,15 +87,15 @@ final class HealthMonitor {
     // MARK: - Init
 
     /// Pass `nil` when constructing inside a class `init()` before `self` is complete;
-    /// call `configure(poller:)` immediately after all stored properties are set.
-    init(poller: ActivityPoller? = nil, checkInterval: TimeInterval = 60) {
-        self.pollerRef     = poller
-        self.checkInterval = checkInterval
+    /// call `configure(coordinator:)` immediately after all stored properties are set.
+    init(coordinator: ActivityCoordinator? = nil, checkInterval: TimeInterval = 60) {
+        self.coordinatorRef = coordinator
+        self.checkInterval  = checkInterval
     }
 
-    /// Attaches the poller reference. Must be called before `start()`.
-    func configure(poller: ActivityPoller) {
-        pollerRef = poller
+    /// Attaches the coordinator reference. Must be called before `start()`.
+    func configure(coordinator: ActivityCoordinator) {
+        coordinatorRef = coordinator
     }
 
     // MARK: - Lifecycle
@@ -127,12 +127,12 @@ final class HealthMonitor {
     // MARK: - Private – check logic
 
     private func runCheck() async {
-        guard let poller = pollerRef else { return }
+        guard let coordinator = coordinatorRef else { return }
 
-        let sourceRunning = poller.isRunning
+        let sourceRunning = coordinator.isRunning
 
         // Staleness: how long since the last event arrived.
-        let staleness: TimeInterval? = poller.lastEventTime.map {
+        let staleness: TimeInterval? = coordinator.lastEventTime.map {
             Date().timeIntervalSince($0)
         }
 
@@ -140,11 +140,11 @@ final class HealthMonitor {
         let storeHealthy = isStoreWritable()
 
         // Broadcaster: WebSocket server is listening.
-        let broadcasterListening = poller.broadcaster.isServerRunning
+        let broadcasterListening = coordinator.isStreamServerRunning
 
         // Decide verdict.
         let verdict = evaluate(
-            mode:                poller.sourceMode,
+            mode:                coordinator.sourceMode,
             sourceRunning:       sourceRunning,
             staleness:           staleness,
             storeHealthy:        storeHealthy,

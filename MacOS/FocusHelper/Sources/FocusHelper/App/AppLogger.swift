@@ -15,8 +15,8 @@ extension Logger {
     /// App and process lifecycle events (launch, terminate, instance guard).
     static let lifecycle = Logger(subsystem: subsystem, category: "Lifecycle")
 
-    /// ActivityPoller orchestration — source selection, restart, event ingestion.
-    static let poller    = Logger(subsystem: subsystem, category: "ActivityPoller")
+    /// ActivityCoordinator orchestration — source selection, restart, event ingestion.
+    static let poller    = Logger(subsystem: subsystem, category: "ActivityCoordinator")
 
     /// NativeWindowWatcher — NSWorkspace notifications, AX API calls.
     static let watcher   = Logger(subsystem: subsystem, category: "NativeWatcher")

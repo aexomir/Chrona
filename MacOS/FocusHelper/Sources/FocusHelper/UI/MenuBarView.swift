@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 struct MenuBarView: View {
-    @EnvironmentObject var poller: ActivityPoller
+    @EnvironmentObject var coordinator: ActivityCoordinator
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -30,42 +30,42 @@ struct MenuBarView: View {
     private var activityHeader: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(poller.isConnected ? Color.green : Color.red.opacity(0.8))
+                .fill(coordinator.isRunning ? Color.green : Color.red.opacity(0.8))
                 .frame(width: 8, height: 8)
-            Text(poller.isConnected ? "Watching activity" : "Watcher stopped")
+            Text(coordinator.isRunning ? "Watching activity" : "Watcher stopped")
                 .font(.system(size: 12, weight: .medium))
             Spacer()
         }
         .padding(.horizontal, 14)
         .padding(.top, 12)
-        .padding(.bottom, poller.hasTitleAccess ? 8 : 4)
+        .padding(.bottom, coordinator.hasTitleAccess ? 8 : 4)
     }
 
     private var activityStats: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Permission banner — shown for the embedded source when permission is non-granted.
-            if let pm = poller.permissionManager {
+            if let pm = coordinator.permissionManager {
                 PermissionBannerView(manager: pm)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 4)
             }
 
-            StatRow(label: "Today",    value: "\(poller.eventsLoggedToday) events")
-            StatRow(label: "All time", value: "\(poller.totalEvents) events · \(segmentInfo)")
-            if poller.corruptedLines > 0 {
+            StatRow(label: "Today",    value: "\(coordinator.eventsLoggedToday) events")
+            StatRow(label: "All time", value: "\(coordinator.totalEvents) events · \(coordinator.storeSummary)")
+            if coordinator.corruptedLines > 0 {
                 StatRow(
                     label: "Corrupted",
-                    value: "\(poller.corruptedLines) lines skipped",
+                    value: "\(coordinator.corruptedLines) lines skipped",
                     valueColor: .orange
                 )
             }
-            if let last = poller.lastEventTime {
+            if let last = coordinator.lastEventTime {
                 StatRow(label: "Last event", value: relativeTime(last))
             }
-            StatRow(label: "Status", value: poller.statusMessage)
+            StatRow(label: "Status", value: coordinator.statusMessage)
 
             // Health row — only shown when something is non-nominal.
-            if let h = poller.health, !h.isHealthy {
+            if let h = coordinator.health, !h.isHealthy {
                 StatRow(
                     label: "Health",
                     value: h.summary,
@@ -81,23 +81,23 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(poller.broadcaster.isServerRunning ? Color.blue : Color.gray)
+                    .fill(coordinator.isStreamServerRunning ? Color.blue : Color.gray)
                     .frame(width: 6, height: 6)
                 Text("iOS Stream")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                if poller.connectedClients > 0 {
-                    Text("\(poller.connectedClients) connected")
+                if coordinator.connectedClients > 0 {
+                    Text("\(coordinator.connectedClients) connected")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.blue)
                 }
             }
 
-            let addr = poller.broadcaster.connectionAddress
+            let addr = coordinator.streamConnectionAddress
             if addr != "offline" {
-                StatRow(label: "IP",   value: poller.broadcaster.connectionAddress)
-                StatRow(label: "Host", value: poller.broadcaster.hostnameAddress)
+                StatRow(label: "IP",   value: coordinator.streamConnectionAddress)
+                StatRow(label: "Host", value: coordinator.streamHostnameAddress)
             } else {
                 StatRow(label: "Stream", value: "Server offline", valueColor: .secondary)
             }
@@ -129,8 +129,8 @@ struct MenuBarView: View {
     }
 
     private func sourceModeButton(for mode: ActivitySourceMode, label: String) -> some View {
-        let isActive = poller.sourceMode == mode
-        return Button { if !isActive { poller.switchMode(to: mode) } } label: {
+        let isActive = coordinator.sourceMode == mode
+        return Button { if !isActive { coordinator.switchMode(to: mode) } } label: {
             Text(label)
                 .font(.system(size: 10, weight: .medium))
                 .padding(.horizontal, 8)
@@ -144,32 +144,23 @@ struct MenuBarView: View {
 
     private var controls: some View {
         Group {
-            if poller.isPolling {
+            if coordinator.isRunning {
                 MenuButton(label: "Pause Watching", systemImage: "pause.circle") {
-                    poller.stop()
+                    coordinator.stop()
                 }
             } else {
                 MenuButton(label: "Start Watching", systemImage: "play.circle.fill") {
-                    poller.start()
+                    coordinator.start()
                 }
             }
 
             MenuButton(label: "Open Data Folder", systemImage: "folder") {
-                if let store = try? DataStore() {
-                    NSWorkspace.shared.open(store.eventsDir)
-                }
+                coordinator.openDataFolder()
             }
         }
     }
 
     // MARK: - Helpers
-
-    private var segmentInfo: String {
-        if let store = try? DataStore() {
-            return "\(store.segmentCount) files · \(store.totalSizeString)"
-        }
-        return "—"
-    }
 
     private func relativeTime(_ date: Date) -> String {
         let secs = Int(-date.timeIntervalSinceNow)

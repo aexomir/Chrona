@@ -3,7 +3,7 @@ import Darwin   // getifaddrs, getnameinfo
 
 // MARK: - EventBroadcaster
 
-/// Sits between the activity poller and the WebSocket server.
+/// Sits between the activity coordinator and the WebSocket server.
 ///
 /// Responsibilities:
 ///   - Buffer incoming StoredRecords and flush them in controlled batches
@@ -79,7 +79,7 @@ final class EventBroadcaster: ObservableObject {
 
     // MARK: - Queueing
 
-    /// Called by ActivityPoller after each successful DataStore write.
+    /// Called by ActivityCoordinator after each successful DataStore write.
     /// Buffers records and triggers an immediate flush at the batch threshold.
     func queue(records: [StoredRecord], eventsToday: Int, isPolling: Bool) {
         guard !records.isEmpty else { return }
@@ -98,7 +98,7 @@ final class EventBroadcaster: ObservableObject {
         let payload = EventsPayload(
             records:  batch,
             batchId:  UUID().uuidString,
-            sentAt:   AWDateFormatter.shared.string(from: Date()),
+            sentAt:   ISO8601Formatter.shared.string(from: Date()),
             count:    batch.count
         )
         broadcast(StreamEnvelope(type: "events", payload: payload))
