@@ -55,4 +55,15 @@ protocol ActivitySource: AnyObject {
     /// For sources that do not need extra permissions this is a no-op.
     /// Must be called from a user-initiated action.
     func requestTitleAccess()
+
+    /// Immediately emit the current in-progress activity state to `activityPublisher`.
+    /// Called when a new iOS client connects so it sees the active app right away
+    /// without waiting for the next natural app-switch or periodic flush.
+    /// Sources without real-time window state (e.g. ExternalActivitySource) provide
+    /// the default no-op.
+    func emitCurrentState()
+}
+
+extension ActivitySource {
+    func emitCurrentState() {}
 }

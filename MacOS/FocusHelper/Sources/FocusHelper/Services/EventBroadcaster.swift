@@ -25,6 +25,14 @@ final class EventBroadcaster: ObservableObject {
     @Published private(set) var connectedClients = 0
     @Published private(set) var isServerRunning  = false
 
+    // MARK: - Callbacks
+
+    /// Called after the hello frame is sent to each newly connected client.
+    /// ActivityCoordinator uses this to trigger an immediate source state flush
+    /// so the iOS app sees the active app right away without waiting for the
+    /// next natural app-switch or 30-second periodic flush.
+    var onNewClientConnected: (() -> Void)?
+
     // MARK: - Batching config
 
     private let maxBatchSize       = 20
@@ -55,8 +63,12 @@ final class EventBroadcaster: ObservableObject {
         }
         // Send hello frame to every client when a new one connects.
         // Existing clients receive it too — it's idempotent state refresh.
+        // After the hello, notify the coordinator so it can push the current
+        // active-app state immediately (without waiting for the next app-switch
+        // or the 30-second periodic flush).
         server.onClientConnected = { [weak self] in
             self?.sendHello()
+            self?.onNewClientConnected?()
         }
     }
 

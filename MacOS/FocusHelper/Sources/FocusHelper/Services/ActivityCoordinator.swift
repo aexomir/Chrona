@@ -156,6 +156,13 @@ final class ActivityCoordinator: ObservableObject {
     // MARK: - Private – setup
 
     private func setUpInfrastructure() {
+        // When a new iOS client connects, immediately push the current in-progress
+        // activity state so the app sees the active app without waiting for the
+        // next natural app-switch or the 30-second periodic flush.
+        broadcaster.onNewClientConnected = { [weak self] in
+            self?.source.emitCurrentState()
+        }
+
         broadcaster.$connectedClients
             .assign(to: \.connectedClients, on: self)
             .store(in: &infraCancellables)

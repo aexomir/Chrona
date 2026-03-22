@@ -9,7 +9,7 @@
  * Mount once in the root layout — nowhere else needs to call configureAdapter.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { configureAdapter } from "@/features/activity-watch/aw-adapter";
 import { createMacBridgeTransport, MacBridgeTransport } from "@/features/activity-watch/awStreamTransport";
 import { useSettingsStore } from "@/features/settings/settings-store";
@@ -17,6 +17,14 @@ import { useSettingsStore } from "@/features/settings/settings-store";
 export function useAwStream(): void {
   const awAdapterMode = useSettingsStore((s) => s.awAdapterMode);
   const awStreamHost = useSettingsStore((s) => s.awStreamHost);
+
+  // Debounce host changes so that typing in the Collector Host field doesn't
+  // create a new transport attempt on every keystroke.
+  const [debouncedHost, setDebouncedHost] = useState(awStreamHost);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedHost(awStreamHost), 600);
+    return () => clearTimeout(timer);
+  }, [awStreamHost]);
 
   const transportRef = useRef<MacBridgeTransport | null>(null);
 
@@ -27,7 +35,7 @@ export function useAwStream(): void {
     }
 
     if (awAdapterMode === "stream") {
-      const transport = createMacBridgeTransport(awStreamHost);
+      const transport = createMacBridgeTransport(debouncedHost);
       transportRef.current = transport;
       configureAdapter({ mode: "stream", transport });
     } else {
@@ -38,5 +46,5 @@ export function useAwStream(): void {
       transportRef.current?.disconnect();
       transportRef.current = null;
     };
-  }, [awAdapterMode, awStreamHost]);
+  }, [awAdapterMode, debouncedHost]);
 }

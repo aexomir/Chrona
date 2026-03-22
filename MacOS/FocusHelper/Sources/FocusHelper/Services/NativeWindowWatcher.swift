@@ -141,6 +141,17 @@ final class NativeWindowWatcher: ObservableObject {
         sessionStart = Date()
     }
 
+    // MARK: - On-demand flush
+
+    /// Emit the current in-progress session immediately without waiting for
+    /// the next app switch or the periodic flush timer.
+    /// Resets `sessionStart` so the emitted slice is non-overlapping — identical
+    /// behaviour to the 30-second flush timer.
+    /// Called when a new iOS client connects so it sees the active app right away.
+    func triggerImmediateFlush() {
+        emitCurrentSession(resetStart: true)
+    }
+
     // MARK: - Private – periodic flush
 
     private func startFlushTimer() {

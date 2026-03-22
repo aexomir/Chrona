@@ -44,6 +44,8 @@ export class MacBridgeTransport implements AwStreamTransport {
   private readonly port: number
 
   private ws: WebSocket | null = null
+  /** The WebSocket currently being opened (between new WebSocket() and onopen/onclose). */
+  private pendingWs: WebSocket | null = null
   private eventHandlers: Array<(event: AwStreamEvent) => void> = []
   private statusHandlers: Array<(connected: boolean) => void> = []
 
@@ -65,7 +67,7 @@ export class MacBridgeTransport implements AwStreamTransport {
    * Opens the WebSocket connection.
    * Resolves when the socket is open and the hello frame has been received.
    * Rejects after CONNECT_TIMEOUT_MS if the connection cannot be established.
-   * After rejection, the automatic reconnect loop takes over.
+   * After rejection, the automatic reconnect loop takes over via onclose.
    */
   connect(): Promise<void> {
     this.intentionalDisconnect = false
@@ -76,8 +78,10 @@ export class MacBridgeTransport implements AwStreamTransport {
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error(`[FocusHelper] Connection timed out after ${CONNECT_TIMEOUT_MS}ms`))
-        // Let the reconnect loop take over from here
-        this.scheduleReconnect()
+        // Close the pending socket so its onclose fires and schedules the reconnect.
+        // Do NOT call scheduleReconnect() here — onclose handles it, and calling both
+        // would double-increment reconnectAttempt and cancel the first backoff timer.
+        this.pendingWs?.close()
       }, CONNECT_TIMEOUT_MS)
 
       this.openSocket(
@@ -118,13 +122,16 @@ export class MacBridgeTransport implements AwStreamTransport {
     let ws: WebSocket
     try {
       ws = new WebSocket(url)
+      this.pendingWs = ws
     } catch (err) {
+      this.pendingWs = null
       onError?.(err instanceof Error ? err : new Error(String(err)))
       this.scheduleReconnect()
       return
     }
 
     ws.onopen = () => {
+      this.pendingWs = null
       this.ws = ws
       this.reconnectAttempt = 0
       this.notifyStatus(true)
@@ -141,6 +148,7 @@ export class MacBridgeTransport implements AwStreamTransport {
     }
 
     ws.onclose = (evt) => {
+      if (this.pendingWs === ws) this.pendingWs = null
       const wasClean = evt.wasClean
       this.ws = null
       this.notifyStatus(false)

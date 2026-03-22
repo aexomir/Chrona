@@ -92,4 +92,8 @@ final class EmbeddedActivitySource: ActivitySource {
     func requestTitleAccess() {
         permissionManager?.performAction()
     }
+
+    func emitCurrentState() {
+        watcher.triggerImmediateFlush()
+    }
 }
