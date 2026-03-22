@@ -52,7 +52,17 @@ export interface StatusEvent {
   }
 }
 
-export type AwStreamEvent = HelloEvent | EventsEvent | StatusEvent
+/** Emitted when the user enters or leaves an active video meeting. */
+export interface MeetingEvent {
+  type: 'meeting'
+  payload: {
+    isInMeeting: boolean
+    appId: string
+    appDisplayName: string
+  }
+}
+
+export type AwStreamEvent = HelloEvent | EventsEvent | StatusEvent | MeetingEvent
 
 // MARK: - Transport interface (what the macOS P2P bridge must implement)
 

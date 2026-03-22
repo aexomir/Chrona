@@ -44,6 +44,28 @@ let _mode: AdapterMode = "localhost";
 let _transport: AwStreamTransport | null = null;
 let _streamConnected = false;
 
+// ─── Meeting state ────────────────────────────────────────────────────────────
+
+export interface ActiveMeeting {
+  appId: string;
+  appDisplayName: string;
+}
+
+let _currentMeeting: ActiveMeeting | null = null;
+const _meetingHandlers: Array<(meeting: ActiveMeeting | null) => void> = [];
+
+export function getMeetingState(): ActiveMeeting | null {
+  return _currentMeeting;
+}
+
+export function onMeetingChange(handler: (meeting: ActiveMeeting | null) => void): () => void {
+  _meetingHandlers.push(handler);
+  return () => {
+    const i = _meetingHandlers.indexOf(handler);
+    if (i !== -1) _meetingHandlers.splice(i, 1);
+  };
+}
+
 // Normalised per-event record buffered from incoming stream batches
 interface BufferedEvent {
   timestamp: string;
@@ -69,17 +91,28 @@ function _pruneBuffer(): void {
 }
 
 // Receives raw wire messages from the transport.
-// Only EventsEvent batches carry records worth buffering.
 function _handleWireEvent(msg: WireEvent): void {
-  if (msg.type !== "events") return;
-  _pruneBuffer();
-  for (const record of msg.payload.records) {
-    _eventBuffer.push({
-      timestamp: record.ts,
-      duration: record.dur,
-      app: record.app,
-      title: record.title ?? null,
-    });
+  if (msg.type === "events") {
+    _pruneBuffer();
+    for (const record of msg.payload.records) {
+      _eventBuffer.push({
+        timestamp: record.ts,
+        duration: record.dur,
+        app: record.app,
+        title: record.title ?? null,
+      });
+    }
+    return;
+  }
+
+  if (msg.type === "meeting") {
+    const next = msg.payload.isInMeeting
+      ? { appId: msg.payload.appId, appDisplayName: msg.payload.appDisplayName }
+      : null;
+    _currentMeeting = next;
+    for (const handler of _meetingHandlers) {
+      try { handler(next); } catch { /* ignore */ }
+    }
   }
 }
 

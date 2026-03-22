@@ -1,6 +1,6 @@
 import { detectMissedCalendarEvent } from "@/features/calendar/detectMissedCalendarEvent";
 import { detectMissedTime } from "@/features/recovery/detectMissedTime";
-import { getCurrentApp } from "@/features/activity-watch/aw-adapter";
+import { getCurrentApp, getMeetingState, onMeetingChange } from "@/features/activity-watch/aw-adapter";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useRecoveryStore } from "@/features/recovery/recovery-store";
@@ -62,6 +62,7 @@ export function TimerBar() {
     eventTitle: string;
     projectId: string;
   } | null>(null);
+  const [activeMeeting, setActiveMeeting] = useState(getMeetingState);
   const [untrackedApp, setUntrackedApp] = useState<string | null>(null);
   const [untrackedTitle, setUntrackedTitle] = useState<string | null>(null);
   const [untrackedDismissed, setUntrackedDismissed] = useState(false);
@@ -287,6 +288,11 @@ export function TimerBar() {
     }
   }, [isTracking, recoveryPeriod, calendarEnabled, getActiveEventSuggestion]);
 
+  // Subscribe to meeting state changes from the Mac app stream
+  useEffect(() => {
+    return onMeetingChange(setActiveMeeting);
+  }, []);
+
   // Periodic calendar refresh: refresh events every 5 minutes when idle
   useEffect(() => {
     if (!calendarEnabled || isTracking) return;
@@ -324,6 +330,10 @@ export function TimerBar() {
           );
         } else if (recoveryPeriod !== null) {
           router.push("/recover");
+        } else if (activeMeeting && !isTracking) {
+          router.push(
+            `/timer?suggestTitle=${encodeURIComponent(`${activeMeeting.appDisplayName} Meeting`)}`,
+          );
         } else if (calendarSuggestion && calendarProj) {
           router.push(
             `/timer?suggestProjectId=${calendarSuggestion.projectId}&suggestEventTitle=${encodeURIComponent(calendarSuggestion.eventTitle)}`,
@@ -419,6 +429,13 @@ export function TimerBar() {
           >
             <Text className="text-white/50 text-sm font-semibold">×</Text>
           </Pressable>
+        </View>
+      ) : activeMeeting && !isTracking ? (
+        <View className="flex-row items-center justify-center gap-2">
+          <View className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+          <Text className="text-violet-300 text-sm" numberOfLines={1}>
+            In {activeMeeting.appDisplayName} · Tap to track
+          </Text>
         </View>
       ) : isAutoTracking && autoProject ? (
         <View className="flex-row items-center justify-center gap-2">
