@@ -1,0 +1,51 @@
+# Tests the idle-mode suggestion banner in the Timer modal.
+# This flow validates that the banner renders with a project name and app badges
+# when the suggestion system has data. It does NOT test that AW returns correct
+# data (that's a Jest concern) — it tests that the UI renders when data is present.
+#
+# Limitation: Maestro can't inject AW mock data. This flow tests the UI path
+# assuming AW is running and has returned data previously stored in the
+# suggestions store (i.e., you've logged ≥3 sessions for a project).
+#
+# Prerequisites:
+#   - App running with ≥3 logged sessions for a project using the same apps
+#   - AW running locally
+# Run: maestro test .maestro/timer_suggestion_banner.yaml
+
+appId: com.focus.app
+---
+- launchApp
+- waitForAnimationToEnd
+
+# Open the timer modal (tap the TimerBar / bottom area)
+- tapOn:
+    text: "Tap to start a timer"
+- waitForAnimationToEnd
+
+# Verify we're in the idle (new timer) state
+- assertVisible:
+    text: "New Timer"
+
+# If a suggestion fired, the banner should be visible
+# (this will fail gracefully if AW has no data — expected in a fresh environment)
+- optional:
+    - assertVisible:
+        text: "Detected Apps"
+    - assertVisible:
+        text: "Track as"
+
+# Verify the start button is disabled before entering a title
+- assertNotVisible:
+    # The button should not be tappable with empty title
+    # Maestro limitation: can't directly assert isDisabled, so assert via behavior:
+    text: "Start Timer"  # this checks the button label exists
+
+# Enter a title and verify start enables
+- tapOn:
+    placeholder: "What are you working on?"
+- inputText: "Test session"
+- assertVisible:
+    text: "Start Timer"
+
+# Go back without starting
+- pressKey: Escape

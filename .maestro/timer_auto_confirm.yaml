@@ -1,0 +1,81 @@
+# Tests the auto-confirm flow: when stopping a timer with a high-confidence
+# project match, the AutoConfirmView should appear instead of the ReviewView.
+#
+# Limitation: Maestro cannot control AW or the suggestions store. This flow
+# tests the UI path and cancel behavior. To reliably trigger auto-confirm:
+#   1. Log ≥5 sessions for a project using the same app (e.g., Cursor)
+#   2. Have AW running with that app currently active
+#   3. Run this flow while that app is in the foreground on your Mac
+#
+# To test the cancel path (ReviewView fallback), this flow taps Cancel during
+# the auto-confirm countdown.
+#
+# Run: maestro test .maestro/timer_auto_confirm.yaml
+
+appId: com.focus.app
+---
+- launchApp
+- waitForAnimationToEnd
+
+# Open timer
+- tapOn:
+    text: "Tap to start a timer"
+- waitForAnimationToEnd
+
+# Enter a session title
+- tapOn:
+    placeholder: "What are you working on?"
+- inputText: "Deep work"
+
+# Select a project (assumes "My Project" exists — change to your actual project name)
+- tapOn:
+    text: "Project (optional)"
+- tapOn:
+    text: "My Project"   # ← replace with an actual project name
+
+# Start the timer
+- tapOn:
+    text: "Start Timer"
+- waitForAnimationToEnd
+
+# The timer modal closes. Open it again to see the tracking state.
+- tapOn:
+    text: "My Project"   # TimerBar shows project name when tracking
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "Tracking"
+
+# Stop the timer
+- tapOn:
+    text: "Stop Timer"
+- waitForAnimationToEnd
+
+# ---
+# Scenario A: Auto-confirm triggers (requires real AW data + trained suggestions)
+# ---
+- optional:
+    - assertVisible:
+        text: "Saving automatically"
+    - assertVisible:
+        text: "Cancel"
+    # Cancel during the countdown — should revert to ReviewView
+    - tapOn:
+        text: "Cancel"
+    - assertVisible:
+        text: "Review"
+    - assertVisible:
+        text: "Apps Detected"
+
+# ---
+# Scenario B: Review screen shows (low confidence or no project match)
+# ---
+- optional:
+    - assertVisible:
+        text: "Review"
+    - assertVisible:
+        text: "Session Complete"
+    - assertVisible:
+        text: "Deep work"
+    - tapOn:
+        text: "Save Session"

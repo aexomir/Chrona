@@ -1,0 +1,11 @@
+import type { Config } from "jest";
+
+const config: Config = {
+  preset: "jest-expo",
+  testMatch: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/$1",
+  },
+};
+
+export default config;

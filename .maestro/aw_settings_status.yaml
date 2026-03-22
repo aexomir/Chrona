@@ -1,0 +1,40 @@
+# Tests that the Activity Tracking status row appears in Settings → Integrations.
+# Run with AW running locally to see "Connected"; kill aw-server to see "Not Available".
+#
+# Prerequisites:
+#   - App running on simulator via `bun run ios`
+#   - maestro installed: brew install maestro
+# Run: maestro test .maestro/aw_settings_status.yaml
+
+appId: com.focus.app  # replace with your actual bundle ID from app.json
+---
+- launchApp
+- waitForAnimationToEnd
+
+# Navigate to Settings
+# Settings is the 4th tab (index 3) — tap its tab trigger
+- tapOn:
+    id: "settings-tab"
+    # If tabs don't have testIDs, use label:
+    # label: "Settings"
+
+- waitForAnimationToEnd
+
+# Scroll to Integrations section
+- scrollUntilVisible:
+    element:
+      text: "Integrations"
+    direction: DOWN
+
+# Verify the Activity Tracking row exists
+- assertVisible:
+    text: "Activity Tracking"
+
+# Verify a status label is shown (one of three possible values)
+- assertVisible:
+    id: "aw-status-label"
+    # If no testID: use regex or check at least one label is visible
+    # You can assert exact text by rerunning with/without AW:
+    # text: "Connected"         # when AW is running
+    # text: "Not Available"     # when AW is stopped
+    # text: "Checking..."       # immediately on mount (timing-dependent)
