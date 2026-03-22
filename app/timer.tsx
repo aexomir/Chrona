@@ -1,7 +1,7 @@
 import { StaticAuraBackground } from "@/components/static-aura-background";
 import type { Project } from "@/constants/projects";
 import { useAuroraTheme } from "@/hooks/use-aurora-theme";
-import { getAppUsage } from "@/lib/activitywatch";
+import { getAppUsage } from "@/lib/aw-adapter";
 import { useProjects } from "@/stores/projects-store";
 import { useSessionsStore, type AppUsage } from "@/stores/sessions-store";
 import {

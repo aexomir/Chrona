@@ -1,4 +1,5 @@
 import { HeroOverlay } from "@/components/hero-overlay";
+import { useAwStream } from "@/hooks/use-aw-stream";
 import { useSyncWatch, useWatchMessages } from "@/hooks/use-watch";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { heroProgress } from "@/lib/hero-animation";
@@ -24,6 +25,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   useWidgetSync();
+  useAwStream();
   useWatchMessages(
     () => {
       const { isTracking, startTimer } = useTimerStore.getState();

@@ -1,4 +1,4 @@
-import { getAppUsage } from "./activitywatch";
+import { getAppUsage } from "./aw-adapter";
 import type { AppUsage, Session } from "@/stores/sessions-store";
 
 export type RecoveryPeriod = {

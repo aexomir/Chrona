@@ -1,6 +1,6 @@
 import { detectMissedCalendarEvent } from "@/lib/detectMissedCalendarEvent";
 import { detectMissedTime } from "@/lib/detectMissedTime";
-import { getCurrentApp } from "@/lib/activitywatch";
+import { getCurrentApp } from "@/lib/aw-adapter";
 import { useCalendarStore } from "@/stores/calendar-store";
 import { useProjects } from "@/stores/projects-store";
 import { useRecoveryStore } from "@/stores/recovery-store";

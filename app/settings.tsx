@@ -1,19 +1,19 @@
-import { Image } from "expo-image";
-import { useRouter, Stack } from "expo-router";
-import { Switch } from "heroui-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useCalendarStore } from "@/stores/calendar-store";
+import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
+import { StaticAuraBackground } from "@/components/static-aura-background";
+import { DevBadge, SoonBadge } from "@/components/wip-badge";
+import { useAuroraTheme } from "@/hooks/use-aurora-theme";
+import { checkAwAvailability } from "@/lib/aw-adapter";
 import { calendarStatusLabel } from "@/lib/calendar";
-import { useMeetingStore } from "@/stores/meeting-store";
 import { meetingStatusLabel } from "@/lib/meetingDetection";
+import { useCalendarStore } from "@/stores/calendar-store";
+import { useMeetingStore } from "@/stores/meeting-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useTrackingRulesStore } from "@/stores/tracking-rules-store";
-import { StaticAuraBackground } from "@/components/static-aura-background";
-import { useAuroraTheme } from "@/hooks/use-aurora-theme";
-import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
-import { SoonBadge } from "@/components/wip-badge";
+import { Image } from "expo-image";
+import { Stack, useRouter } from "expo-router";
+import { Switch } from "heroui-native";
 import { useEffect, useState } from "react";
-import { checkAwAvailability } from "@/lib/activitywatch";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -116,14 +116,23 @@ export default function SettingsScreen() {
     setConstellationEnabled,
     developerMode,
     setDeveloperMode,
+    awAdapterMode,
+    setAwAdapterMode,
+    awStreamHost,
+    setAwStreamHost,
   } = useSettingsStore();
   const { rules } = useTrackingRulesStore();
   const [devTapCount, setDevTapCount] = useState(0);
   const [awAvailable, setAwAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
+    setAwAvailable(null);
     checkAwAvailability().then(setAwAvailable);
-  }, []);
+  }, [awAdapterMode]);
+
+  function handleAwModeToggle(streamEnabled: boolean) {
+    setAwAdapterMode(streamEnabled ? "stream" : "localhost");
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -169,7 +178,9 @@ export default function SettingsScreen() {
               label="Calendar"
               onPress={() => router.push("/calendar-settings")}
               suffix={
-                <ValueSuffix value={calendarStatusLabel(permissionStatus, isEnabled)} />
+                <ValueSuffix
+                  value={calendarStatusLabel(permissionStatus, isEnabled)}
+                />
               }
             />
             <SettingsDivider />
@@ -181,44 +192,12 @@ export default function SettingsScreen() {
                     ? "Checking..."
                     : awAvailable
                       ? "Connected"
-                      : "Not Available"}
+                      : awAdapterMode === "stream"
+                        ? "Waiting for stream"
+                        : "Not Available"}
                 </Text>
               }
             />
-            {developerMode && (
-              <>
-                <SettingsDivider />
-                <SettingsRow
-                  label="Meetings"
-                  onPress={() => router.push("/meeting-settings")}
-                  suffix={
-                    <View className="flex-row items-center gap-2">
-                      <SoonBadge />
-                      <ValueSuffix
-                        value={meetingStatusLabel(meetingEnabled, selectedAppIds)}
-                      />
-                    </View>
-                  }
-                />
-              </>
-            )}
-            {developerMode && (
-              <>
-                <SettingsDivider />
-                <SettingsRow
-                  label="Tracking Rules"
-                  onPress={() => router.push("/tracking-rules")}
-                  suffix={
-                    <View className="flex-row items-center gap-2">
-                      <SoonBadge />
-                      <ValueSuffix
-                        value={`${rules.length} rule${rules.length !== 1 ? "s" : ""}`}
-                      />
-                    </View>
-                  }
-                />
-              </>
-            )}
           </SettingsCard>
         </View>
 
@@ -239,6 +218,82 @@ export default function SettingsScreen() {
             />
           </SettingsCard>
         </View>
+
+        {/* DEVELOPER */}
+        {developerMode && (
+          <View className="mt-10">
+            <SectionLabel>Developer</SectionLabel>
+            <SettingsCard>
+              <SettingsRow
+                label="Stream Mode"
+                suffix={
+                  <View className="flex-row items-center gap-3">
+                    <DevBadge />
+                    <Text className="text-xs text-neutral-500">
+                      {awAdapterMode === "stream" ? "P2P · collector" : "localhost:5600"}
+                    </Text>
+                    <Switch
+                      isSelected={awAdapterMode === "stream"}
+                      onSelectedChange={handleAwModeToggle}
+                    />
+                  </View>
+                }
+              />
+              {awAdapterMode === "stream" && (
+                <>
+                  <SettingsDivider />
+                  <View className="flex-row items-center justify-between py-4 px-5">
+                    <Text className="text-white text-base font-medium flex-1">
+                      Collector Host
+                    </Text>
+                    <TextInput
+                      value={awStreamHost}
+                      onChangeText={setAwStreamHost}
+                      placeholder="localhost"
+                      placeholderTextColor="#52525b"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                      returnKeyType="done"
+                      style={{
+                        color: "#a1a1aa",
+                        fontSize: 14,
+                        textAlign: "right",
+                        minWidth: 140,
+                      }}
+                    />
+                  </View>
+                </>
+              )}
+              <SettingsDivider />
+              <SettingsRow
+                label="Meetings"
+                onPress={() => router.push("/meeting-settings")}
+                suffix={
+                  <View className="flex-row items-center gap-2">
+                    <SoonBadge />
+                    <ValueSuffix
+                      value={meetingStatusLabel(meetingEnabled, selectedAppIds)}
+                    />
+                  </View>
+                }
+              />
+              <SettingsDivider />
+              <SettingsRow
+                label="Tracking Rules"
+                onPress={() => router.push("/tracking-rules")}
+                suffix={
+                  <View className="flex-row items-center gap-2">
+                    <SoonBadge />
+                    <ValueSuffix
+                      value={`${rules.length} rule${rules.length !== 1 ? "s" : ""}`}
+                    />
+                  </View>
+                }
+              />
+            </SettingsCard>
+          </View>
+        )}
 
         {/* ABOUT */}
         <View className="mt-10 mb-8">

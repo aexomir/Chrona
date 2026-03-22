@@ -1,6 +1,6 @@
 import type { CalendarMapping } from "@/stores/calendar-store";
 import type { Session } from "@/stores/sessions-store";
-import { getAppUsage } from "./activitywatch";
+import { getAppUsage } from "./aw-adapter";
 import type { CalendarEvent } from "./calendar";
 import { eventMatchesMapping } from "./calendar";
 import type { RecoveryPeriod } from "./detectMissedTime";
