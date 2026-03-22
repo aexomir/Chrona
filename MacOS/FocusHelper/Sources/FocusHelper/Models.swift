@@ -1,43 +1,6 @@
 import Foundation
 
-// MARK: - ActivityWatch API Types
-
-struct AWBucket: Decodable {
-    let id: String
-    let type: String
-    let client: String
-    let hostname: String
-}
-
-/// Raw event as returned by the ActivityWatch REST API.
-struct AWEvent: Decodable {
-    let id: Int
-    let timestamp: String   // ISO8601 with fractional seconds and offset
-    let duration: Double    // seconds
-    let data: AWWindowData
-
-    struct AWWindowData: Decodable {
-        let app: String
-        let title: String?
-    }
-
-    var parsedTimestamp: Date? { AWDateFormatter.shared.date(from: timestamp) }
-
-    func normalize(bucket: String) -> NormalizedEvent? {
-        guard let date = parsedTimestamp else { return nil }
-        return NormalizedEvent(
-            id: UUID().uuidString,
-            timestamp: AWDateFormatter.shared.string(from: date),
-            app: data.app,
-            duration: duration,
-            title: data.title,
-            bucket: bucket,
-            sourceEventId: self.id
-        )
-    }
-}
-
-// MARK: - Internal event (produced by poller, consumed by DataStore)
+// MARK: - Internal event (produced by NativeWindowWatcher, consumed by DataStore)
 
 struct NormalizedEvent {
     let id: String          // client-generated UUID — stable across retries
@@ -46,7 +9,7 @@ struct NormalizedEvent {
     let duration: Double    // seconds
     let title: String?
     let bucket: String
-    let sourceEventId: Int  // AW's event ID (unique within a bucket)
+    let sourceEventId: Int  // monotonic counter from NativeWindowWatcher (dedup key within bucket)
 }
 
 // MARK: - On-disk record  (one per line in events/YYYY-MM-DD.jsonl)
@@ -61,8 +24,8 @@ struct NormalizedEvent {
 //   app     application name
 //   dur     duration in seconds
 //   title   window title (optional)
-//   bucket  AW bucket id
-//   src_id  source AW event id (dedup key within bucket)
+//   bucket  watcher bucket id (e.g. "focus-native-watcher")
+//   src_id  monotonic event counter (dedup key within bucket)
 //   wt      written-at, ISO8601 UTC (sync ordering key)
 
 struct StoredRecord: Codable {

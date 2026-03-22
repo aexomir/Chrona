@@ -1,151 +1,308 @@
+import AppKit
 import Foundation
 import Combine
+import os
 
-/// Drives the polling loop, owns the data store, and owns the event broadcaster.
-/// Runs on MainActor so @Published properties update the SwiftUI view automatically.
+/// Orchestrates activity collection, storage, and broadcasting.
+///
+/// Responsibilities beyond basic event routing:
+///   - Auto-restarts the activity source on failure with exponential backoff
+///   - Performs a clean shutdown when the app terminates (flushes in-progress session)
+///   - Owns a `HealthMonitor` that periodically verifies all components are live
+///   - Emits structured `os.Logger` entries for every lifecycle transition
+///
+/// Runs on MainActor so @Published properties drive SwiftUI updates directly.
 @MainActor
 final class ActivityPoller: ObservableObject {
 
-    // MARK: - Published state (drives MenuBarView)
+    // MARK: - Published state
 
-    @Published var isConnected = false
-    @Published var isPolling   = false
-    @Published var lastPollTime: Date?
-    @Published var statusMessage = "Idle"
+    @Published var isRunning         = false
+    @Published var sourceStatus      = ActivitySourceStatus.idle
+    @Published var lastEventTime: Date?
+    @Published var statusMessage     = "Idle"
+    @Published var sourceMode        = ActivitySourceFactory.currentMode
     @Published var eventsLoggedToday = 0
-    @Published var totalEvents = 0
-    @Published var corruptedLines = 0
-    @Published var connectedClients = 0   // forwarded from broadcaster
+    @Published var totalEvents       = 0
+    @Published var corruptedLines    = 0
+    @Published var connectedClients  = 0
+    @Published var health: HealthReport?
+
+    // Convenience aliases kept for MenuBarView compatibility.
+    var isConnected: Bool { isRunning }
+    var isPolling:   Bool { isRunning }
+
+    var hasTitleAccess: Bool {
+        if case .running(let ta) = sourceStatus { return ta == .available }
+        return false
+    }
 
     // MARK: - Sub-systems
 
-    let broadcaster = EventBroadcaster()   // owns the WebSocket server
+    let broadcaster   = EventBroadcaster()
+    let healthMonitor: HealthMonitor     // weak-refs self; safe
 
-    // MARK: - Private
+    // MARK: - Private – infrastructure
 
-    private let client = ActivityWatchClient()
-    private var store: DataStore?
-    private var pollingTask: Task<Void, Never>?
-    private var windowBucketId: String?
-    private var lastEventTime: Date = Calendar.current.startOfDay(for: Date())
-    private var cancellables = Set<AnyCancellable>()
+    private var source:  any ActivitySource
+    private var store:   DataStore?
+    private var eventCounter = 0
+    private var infraCancellables  = Set<AnyCancellable>()
+    private var sourceCancellables = Set<AnyCancellable>()
 
-    static let pollInterval: TimeInterval = 30
+    // MARK: - Private – restart state
+    //
+    // Exponential backoff: delay = min(5 × 2^attempt, 300) seconds.
+    // The counter resets after the source stays healthy for `resetAfter`.
+
+    private var restartAttempts = 0
+    private var restartTask: Task<Void, Never>?
+    /// How long (seconds) the source must run without failure before the backoff
+    /// counter resets to zero.
+    private let resetAfter: TimeInterval = 120
+    private var resetTask: Task<Void, Never>?
 
     // MARK: - Init
 
     init() {
-        // Forward broadcaster's client count into our own @Published
-        broadcaster.$connectedClients
-            .assign(to: \.connectedClients, on: self)
-            .store(in: &cancellables)
+        source        = ActivitySourceFactory.make()
+        sourceMode    = ActivitySourceFactory.currentMode
+        healthMonitor = HealthMonitor()    // poller reference set below once self is ready
 
-        do {
-            let s = try DataStore()
-            store = s
-            if let cursor = s.loadCursor() {
-                lastEventTime  = cursor.lastEventTimestamp
-                windowBucketId = cursor.windowBucketId
-            } else {
-                lastEventTime = Calendar.current.startOfDay(for: Date())
-            }
-            syncStats(from: s)
-        } catch {
-            statusMessage = "Storage error: \(error.localizedDescription)"
-        }
+        // Wire poller reference into the health monitor now that all stored properties
+        // have been initialised (Swift's two-phase init requirement).
+        healthMonitor.configure(poller: self)
 
-        // Start the WebSocket server
+        setUpInfrastructure()
+        subscribeToSource()
+
         try? broadcaster.start()
+        registerShutdownHandler()
 
-        // Auto-start polling
         start()
+        Logger.poller.info("ActivityPoller initialised, mode=\(self.sourceMode.rawValue)")
     }
 
     // MARK: - Control
 
     func start() {
-        guard !isPolling, store != nil else { return }
-        isPolling = true
-        statusMessage = "Starting…"
-        pollingTask = Task { [weak self] in await self?.runLoop() }
+        guard !isRunning, store != nil else { return }
+        isRunning = true
+        source.start()
+        healthMonitor.start()
+        Logger.poller.info("Activity collection started")
     }
 
+    /// Stops collection cleanly. The source flushes its in-progress session before
+    /// returning so the last activity window is not lost.
     func stop() {
-        pollingTask?.cancel()
-        pollingTask = nil
-        isPolling   = false
-        isConnected = false
+        restartTask?.cancel()
+        resetTask?.cancel()
+        source.stop()
+        isRunning     = false
         statusMessage = "Stopped"
+        Logger.poller.info("Activity collection stopped")
     }
 
-    // MARK: - Polling loop
+    /// Switches the data source at runtime and immediately restarts collection.
+    func switchMode(to mode: ActivitySourceMode) {
+        Logger.poller.info("Switching source mode: \(self.sourceMode.rawValue) → \(mode.rawValue)")
+        stop()
+        sourceCancellables.removeAll()
+        restartAttempts = 0       // manual mode switch resets backoff
 
-    private func runLoop() async {
-        while !Task.isCancelled {
-            await poll()
-            for _ in 0..<Int(Self.pollInterval) {
-                if Task.isCancelled { return }
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+        ActivitySourceFactory.currentMode = mode
+        sourceMode = mode
+        source     = ActivitySourceFactory.make(mode: mode)
+
+        subscribeToSource()
+        start()
+    }
+
+    func requestTitleAccess() {
+        source.requestTitleAccess()
+    }
+
+    /// The permission manager for the current source, if any.
+    /// MenuBarView observes this to display the correct permission UI.
+    var permissionManager: PermissionManager? {
+        source.permissionManager
+    }
+
+    /// Called by HealthMonitor to expose the latest report into the UI.
+    func applyHealthReport(_ report: HealthReport) {
+        health = report
+    }
+
+    // MARK: - Private – setup
+
+    private func setUpInfrastructure() {
+        broadcaster.$connectedClients
+            .assign(to: \.connectedClients, on: self)
+            .store(in: &infraCancellables)
+
+        healthMonitor.$report
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] r in self?.health = r }
+            .store(in: &infraCancellables)
+
+        do {
+            let s = try DataStore()
+            store = s
+            syncStats(from: s)
+            Logger.poller.info("DataStore ready — \(s.totalCount) total events on disk")
+        } catch {
+            Logger.poller.fault("DataStore init failed: \(error.localizedDescription)")
+            statusMessage = "Storage error: \(error.localizedDescription)"
+        }
+    }
+
+    private func subscribeToSource() {
+        source.statusPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (s: ActivitySourceStatus) in self?.apply(status: s) }
+            .store(in: &sourceCancellables)
+
+        source.activityPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (w: ActivityWindow) in self?.ingest(w) }
+            .store(in: &sourceCancellables)
+    }
+
+    // MARK: - Private – shutdown
+
+    private func registerShutdownHandler() {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object:  nil,
+            queue:   .main
+        ) { [weak self] _ in
+            // The notification arrives on the main thread; bridging to MainActor is safe.
+            Task { @MainActor [weak self] in
+                self?.shutDown()
             }
         }
     }
 
-    private func poll() async {
+    private func shutDown() {
+        Logger.lifecycle.info("App terminating — flushing in-progress session…")
+        healthMonitor.stop()
+        stop()
+        broadcaster.stop()
+        Logger.lifecycle.info("Clean shutdown complete")
+    }
+
+    // MARK: - Private – status handling
+
+    private func apply(status: ActivitySourceStatus) {
+        let previous = sourceStatus
+        sourceStatus = status
+
+        switch status {
+        case .idle:
+            statusMessage = "Idle"
+
+        case .running(let ta):
+            statusMessage = ta == .available ? "Watching…" : "Watching (app names only)"
+
+            // If we just transitioned from failed/stopped back to running,
+            // schedule a backoff-counter reset.
+            if case .failed = previous { scheduleBackoffReset() }
+
+            Logger.poller.info("Source running — titleAccess=\(ta == .available)")
+
+        case .failed(let msg):
+            isRunning = false
+            statusMessage = "Error: \(msg)"
+            Logger.poller.error("Source failed: \(msg) — scheduling restart")
+            scheduleRestart()
+
+        case .stopped:
+            isRunning = false
+            Logger.poller.info("Source stopped")
+        }
+    }
+
+    // MARK: - Private – restart with exponential backoff
+
+    private func scheduleRestart() {
+        let delay = min(5.0 * pow(2.0, Double(restartAttempts)), 300.0)
+        restartAttempts += 1
+
+        Logger.poller.warning(
+            "Restart scheduled in \(Int(delay))s (attempt \(self.restartAttempts))"
+        )
+
+        restartTask?.cancel()
+        restartTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { self?.executeRestart() }
+        }
+    }
+
+    private func executeRestart() {
+        guard case .failed = sourceStatus else { return }   // guard: may have recovered
+
+        Logger.poller.info("Executing restart (attempt \(self.restartAttempts))…")
+
+        sourceCancellables.removeAll()
+        source = ActivitySourceFactory.make(mode: sourceMode)
+        subscribeToSource()
+        isRunning = true
+        source.start()
+    }
+
+    /// After a stable running period, reset the backoff counter so the next
+    /// transient failure gets a short delay instead of the accumulated long one.
+    private func scheduleBackoffReset() {
+        resetTask?.cancel()
+        resetTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64((self?.resetAfter ?? 120) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { [weak self] in
+                guard let self, case .running = self.sourceStatus else { return }
+                let old = self.restartAttempts
+                self.restartAttempts = 0
+                if old > 0 {
+                    Logger.poller.info("Backoff counter reset after stable run (was \(old))")
+                }
+            }
+        }
+    }
+
+    // MARK: - Private – event ingestion
+
+    private func ingest(_ window: ActivityWindow) {
         guard let store else { return }
 
+        eventCounter += 1
+        let event = window.normalized(bucket: source.bucketId, counter: eventCounter)
+
         do {
-            if windowBucketId == nil {
-                windowBucketId = try await client.findWindowBucket()
-                var cursor = store.loadCursor() ?? Cursor(lastEventTimestamp: lastEventTime)
-                cursor.windowBucketId = windowBucketId
-                store.saveCursor(cursor)
-            }
-
-            guard let bucketId = windowBucketId else { return }
-
-            let fetchFrom  = lastEventTime.addingTimeInterval(0.001)
-            let rawEvents  = try await client.fetchEvents(bucketId: bucketId, since: fetchFrom)
-
-            isConnected  = true
-            lastPollTime = Date()
-
-            // normalize → write (dedup happens inside DataStore)
-            let normalized = rawEvents.compactMap { $0.normalize(bucket: bucketId) }
-            let written    = try store.write(batch: normalized)   // returns [StoredRecord]
-
-            // Advance cursor
-            if let latest = rawEvents.last, let ts = latest.parsedTimestamp, ts > lastEventTime {
-                lastEventTime = ts
-                store.saveCursor(Cursor(lastEventTimestamp: ts, windowBucketId: bucketId))
-            }
-
+            let written = try store.write(batch: [event])
+            lastEventTime = Date()
             syncStats(from: store)
 
-            // Stream new records to connected iOS clients (non-blocking — broadcaster buffers)
             if !written.isEmpty {
                 broadcaster.queue(
                     records:     written,
                     eventsToday: store.todayCount,
-                    isPolling:   isPolling
+                    isPolling:   isRunning
+                )
+                statusMessage = "Logged \(written.count) event\(written.count == 1 ? "" : "s")"
+                Logger.poller.debug(
+                    "Stored \(written.count) event(s): app=\(window.app) dur=\(Int(window.duration))s"
                 )
             }
-
-            statusMessage = written.isEmpty
-                ? "No new activity"
-                : "Logged \(written.count) event\(written.count == 1 ? "" : "s")"
-
-        } catch let err as AWError {
-            isConnected = false
-            if case .notRunning     = err { windowBucketId = nil }
-            if case .noWindowBucket = err { windowBucketId = nil }
-            statusMessage = err.localizedDescription ?? "Unknown error"
         } catch {
-            isConnected   = false
+            Logger.poller.error("Store write failed: \(error.localizedDescription)")
             statusMessage = error.localizedDescription
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Private – helpers
 
     private func syncStats(from store: DataStore) {
         eventsLoggedToday = store.todayCount

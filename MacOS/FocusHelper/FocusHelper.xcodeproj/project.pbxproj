@@ -3,83 +3,100 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA000000000000000060 /* FocusHelperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000050 /* FocusHelperApp.swift */; };
-		AA000000000000000061 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000051 /* MenuBarView.swift */; };
-		AA000000000000000062 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000052 /* Models.swift */; };
-		AA000000000000000063 /* ActivityWatchClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000053 /* ActivityWatchClient.swift */; };
-		AA000000000000000064 /* ActivityPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000054 /* ActivityPoller.swift */; };
-		AA000000000000000065 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000055 /* DataStore.swift */; };
-		AA0000000000000000B0 /* StreamProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000A0 /* StreamProtocol.swift */; };
-		AA0000000000000000B1 /* StreamServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000A1 /* StreamServer.swift */; };
-		AA0000000000000000B2 /* EventBroadcaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000A2 /* EventBroadcaster.swift */; };
+		01EE2FCAAFC083497C48D8F0 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4990BA6D41F6F72E3F912067 /* DataStore.swift */; };
+		14B351B899A1D05250929126 /* ExternalActivitySource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70BD37E4FDF8047053F95E4C /* ExternalActivitySource.swift */; };
+		353E9256F53FA35E01E62938 /* ActivityDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E5F475EA3AE4A1ACB49623 /* ActivityDomain.swift */; };
+		401F1E841A3954104ECC98F1 /* EventBroadcaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461EDB4F2341277E0552EB3F /* EventBroadcaster.swift */; };
+		5199DAA8D8FD26FB35F76486 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD15CE12D9E58CCFD9BF0FF /* PermissionManager.swift */; };
+		7EFC82381E7AC4886235838A /* StreamServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A2015182E15C2BA0C720BE /* StreamServer.swift */; };
+		7FBBE4FD70C1CE8CF38AF03B /* ActivitySource.swift in Sources */ = {isa = PBXBuildFile; fileRef = B682DF72060E97A8F4BAAD5B /* ActivitySource.swift */; };
+		8B30BA55C548A1392FFEB50F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DA1CA8DD93CB4A01F965E6F /* MenuBarView.swift */; };
+		959F34892774AFC7DB2A6C3C /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 878E816F43B3DB29A35DA7CD /* AppLogger.swift */; };
+		9E67F7C275446831462EE6F2 /* NativeWindowWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB879496F7D2904A9822E8E /* NativeWindowWatcher.swift */; };
+		B6EBE262E67768E3294DE297 /* HealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B0977C20673D550CD38F37 /* HealthMonitor.swift */; };
+		BA4B2169095C655ECE56415D /* InstanceGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B663557A6C03A3C416454C /* InstanceGuard.swift */; };
+		BEE8298AE79ED61F223FBF56 /* ActivityPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BFE2ECB1A53A6FAC1EA9354 /* ActivityPoller.swift */; };
+		C479E4D25F90FA11214B9C05 /* ActivitySourceFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C594F0546F6421DEC7FFC8DC /* ActivitySourceFactory.swift */; };
+		D1E678D063F1F271E119A513 /* StreamProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8C603444DD610348043B3ED /* StreamProtocol.swift */; };
+		D5CA4D687BEAF3285C1BC122 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5FFB12D5903E25DA33481C8 /* Models.swift */; };
+		E25416B4A39700B1FA35AF39 /* FocusHelperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60EC2B7271A58F2680DD5953 /* FocusHelperApp.swift */; };
+		FBAB7A0BA7D107C4E8CE1936 /* EmbeddedActivitySource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4051505B06613E7C9031530F /* EmbeddedActivitySource.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AA000000000000000004 /* FocusHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA000000000000000050 /* FocusHelperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHelperApp.swift; sourceTree = "<group>"; };
-		AA000000000000000051 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
-		AA000000000000000052 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		AA000000000000000053 /* ActivityWatchClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityWatchClient.swift; sourceTree = "<group>"; };
-		AA000000000000000054 /* ActivityPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityPoller.swift; sourceTree = "<group>"; };
-		AA000000000000000055 /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
-		AA000000000000000056 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AA0000000000000000A0 /* StreamProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamProtocol.swift; sourceTree = "<group>"; };
-		AA0000000000000000A1 /* StreamServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamServer.swift; sourceTree = "<group>"; };
-		AA0000000000000000A2 /* EventBroadcaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventBroadcaster.swift; sourceTree = "<group>"; };
+		38E5F475EA3AE4A1ACB49623 /* ActivityDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityDomain.swift; sourceTree = "<group>"; };
+		4051505B06613E7C9031530F /* EmbeddedActivitySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedActivitySource.swift; sourceTree = "<group>"; };
+		461EDB4F2341277E0552EB3F /* EventBroadcaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventBroadcaster.swift; sourceTree = "<group>"; };
+		4990BA6D41F6F72E3F912067 /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
+		4BFE2ECB1A53A6FAC1EA9354 /* ActivityPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityPoller.swift; sourceTree = "<group>"; };
+		4FD15CE12D9E58CCFD9BF0FF /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
+		60EC2B7271A58F2680DD5953 /* FocusHelperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHelperApp.swift; sourceTree = "<group>"; };
+		6DA1CA8DD93CB4A01F965E6F /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		70BD37E4FDF8047053F95E4C /* ExternalActivitySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalActivitySource.swift; sourceTree = "<group>"; };
+		878E816F43B3DB29A35DA7CD /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
+		9E3B228663946BC39D0AC7A3 /* FocusHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B682DF72060E97A8F4BAAD5B /* ActivitySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitySource.swift; sourceTree = "<group>"; };
+		BFB879496F7D2904A9822E8E /* NativeWindowWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWindowWatcher.swift; sourceTree = "<group>"; };
+		C4B663557A6C03A3C416454C /* InstanceGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceGuard.swift; sourceTree = "<group>"; };
+		C594F0546F6421DEC7FFC8DC /* ActivitySourceFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitySourceFactory.swift; sourceTree = "<group>"; };
+		C5FFB12D5903E25DA33481C8 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		CB7DDC505DFF0A472BE2B723 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D4A2015182E15C2BA0C720BE /* StreamServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamServer.swift; sourceTree = "<group>"; };
+		F8C603444DD610348043B3ED /* StreamProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamProtocol.swift; sourceTree = "<group>"; };
+		F9B0977C20673D550CD38F37 /* HealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMonitor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		AA000000000000000011 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
 /* Begin PBXGroup section */
-		AA000000000000000040 /* root */ = {
+		4C9B759CD8FC241F2A7FBA01 /* FocusHelper */ = {
 			isa = PBXGroup;
 			children = (
-				AA000000000000000080 /* Sources */,
-				AA000000000000000042 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		AA000000000000000080 /* Sources */ = {
-			isa = PBXGroup;
-			children = (
-				AA000000000000000041 /* FocusHelper */,
-				AA000000000000000056 /* Info.plist */,
-			);
-			path = Sources;
-			sourceTree = "<group>";
-		};
-		AA000000000000000041 /* FocusHelper */ = {
-			isa = PBXGroup;
-			children = (
-				AA000000000000000050 /* FocusHelperApp.swift */,
-				AA000000000000000051 /* MenuBarView.swift */,
-				AA000000000000000052 /* Models.swift */,
-				AA000000000000000053 /* ActivityWatchClient.swift */,
-				AA000000000000000054 /* ActivityPoller.swift */,
-				AA000000000000000055 /* DataStore.swift */,
-				AA0000000000000000A0 /* StreamProtocol.swift */,
-				AA0000000000000000A1 /* StreamServer.swift */,
-				AA0000000000000000A2 /* EventBroadcaster.swift */,
+				38E5F475EA3AE4A1ACB49623 /* ActivityDomain.swift */,
+				4BFE2ECB1A53A6FAC1EA9354 /* ActivityPoller.swift */,
+				B682DF72060E97A8F4BAAD5B /* ActivitySource.swift */,
+				C594F0546F6421DEC7FFC8DC /* ActivitySourceFactory.swift */,
+				878E816F43B3DB29A35DA7CD /* AppLogger.swift */,
+				4990BA6D41F6F72E3F912067 /* DataStore.swift */,
+				4051505B06613E7C9031530F /* EmbeddedActivitySource.swift */,
+				461EDB4F2341277E0552EB3F /* EventBroadcaster.swift */,
+				70BD37E4FDF8047053F95E4C /* ExternalActivitySource.swift */,
+				60EC2B7271A58F2680DD5953 /* FocusHelperApp.swift */,
+				F9B0977C20673D550CD38F37 /* HealthMonitor.swift */,
+				C4B663557A6C03A3C416454C /* InstanceGuard.swift */,
+				6DA1CA8DD93CB4A01F965E6F /* MenuBarView.swift */,
+				C5FFB12D5903E25DA33481C8 /* Models.swift */,
+				BFB879496F7D2904A9822E8E /* NativeWindowWatcher.swift */,
+				4FD15CE12D9E58CCFD9BF0FF /* PermissionManager.swift */,
+				F8C603444DD610348043B3ED /* StreamProtocol.swift */,
+				D4A2015182E15C2BA0C720BE /* StreamServer.swift */,
 			);
 			path = FocusHelper;
 			sourceTree = "<group>";
 		};
-		AA000000000000000042 /* Products */ = {
+		5FDA686AE96ACE993D165A20 = {
 			isa = PBXGroup;
 			children = (
-				AA000000000000000004 /* FocusHelper.app */,
+				744045931DC48E7BD7F0A927 /* Sources */,
+				E1BD659883FF0B0257002BC7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		744045931DC48E7BD7F0A927 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				CB7DDC505DFF0A472BE2B723 /* Info.plist */,
+				4C9B759CD8FC241F2A7FBA01 /* FocusHelper */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		E1BD659883FF0B0257002BC7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9E3B228663946BC39D0AC7A3 /* FocusHelper.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -87,88 +104,194 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AA000000000000000002 /* FocusHelper */ = {
+		CE2D580A22861571D582E823 /* FocusHelper */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AA000000000000000031 /* Build configuration list for PBXNativeTarget "FocusHelper" */;
+			buildConfigurationList = 978655EBA8941F4A323A9E8F /* Build configuration list for PBXNativeTarget "FocusHelper" */;
 			buildPhases = (
-				AA000000000000000010 /* Sources */,
-				AA000000000000000011 /* Frameworks */,
-				AA000000000000000012 /* Resources */,
+				E9063EE4BE2395035452EAE0 /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = FocusHelper;
+			packageProductDependencies = (
+			);
 			productName = FocusHelper;
-			productReference = AA000000000000000004 /* FocusHelper.app */;
+			productReference = 9E3B228663946BC39D0AC7A3 /* FocusHelper.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		AA000000000000000001 /* Project object */ = {
+		12652C585A5E3F64CD6245A7 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
+				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					CE2D580A22861571D582E823 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
 			};
-			buildConfigurationList = AA000000000000000030 /* Build configuration list for PBXProject "FocusHelper" */;
-			compatibilityVersion = "Xcode 14.0";
+			buildConfigurationList = F4D66D5C7B7C1FB8E1A0FCAE /* Build configuration list for PBXProject "FocusHelper" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
 			);
-			mainGroup = AA000000000000000040;
-			productRefGroup = AA000000000000000042 /* Products */;
+			mainGroup = 5FDA686AE96ACE993D165A20;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E1BD659883FF0B0257002BC7 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				AA000000000000000002 /* FocusHelper */,
+				CE2D580A22861571D582E823 /* FocusHelper */,
 			);
 		};
 /* End PBXProject section */
 
-/* Begin PBXResourcesBuildPhase section */
-		AA000000000000000012 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
-		AA000000000000000010 /* Sources */ = {
+		E9063EE4BE2395035452EAE0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000000000000000060 /* FocusHelperApp.swift in Sources */,
-				AA000000000000000061 /* MenuBarView.swift in Sources */,
-				AA000000000000000062 /* Models.swift in Sources */,
-				AA000000000000000063 /* ActivityWatchClient.swift in Sources */,
-				AA000000000000000064 /* ActivityPoller.swift in Sources */,
-				AA000000000000000065 /* DataStore.swift in Sources */,
-				AA0000000000000000B0 /* StreamProtocol.swift in Sources */,
-				AA0000000000000000B1 /* StreamServer.swift in Sources */,
-				AA0000000000000000B2 /* EventBroadcaster.swift in Sources */,
+				353E9256F53FA35E01E62938 /* ActivityDomain.swift in Sources */,
+				BEE8298AE79ED61F223FBF56 /* ActivityPoller.swift in Sources */,
+				7FBBE4FD70C1CE8CF38AF03B /* ActivitySource.swift in Sources */,
+				C479E4D25F90FA11214B9C05 /* ActivitySourceFactory.swift in Sources */,
+				959F34892774AFC7DB2A6C3C /* AppLogger.swift in Sources */,
+				01EE2FCAAFC083497C48D8F0 /* DataStore.swift in Sources */,
+				FBAB7A0BA7D107C4E8CE1936 /* EmbeddedActivitySource.swift in Sources */,
+				401F1E841A3954104ECC98F1 /* EventBroadcaster.swift in Sources */,
+				14B351B899A1D05250929126 /* ExternalActivitySource.swift in Sources */,
+				E25416B4A39700B1FA35AF39 /* FocusHelperApp.swift in Sources */,
+				B6EBE262E67768E3294DE297 /* HealthMonitor.swift in Sources */,
+				BA4B2169095C655ECE56415D /* InstanceGuard.swift in Sources */,
+				8B30BA55C548A1392FFEB50F /* MenuBarView.swift in Sources */,
+				D5CA4D687BEAF3285C1BC122 /* Models.swift in Sources */,
+				9E67F7C275446831462EE6F2 /* NativeWindowWatcher.swift in Sources */,
+				5199DAA8D8FD26FB35F76486 /* PermissionManager.swift in Sources */,
+				D1E678D063F1F271E119A513 /* StreamProtocol.swift in Sources */,
+				7EFC82381E7AC4886235838A /* StreamServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		AA000000000000000020 /* Debug */ = {
+		2285172CCFC99CBE9066032F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.focus.FocusHelper;
+				PRODUCT_NAME = FocusHelper;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		7C8E05E4BC8C0B37E52BA67E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A0566942632E08F3B84367B1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.focus.FocusHelper;
+				PRODUCT_NAME = FocusHelper;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		B0043A7FC5347185CC333330 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -198,13 +321,13 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
 					"$(inherited)",
+					"DEBUG=1",
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -216,110 +339,36 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		AA000000000000000021 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MTL_FAST_MATH = YES;
-				SDKROOT = macosx;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-			};
-			name = Release;
-		};
-		AA000000000000000022 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_HARDENED_RUNTIME = NO;
-				INFOPLIST_FILE = Sources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.focus.FocusHelper";
-				PRODUCT_NAME = FocusHelper;
-				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
-		};
-		AA000000000000000023 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_HARDENED_RUNTIME = NO;
-				INFOPLIST_FILE = Sources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.focus.FocusHelper";
-				PRODUCT_NAME = FocusHelper;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AA000000000000000030 /* Build configuration list for PBXProject "FocusHelper" */ = {
+		978655EBA8941F4A323A9E8F /* Build configuration list for PBXNativeTarget "FocusHelper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				AA000000000000000020 /* Debug */,
-				AA000000000000000021 /* Release */,
+				2285172CCFC99CBE9066032F /* Debug */,
+				A0566942632E08F3B84367B1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
-		AA000000000000000031 /* Build configuration list for PBXNativeTarget "FocusHelper" */ = {
+		F4D66D5C7B7C1FB8E1A0FCAE /* Build configuration list for PBXProject "FocusHelper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				AA000000000000000022 /* Debug */,
-				AA000000000000000023 /* Release */,
+				B0043A7FC5347185CC333330 /* Debug */,
+				7C8E05E4BC8C0B37E52BA67E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
-
 	};
-	rootObject = AA000000000000000001 /* Project object */;
+	rootObject = 12652C585A5E3F64CD6245A7 /* Project object */;
 }

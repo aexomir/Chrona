@@ -14,6 +14,14 @@ targets:
       - path: Sources
     info:
       path: Sources/Info.plist
+      properties:
+        # Menu bar only — no Dock icon
+        LSUIElement: true
+        # Required for AXUIElement window title capture (embedded source)
+        NSAccessibilityUsageDescription: "FocusHelper reads the active window title to record which task you are working on."
+        # Allow outbound connections to an external ActivityWatch server (external source mode)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_NAME: FocusHelper
