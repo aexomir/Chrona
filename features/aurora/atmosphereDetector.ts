@@ -1,20 +1,16 @@
 import { Session } from '@/features/sessions/sessions-store';
 
 /**
- * Atmosphere state thresholds (easily adjustable)
+ * Atmosphere state thresholds
  */
 export const ATMOSPHERE_THRESHOLDS = {
-  // Minutes
-  GENTLE_MIN_SESSIONS: 2, // Must have at least this many sessions
-  GENTLE_MAX_TOTAL_MINUTES: 60, // And total focus < this value
+  // Full intensity is reached at 10 hours of total focus
+  MAX_DAILY_MINUTES: 600,
 
-  // Aurora appears when either:
-  AURORA_MIN_SESSION_COUNT: 3, // 3+ sessions, OR
-  AURORA_MIN_TOTAL_MINUTES: 60, // Total focus >= 60 minutes
-
-  // Strong aurora when either:
-  STRONG_AURORA_MIN_SINGLE_SESSION_MINUTES: 90, // Single session >= 90 min, OR
-  STRONG_AURORA_MIN_TOTAL_MINUTES: 120, // Total focus >= 120 minutes
+  // State thresholds (for color palette + speed selection only)
+  GENTLE_MIN_MINUTES: 30,
+  AURORA_MIN_MINUTES: 90,
+  STRONG_AURORA_MIN_MINUTES: 300,
 };
 
 export type AtmosphereState = 'calm' | 'gentle' | 'aurora' | 'strong-aurora';
@@ -24,22 +20,23 @@ interface AtmosphereMetrics {
   sessionCount: number;
   longestSessionMinutes: number;
   state: AtmosphereState;
+  /** Continuous intensity progress: 0.0 (no sessions) → 1.0 (10h of focus) */
+  progress: number;
 }
 
 /**
- * Calculate atmosphere state from today's sessions
- * Metrics are computed from sessions that occurred today (local timezone)
+ * Calculate atmosphere state from today's sessions.
+ * Returns a continuous `progress` value (0–1) so intensity scales
+ * gradually across the full day rather than snapping between 4 levels.
  */
 export function detectAtmosphere(sessions: Session[]): AtmosphereMetrics {
   const now = new Date();
   const today = now.toDateString();
 
-  // Filter sessions from today only
   const todaySessions = sessions.filter(
     (s) => new Date(s.startTime).toDateString() === today
   );
 
-  // Calculate metrics
   const totalSeconds = todaySessions.reduce((sum, s) => sum + s.duration, 0);
   const totalMinutes = Math.round(totalSeconds / 60);
   const sessionCount = todaySessions.length;
@@ -47,36 +44,31 @@ export function detectAtmosphere(sessions: Session[]): AtmosphereMetrics {
     ? Math.round(Math.max(...todaySessions.map((s) => s.duration)) / 60)
     : 0;
 
-  // Determine state based on thresholds
+  // Continuous progress: 0 at 0 min, 1.0 at MAX_DAILY_MINUTES (10h)
+  const progress = Math.min(totalMinutes / ATMOSPHERE_THRESHOLDS.MAX_DAILY_MINUTES, 1.0);
+
+  // Discrete state is still used for color palette and animation speed
   let state: AtmosphereState = 'calm';
 
-  // Check for strong aurora first (highest priority)
-  if (
-    longestSessionMinutes >= ATMOSPHERE_THRESHOLDS.STRONG_AURORA_MIN_SINGLE_SESSION_MINUTES ||
-    totalMinutes >= ATMOSPHERE_THRESHOLDS.STRONG_AURORA_MIN_TOTAL_MINUTES
-  ) {
+  if (totalMinutes >= ATMOSPHERE_THRESHOLDS.STRONG_AURORA_MIN_MINUTES) {
     state = 'strong-aurora';
-  }
-  // Check for aurora
-  else if (
-    sessionCount >= ATMOSPHERE_THRESHOLDS.AURORA_MIN_SESSION_COUNT ||
-    totalMinutes >= ATMOSPHERE_THRESHOLDS.AURORA_MIN_TOTAL_MINUTES
+  } else if (
+    totalMinutes >= ATMOSPHERE_THRESHOLDS.AURORA_MIN_MINUTES ||
+    sessionCount >= 3
   ) {
     state = 'aurora';
-  }
-  // Check for gentle
-  else if (
-    sessionCount >= ATMOSPHERE_THRESHOLDS.GENTLE_MIN_SESSIONS &&
-    totalMinutes < ATMOSPHERE_THRESHOLDS.GENTLE_MAX_TOTAL_MINUTES
+  } else if (
+    totalMinutes >= ATMOSPHERE_THRESHOLDS.GENTLE_MIN_MINUTES ||
+    sessionCount >= 2
   ) {
     state = 'gentle';
   }
-  // Otherwise calm
 
   return {
     totalMinutes,
     sessionCount,
     longestSessionMinutes,
     state,
+    progress,
   };
 }

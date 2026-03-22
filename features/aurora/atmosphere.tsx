@@ -23,69 +23,51 @@ interface AtmosphereProps {
 }
 
 /**
- * Atmosphere background component using Skia RuntimeEffect shader
- * Renders a living aurora sky that reacts to user's productivity
- * States: calm → gentle → aurora → strong-aurora
- * Can be toggled off in settings for a plain background
+ * Atmosphere background component using Skia RuntimeEffect shader.
+ *
+ * Intensity is now continuous (0.0–1.0), where 1.0 = 10 hours of focus.
+ * Visual layers unlock progressively rather than snapping between 4 states.
+ * State is still computed for color palette and animation speed selection.
  */
 export function Atmosphere({ sessions }: AtmosphereProps) {
   const { width, height } = useWindowDimensions();
   const { auroraEnabled } = useSettingsStore();
 
-  // Detect atmosphere state from sessions
   const metrics = detectAtmosphere(sessions);
-
-  // Compute colors (JS-side, updates when state changes)
   const colors = getAtmosphereColors(metrics.state);
 
-  // Track state transitions with reanimated (always call hooks)
-  const stateValue = reanimatedUseSharedValue(0);
+  // Animate the continuous progress value (smooth 5s transition)
+  const progressValue = reanimatedUseSharedValue(0);
   const time = reanimatedUseSharedValue(0);
 
-  // Map state to numeric value for interpolation
-  const stateMap = {
-    calm: 0,
-    gentle: 1,
-    aurora: 2,
-    "strong-aurora": 3,
-  };
-
-  // Update state with smooth transition (5s)
   useAnimatedReaction(
-    () => stateMap[metrics.state],
-    (nextState) => {
-      stateValue.value = withTiming(nextState, { duration: 5000 });
+    () => metrics.progress,
+    (nextProgress) => {
+      progressValue.value = withTiming(nextProgress, { duration: 5000 });
     },
   );
 
-  // Animation loop: update time every frame
   useFrameCallback((info) => {
     time.value = info.timeSinceFirstFrame;
   });
 
-  // Build uniforms as derived value (Skia-side, no React re-renders per frame)
   const uniforms = useDerivedValue(() => {
-    const baseIntensity = interpolate(
-      stateValue.value,
-      [0, 1, 2, 3],
-      [0.0, 0.15, 0.5, 1.0],
-    );
-    // When scrubProgress < 1 (auto-play or manual scrub), scale intensity proportionally
-    // floor at 0.2 so the atmosphere never goes completely dark
+    // Intensity = continuous progress (0–1), scaled by scrub multiplier
     const scrubMult = interpolate(
       scrubProgress.value,
       [0, 0.3, 1],
       [0.2, 0.5, 1.0],
       "clamp",
     );
-    const intensity = baseIntensity * scrubMult;
+    const intensity = progressValue.value * scrubMult;
+
+    // Speed scales with progress: slow when idle, faster as day fills up
     const speed = interpolate(
-      stateValue.value,
-      [0, 1, 2, 3],
-      [0.15, 0.25, 0.45, 0.7],
+      progressValue.value,
+      [0, 0.05, 0.15, 0.50, 1.0],
+      [0.12, 0.20, 0.32, 0.55, 0.80],
     );
 
-    // Lighten skyBottom slightly for gradient depth
     const skyBottomAdjusted: [number, number, number] = [
       (colors.background[0] + 8) / 255,
       (colors.background[1] + 5) / 255,
