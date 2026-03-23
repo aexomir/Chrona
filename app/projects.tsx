@@ -3,6 +3,7 @@ import { useProjects } from "@/features/projects/projects-store";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { ListGroup, Separator } from "heroui-native";
 import { useState } from "react";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import {
   Alert,
   Modal,
@@ -166,7 +167,7 @@ export default function ProjectsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View className="flex-1 px-5 pt-6" style={{ backgroundColor: theme.modalSheet }}>
+        <KeyboardAvoidingView behavior="padding" className="flex-1 px-5 pt-6" style={{ backgroundColor: theme.modalSheet }}>
           <View className="flex-row items-center justify-between mb-8">
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text className="text-neutral-400 text-base">Cancel</Text>
@@ -240,7 +241,7 @@ export default function ProjectsScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );

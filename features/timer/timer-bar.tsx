@@ -27,35 +27,37 @@ function formatTime(seconds: number): string {
 }
 
 export function TimerBar() {
-  const { isTracking, title, projectId, startTimestamp } = useTimerStore();
-  const { projects } = useProjects();
-  const { sessions, addSession } = useSessionsStore();
-  const { suggestProject, learnFromSession } = useSuggestionsStore();
-  const { autoTrackingEnabled } = useSettingsStore();
-  const { period: recoveryPeriod, set: setRecovery, clear: clearRecovery, isDismissed } = useRecoveryStore();
-  const {
-    isEnabled: calendarEnabled,
-    permissionStatus,
-    events: calendarEvents,
-    mappings,
-    getActiveEventSuggestion,
-    fetchEvents: fetchCalendarEvents,
-  } = useCalendarStore();
-  const { rules, matchRule, addRule } = useTrackingRulesStore();
-  const {
-    isAutoTracking,
-    autoStartTimestamp,
-    detectedApp,
-    detectedTitle,
-    matchedRuleId,
-    consecutiveOfflineCount,
-    startAutoTracking,
-    stopAutoTracking,
-    setDetectedApp,
-    incrementOfflineCount,
-    resetOfflineCount,
-  } = useAutoTrackingStore();
-  const project = projects.find((p) => p.id === projectId) ?? null;
+  const isTracking = useTimerStore(s => s.isTracking);
+  const title = useTimerStore(s => s.title);
+  const projectId = useTimerStore(s => s.projectId);
+  const startTimestamp = useTimerStore(s => s.startTimestamp);
+  const sessions = useSessionsStore(s => s.sessions);
+  const addSession = useSessionsStore(s => s.addSession);
+  const suggestProject = useSuggestionsStore(s => s.suggestProject);
+  const learnFromSession = useSuggestionsStore(s => s.learnFromSession);
+  const autoTrackingEnabled = useSettingsStore(s => s.autoTrackingEnabled);
+  const recoveryPeriod = useRecoveryStore(s => s.period);
+  const setRecovery = useRecoveryStore(s => s.set);
+  const clearRecovery = useRecoveryStore(s => s.clear);
+  const isDismissed = useRecoveryStore(s => s.isDismissed);
+  const calendarEnabled = useCalendarStore(s => s.isEnabled);
+  const permissionStatus = useCalendarStore(s => s.permissionStatus);
+  const getActiveEventSuggestion = useCalendarStore(s => s.getActiveEventSuggestion);
+  const fetchCalendarEvents = useCalendarStore(s => s.fetchEvents);
+  const rules = useTrackingRulesStore(s => s.rules);
+  const matchRule = useTrackingRulesStore(s => s.matchRule);
+  const addRule = useTrackingRulesStore(s => s.addRule);
+  const isAutoTracking = useAutoTrackingStore(s => s.isAutoTracking);
+  const autoStartTimestamp = useAutoTrackingStore(s => s.autoStartTimestamp);
+  const matchedRuleId = useAutoTrackingStore(s => s.matchedRuleId);
+  const consecutiveOfflineCount = useAutoTrackingStore(s => s.consecutiveOfflineCount);
+  const startAutoTracking = useAutoTrackingStore(s => s.startAutoTracking);
+  const stopAutoTracking = useAutoTrackingStore(s => s.stopAutoTracking);
+  const setDetectedApp = useAutoTrackingStore(s => s.setDetectedApp);
+  const incrementOfflineCount = useAutoTrackingStore(s => s.incrementOfflineCount);
+  const resetOfflineCount = useAutoTrackingStore(s => s.resetOfflineCount);
+  const project = useProjects(s => projectId ? s.projects.find(p => p.id === projectId) ?? null : null);
+  const projects = useProjects(s => s.projects);
   const [elapsed, setElapsed] = useState(0);
   const [autoElapsed, setAutoElapsed] = useState(0);
   const [calendarSuggestion, setCalendarSuggestion] = useState<{
@@ -85,34 +87,26 @@ export function TimerBar() {
   consecutiveOfflineCountRef.current = consecutiveOfflineCount;
   untrackedDismissedRef.current = untrackedDismissed;
 
+  // Consolidated elapsed timer: handles both manual and auto-tracking in one interval
   useEffect(() => {
-    if (!isTracking || !startTimestamp) {
+    const source = isTracking ? startTimestamp : isAutoTracking ? autoStartTimestamp : null;
+    if (!source) {
       setElapsed(0);
-      return;
-    }
-    const tick = () =>
-      setElapsed(
-        Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000),
-      );
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [isTracking, startTimestamp]);
-
-  // Auto-elapsed effect: update when auto-tracking
-  useEffect(() => {
-    if (!isAutoTracking || !autoStartTimestamp) {
       setAutoElapsed(0);
       return;
     }
-    const tick = () =>
-      setAutoElapsed(
-        Math.floor((Date.now() - new Date(autoStartTimestamp).getTime()) / 1000),
-      );
+    const tick = () => {
+      const e = Math.floor((Date.now() - new Date(source).getTime()) / 1000);
+      if (isTracking) {
+        setElapsed(e);
+      } else {
+        setAutoElapsed(e);
+      }
+    };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [isAutoTracking, autoStartTimestamp]);
+  }, [isTracking, isAutoTracking, startTimestamp, autoStartTimestamp]);
 
   // saveAutoSession helper: save and reset auto-tracking state
   const saveAutoSession = () => {
@@ -237,6 +231,7 @@ export function TimerBar() {
 
   // Detection: run once when idle. Reset only when tracking stops or sessions change.
   // Never resets on dismiss — dismissed gaps are blocked via isDismissed().
+  // Calendar events/mappings are read from getState() to avoid re-triggering on 5-min refresh.
   useEffect(() => {
     const trackingChanged = prevIsTrackingRef.current !== isTracking;
     const sessionsChanged = prevSessionsRef.current !== sessions;
@@ -252,8 +247,9 @@ export function TimerBar() {
       const awResult = await detectMissedTime(sessions, suggestProject, isDismissed);
       if (awResult) { setRecovery(awResult); return; }
 
-      if (!calendarEnabled || permissionStatus !== "granted") return;
-      const calResult = await detectMissedCalendarEvent(calendarEvents, mappings, sessions);
+      const { isEnabled, permissionStatus: ps, events, mappings: m } = useCalendarStore.getState();
+      if (!isEnabled || ps !== "granted") return;
+      const calResult = await detectMissedCalendarEvent(events, m, sessions);
       if (calResult) setRecovery(calResult);
     })();
   }, [
@@ -263,10 +259,6 @@ export function TimerBar() {
     recoveryPeriod,
     setRecovery,
     isDismissed,
-    calendarEnabled,
-    permissionStatus,
-    calendarEvents,
-    mappings,
   ]);
 
   // Calendar event suggestion effect: check when not tracking

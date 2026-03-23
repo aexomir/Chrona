@@ -1,14 +1,17 @@
-import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import type { Project } from "@/constants/projects";
-import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { getAppUsage } from "@/features/activity-watch/aw-adapter";
-import { useProjects } from "@/features/projects/projects-store";
-import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
 import {
   getSmartDefaultApps,
   useSuggestionsStore,
   type AssociationMap,
 } from "@/features/activity-watch/suggestions-store";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
+import { useProjects } from "@/features/projects/projects-store";
+import {
+  useSessionsStore,
+  type AppUsage,
+} from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
@@ -16,12 +19,12 @@ import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
   Easing,
   FadeInDown,
@@ -108,7 +111,9 @@ export default function TimerScreen() {
   } | null>(null);
 
   const [autoConfirm, setAutoConfirm] = useState<AutoConfirmState | null>(null);
-  const autoConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const [suggestion, setSuggestion] = useState<{
     projectId: string;
@@ -119,7 +124,8 @@ export default function TimerScreen() {
   // Cleanup auto-confirm timer on unmount
   useEffect(() => {
     return () => {
-      if (autoConfirmTimerRef.current) clearTimeout(autoConfirmTimerRef.current);
+      if (autoConfirmTimerRef.current)
+        clearTimeout(autoConfirmTimerRef.current);
     };
   }, []);
 
@@ -161,7 +167,10 @@ export default function TimerScreen() {
     router.back();
   };
 
-  const handleSaveReview = (selectedApps: AppUsage[], pendingSession?: PendingSession) => {
+  const handleSaveReview = (
+    selectedApps: AppUsage[],
+    pendingSession?: PendingSession,
+  ) => {
     const session = pendingSession ?? reviewData?.session;
     if (!session) return;
     addSession({
@@ -192,7 +201,9 @@ export default function TimerScreen() {
     // Auto-confirm eligibility: project must match suggestion with high confidence + coverage
     if (session.projectId && apps.length > 0 && totalDuration > 0) {
       const result = suggestProject(apps);
-      const coverageRatio = result ? result.totalCoveredDuration / totalDuration : 0;
+      const coverageRatio = result
+        ? result.totalCoveredDuration / totalDuration
+        : 0;
 
       const isHighConfidence =
         result !== null &&
@@ -201,7 +212,11 @@ export default function TimerScreen() {
         coverageRatio >= 0.6;
 
       if (isHighConfidence) {
-        const defaultAppSet = getSmartDefaultApps(apps, session.projectId, associations);
+        const defaultAppSet = getSmartDefaultApps(
+          apps,
+          session.projectId,
+          associations,
+        );
         const selected = apps.filter((a) => defaultAppSet.has(a.app));
 
         setReviewData(null);
@@ -225,7 +240,11 @@ export default function TimerScreen() {
       autoConfirmTimerRef.current = null;
     }
     if (autoConfirm) {
-      setReviewData({ session: autoConfirm.session, apps: autoConfirm.apps, loading: false });
+      setReviewData({
+        session: autoConfirm.session,
+        apps: autoConfirm.apps,
+        loading: false,
+      });
       setAutoConfirm(null);
     }
   };
@@ -287,7 +306,10 @@ export default function TimerScreen() {
       </View>
 
       {autoConfirm ? (
-        <AutoConfirmView autoConfirm={autoConfirm} onCancel={handleCancelAutoConfirm} />
+        <AutoConfirmView
+          autoConfirm={autoConfirm}
+          onCancel={handleCancelAutoConfirm}
+        />
       ) : reviewData ? (
         <ReviewView
           reviewData={reviewData}
@@ -479,8 +501,12 @@ function AutoConfirmView({ autoConfirm, onCancel }: AutoConfirmViewProps) {
           </Text>
         </View>
 
-        <Text className="text-white text-lg font-semibold">{session.title}</Text>
-        <Text className="text-zinc-400 text-sm">{formatTime(session.duration)}</Text>
+        <Text className="text-white text-lg font-semibold">
+          {session.title}
+        </Text>
+        <Text className="text-zinc-400 text-sm">
+          {formatTime(session.duration)}
+        </Text>
 
         {appNames.length > 0 && (
           <Text className="text-zinc-500 text-xs" numberOfLines={1}>
@@ -489,7 +515,10 @@ function AutoConfirmView({ autoConfirm, onCancel }: AutoConfirmViewProps) {
         )}
 
         {/* Progress bar */}
-        <View className="h-px rounded-full overflow-hidden mt-1" style={{ backgroundColor: theme.cardBorder }}>
+        <View
+          className="h-px rounded-full overflow-hidden mt-1"
+          style={{ backgroundColor: theme.cardBorder }}
+        >
           <Animated.View
             className="h-full rounded-full bg-emerald-500"
             style={progressStyle}

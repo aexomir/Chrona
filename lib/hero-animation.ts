@@ -1,3 +1,3 @@
 import { makeMutable } from "react-native-reanimated";
 
-export const heroProgress = makeMutable(0);
+export const heroProgress = makeMutable(1);

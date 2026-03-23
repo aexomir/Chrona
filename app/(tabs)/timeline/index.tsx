@@ -1,41 +1,38 @@
-import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { EmptyState } from "@/components/empty-state";
-import { DatePill } from "@/features/timeline/components/date-pill";
-import { GapSeparator } from "@/features/timeline/components/gap-separator";
-import { SessionRow } from "@/features/timeline/components/session-row";
-import { LiveSessionRow } from "@/features/timeline/components/live-session-row";
-import { CalendarEventMarker } from "@/features/timeline/components/calendar-event-marker";
-import {
-  getWeekStart,
-  getWeekDays,
-  isSameDay,
-  circleXForIndexInWidth,
-  CIRCLE_SIZE,
-  CIRCLE_TOP,
-  CIRCLE_EASING,
-  CIRCLE_DURATION,
-  DAY_ABBREVS,
-} from "@/features/timeline/timeline-utils";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import type { CalendarEvent } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
-import { type Session, useSessionsStore } from "@/features/sessions/sessions-store";
+import {
+  type Session,
+  useSessionsStore,
+} from "@/features/sessions/sessions-store";
+import { CalendarEventMarker } from "@/features/timeline/components/calendar-event-marker";
+import { DatePill } from "@/features/timeline/components/date-pill";
+import { GapSeparator } from "@/features/timeline/components/gap-separator";
+import { LiveSessionRow } from "@/features/timeline/components/live-session-row";
+import { SessionRow } from "@/features/timeline/components/session-row";
+import {
+  CIRCLE_DURATION,
+  CIRCLE_EASING,
+  CIRCLE_SIZE,
+  CIRCLE_TOP,
+  circleXForIndexInWidth,
+  DAY_ABBREVS,
+  getWeekDays,
+  getWeekStart,
+  isSameDay,
+} from "@/features/timeline/timeline-utils";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
+import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { Stack } from "expo-router";
 import { Button } from "heroui-native";
-import { Fragment, useRef, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Fragment, useMemo, useRef, useState } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -55,18 +52,14 @@ export default function TimelineScreen() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const theme = useAuroraTheme();
 
-  const {
-    isTracking,
-    startTimestamp,
-    projectId: timerProjectId,
-  } = useTimerStore();
-  const { sessions } = useSessionsStore();
-  const { projects } = useProjects();
-  const {
-    events: calendarEvents,
-    isEnabled: calendarEnabled,
-    permissionStatus,
-  } = useCalendarStore();
+  const isTracking = useTimerStore((s) => s.isTracking);
+  const startTimestamp = useTimerStore((s) => s.startTimestamp);
+  const timerProjectId = useTimerStore((s) => s.projectId);
+  const sessions = useSessionsStore((s) => s.sessions);
+  const projects = useProjects((s) => s.projects);
+  const calendarEvents = useCalendarStore((s) => s.events);
+  const calendarEnabled = useCalendarStore((s) => s.isEnabled);
+  const permissionStatus = useCalendarStore((s) => s.permissionStatus);
 
   const weekStart = getWeekStart(today, weekOffset);
   const weekDays = getWeekDays(weekStart);
@@ -80,24 +73,29 @@ export default function TimelineScreen() {
   }
 
   // Filter to selected day + active project filters, sort ascending
-  const daySessions = sessions
-    .filter((s) => {
-      if (!isSameDay(new Date(s.startTime), selectedDate)) return false;
-      if (filtersActive) return selectedProjectIds.includes(s.projectId ?? "");
-      return true;
-    })
-    .sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-    );
+  const daySessions = useMemo(() =>
+    sessions
+      .filter((s) => {
+        if (!isSameDay(new Date(s.startTime), selectedDate)) return false;
+        if (filtersActive) return selectedProjectIds.includes(s.projectId ?? "");
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+      ),
+    [sessions, selectedDate, filtersActive, selectedProjectIds],
+  );
 
   // Filter calendar events to selected day (only when enabled + permission granted)
-  const dayCalendarEvents =
+  const dayCalendarEvents = useMemo(() =>
     calendarEnabled && permissionStatus === "granted"
       ? calendarEvents.filter((e) =>
           isSameDay(new Date(e.startDate), selectedDate),
         )
-      : [];
+      : [],
+    [calendarEnabled, permissionStatus, calendarEvents, selectedDate],
+  );
 
   const liveInDay =
     isTracking &&
@@ -110,27 +108,6 @@ export default function TimelineScreen() {
     | { kind: "session"; session: Session; startTime: number }
     | { kind: "live"; startTime: number }
     | { kind: "calendar"; event: CalendarEvent; startTime: number };
-
-  const allBaseItems: BaseItem[] = [
-    ...daySessions.map((s) => ({
-      kind: "session" as const,
-      session: s,
-      startTime: new Date(s.startTime).getTime(),
-    })),
-    ...(liveInDay
-      ? [
-          {
-            kind: "live" as const,
-            startTime: new Date(startTimestamp!).getTime(),
-          },
-        ]
-      : []),
-    ...dayCalendarEvents.map((e) => ({
-      kind: "calendar" as const,
-      event: e,
-      startTime: new Date(e.startDate).getTime(),
-    })),
-  ].sort((a, b) => a.startTime - b.startTime);
 
   type AugmentedItem =
     | {
@@ -149,57 +126,77 @@ export default function TimelineScreen() {
         index: number;
       };
 
-  const augmentedItems: AugmentedItem[] = [];
-  let animationIndex = 0;
-  let prevSessionEndTime: number | null = null;
+  const augmentedItems = useMemo(() => {
+    const allBaseItems: BaseItem[] = [
+      ...daySessions.map((s) => ({
+        kind: "session" as const,
+        session: s,
+        startTime: new Date(s.startTime).getTime(),
+      })),
+      ...(liveInDay
+        ? [
+            {
+              kind: "live" as const,
+              startTime: new Date(startTimestamp!).getTime(),
+            },
+          ]
+        : []),
+      ...dayCalendarEvents.map((e) => ({
+        kind: "calendar" as const,
+        event: e,
+        startTime: new Date(e.startDate).getTime(),
+      })),
+    ].sort((a, b) => a.startTime - b.startTime);
 
-  for (const item of allBaseItems) {
-    if (item.kind === "session") {
-      // Gap before this session (only session-to-session)
-      if (prevSessionEndTime !== null) {
-        const gapMs = item.startTime - prevSessionEndTime;
-        if (gapMs >= 20 * 60 * 1000) {
-          augmentedItems.push({ kind: "gap", durationMs: gapMs });
+    const items: AugmentedItem[] = [];
+    let animationIndex = 0;
+    let prevSessionEndTime: number | null = null;
+
+    for (const item of allBaseItems) {
+      if (item.kind === "session") {
+        if (prevSessionEndTime !== null) {
+          const gapMs = item.startTime - prevSessionEndTime;
+          if (gapMs >= 20 * 60 * 1000) {
+            items.push({ kind: "gap", durationMs: gapMs });
+          }
         }
-      }
-
-      // Compute overlapping calendar events
-      const sEnd = item.startTime + item.session.duration * 1000;
-      const overlappingEvents = dayCalendarEvents.filter((e) => {
-        const eStart = new Date(e.startDate).getTime();
-        const eEnd = new Date(e.endDate).getTime();
-        return eStart < sEnd && eEnd > item.startTime;
-      });
-
-      augmentedItems.push({
-        kind: "session",
-        session: item.session,
-        startTime: item.startTime,
-        index: animationIndex++,
-        overlappingEvents,
-      });
-      prevSessionEndTime = item.startTime + item.session.duration * 1000;
-    } else if (item.kind === "live") {
-      if (prevSessionEndTime !== null) {
-        const gapMs = item.startTime - prevSessionEndTime;
-        if (gapMs >= 20 * 60 * 1000) {
-          augmentedItems.push({ kind: "gap", durationMs: gapMs });
+        const sEnd = item.startTime + item.session.duration * 1000;
+        const overlappingEvents = dayCalendarEvents.filter((e) => {
+          const eStart = new Date(e.startDate).getTime();
+          const eEnd = new Date(e.endDate).getTime();
+          return eStart < sEnd && eEnd > item.startTime;
+        });
+        items.push({
+          kind: "session",
+          session: item.session,
+          startTime: item.startTime,
+          index: animationIndex++,
+          overlappingEvents,
+        });
+        prevSessionEndTime = item.startTime + item.session.duration * 1000;
+      } else if (item.kind === "live") {
+        if (prevSessionEndTime !== null) {
+          const gapMs = item.startTime - prevSessionEndTime;
+          if (gapMs >= 20 * 60 * 1000) {
+            items.push({ kind: "gap", durationMs: gapMs });
+          }
         }
+        items.push({
+          kind: "live",
+          startTime: item.startTime,
+          index: animationIndex++,
+        });
+      } else if (item.kind === "calendar") {
+        items.push({
+          kind: "calendar",
+          event: item.event,
+          startTime: item.startTime,
+          index: animationIndex++,
+        });
       }
-      augmentedItems.push({
-        kind: "live",
-        startTime: item.startTime,
-        index: animationIndex++,
-      });
-    } else if (item.kind === "calendar") {
-      augmentedItems.push({
-        kind: "calendar",
-        event: item.event,
-        startTime: item.startTime,
-        index: animationIndex++,
-      });
     }
-  }
+    return items;
+  }, [daySessions, dayCalendarEvents, liveInDay, startTimestamp]);
 
   //circle
   const circleX = useSharedValue(-CIRCLE_SIZE);
@@ -294,115 +291,129 @@ export default function TimelineScreen() {
         />
       </Stack.Toolbar>
 
-      <ScrollView className="flex-1" contentInsetAdjustmentBehavior="automatic">
-        {/* Week Strip */}
-        <View
-          className="relative border-b border-zinc-800/60 overflow-hidden"
-          onLayout={(e) => onStripLayout(e.nativeEvent.layout.width)}
-        >
-          <Animated.View style={animatedWeek}>
-            <Animated.View
-              className="absolute rounded-full bg-white"
-              style={[
-                { width: CIRCLE_SIZE, height: CIRCLE_SIZE, top: CIRCLE_TOP },
-                animatedCircle,
-              ]}
-              pointerEvents="none"
-            />
-            <View className="flex-row">
-              {weekDays.map((day, i) => {
-                const isToday = isSameDay(day, today);
-                const isSelected = isSameDay(day, selectedDate);
-                return (
-                  <Fragment key={i}>
-                    {i > 0 && (
-                      <View className="w-px bg-zinc-800/80 self-stretch" />
-                    )}
-                    <Pressable
-                      className="flex-1 items-center pt-3 pb-3 gap-2"
-                      onPress={() => handleSelectDate(day)}
-                    >
-                      <Text
-                        className={`text-xs font-medium ${
-                          isToday ? "text-white" : "text-zinc-600"
-                        }`}
+      <FlashList
+        data={augmentedItems}
+        keyExtractor={(item, index) => {
+          if (item.kind === "session") return `session-${item.session.id}`;
+          if (item.kind === "live") return "live";
+          if (item.kind === "calendar") return `calendar-${item.event.id}`;
+          return `gap-${index}`;
+        }}
+        renderItem={({ item }) => {
+          if (item.kind === "session") {
+            return (
+              <View style={{ paddingHorizontal: 12 }}>
+                <SessionRow
+                  session={item.session}
+                  index={item.index}
+                  overlappingEvents={item.overlappingEvents}
+                />
+              </View>
+            );
+          }
+          if (item.kind === "live") {
+            return (
+              <View style={{ paddingHorizontal: 12 }}>
+                <LiveSessionRow
+                  startTimestamp={startTimestamp!}
+                  index={item.index}
+                />
+              </View>
+            );
+          }
+          if (item.kind === "gap") {
+            return (
+              <View style={{ paddingHorizontal: 12 }}>
+                <GapSeparator durationMs={item.durationMs} />
+              </View>
+            );
+          }
+          if (item.kind === "calendar") {
+            return (
+              <View style={{ paddingHorizontal: 12 }}>
+                <CalendarEventMarker
+                  event={item.event}
+                  index={item.index}
+                  expanded={expandedEventId === item.event.id}
+                  onToggle={() =>
+                    setExpandedEventId((prev) =>
+                      prev === item.event.id ? null : item.event.id,
+                    )
+                  }
+                />
+              </View>
+            );
+          }
+          return null;
+        }}
+        ListHeaderComponent={
+          <View
+            className="relative border-b border-zinc-800/60 overflow-hidden"
+            onLayout={(e) => onStripLayout(e.nativeEvent.layout.width)}
+          >
+            <Animated.View style={animatedWeek}>
+              <Animated.View
+                className="absolute rounded-full bg-white"
+                style={[
+                  { width: CIRCLE_SIZE, height: CIRCLE_SIZE, top: CIRCLE_TOP },
+                  animatedCircle,
+                ]}
+                pointerEvents="none"
+              />
+              <View className="flex-row">
+                {weekDays.map((day, i) => {
+                  const isToday = isSameDay(day, today);
+                  const isSelected = isSameDay(day, selectedDate);
+                  return (
+                    <Fragment key={i}>
+                      {i > 0 && (
+                        <View className="w-px bg-zinc-800/80 self-stretch" />
+                      )}
+                      <Pressable
+                        className="flex-1 items-center pt-3 pb-3 gap-2"
+                        onPress={() => handleSelectDate(day)}
                       >
-                        {DAY_ABBREVS[i]}
-                      </Text>
-                      <View className="w-9 h-9 items-center justify-center">
                         <Text
-                          className={`text-base font-semibold ${
-                            isSelected
-                              ? "text-black"
-                              : isToday
-                                ? "text-white"
-                                : "text-zinc-400"
+                          className={`text-xs font-medium ${
+                            isToday ? "text-white" : "text-zinc-600"
                           }`}
                         >
-                          {day.getDate()}
+                          {DAY_ABBREVS[i]}
                         </Text>
-                      </View>
-                    </Pressable>
-                  </Fragment>
-                );
-              })}
-            </View>
-          </Animated.View>
-        </View>
-
-        {/* Content */}
-        {augmentedItems.length === 0 && dayCalendarEvents.length === 0 ? (
-          <EmptyState
-            icon="timer"
-            title="No Sessions"
-            description="Start a focus session — your completed work will show up here."
-          />
-        ) : augmentedItems.length > 0 ? (
-          <View className="px-3 pt-4 pb-8 gap-2">
-            {augmentedItems.map((item) => {
-              if (item.kind === "session") {
-                return (
-                  <SessionRow
-                    key={item.session.id}
-                    session={item.session}
-                    index={item.index}
-                    overlappingEvents={item.overlappingEvents}
-                  />
-                );
-              } else if (item.kind === "live") {
-                return (
-                  <LiveSessionRow
-                    key="live"
-                    startTimestamp={startTimestamp!}
-                    index={item.index}
-                  />
-                );
-              } else if (item.kind === "gap") {
-                return (
-                  <GapSeparator
-                    key={`gap-${item.durationMs}`}
-                    durationMs={item.durationMs}
-                  />
-                );
-              } else if (item.kind === "calendar") {
-                return (
-                  <CalendarEventMarker
-                    key={item.event.id}
-                    event={item.event}
-                    index={item.index}
-                    expanded={expandedEventId === item.event.id}
-                    onToggle={() =>
-                      setExpandedEventId((prev) =>
-                        prev === item.event.id ? null : item.event.id,
-                      )
-                    }
-                  />
-                );
-              }
-            })}
+                        <View className="w-9 h-9 items-center justify-center">
+                          <Text
+                            className={`text-base font-semibold ${
+                              isSelected
+                                ? "text-black"
+                                : isToday
+                                  ? "text-white"
+                                  : "text-zinc-400"
+                            }`}
+                          >
+                            {day.getDate()}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </Fragment>
+                  );
+                })}
+              </View>
+            </Animated.View>
           </View>
-        ) : null}
-      </ScrollView>
+        }
+        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
+        contentInsetAdjustmentBehavior="automatic"
+        ListEmptyComponent={
+          <View style={{ paddingHorizontal: 12 }}>
+            <EmptyState
+              icon="timer"
+              title="No Sessions"
+              description="Start a focus session — your completed work will show up here."
+            />
+          </View>
+        }
+      />
 
       {/* Date Picker Modal */}
       {showPicker && (

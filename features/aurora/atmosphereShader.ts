@@ -40,11 +40,11 @@ export const AURORA_SKSL = `
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
   }
 
-  // Manually unrolled FBM (3 octaves) — safe for SKSL
+  // Manually unrolled FBM (2 octaves) — safe for SKSL
+  // 3rd octave dropped (12.5% contribution, imperceptible at render scale)
   float fbm(vec2 st) {
-    return 0.500 * noise(st)
-         + 0.250 * noise(st * 2.0)
-         + 0.125 * noise(st * 4.0);
+    return 0.571 * noise(st)
+         + 0.286 * noise(st * 2.0);
   }
 
   // ─── Domain warp ────────────────────────────────────────────────────────────

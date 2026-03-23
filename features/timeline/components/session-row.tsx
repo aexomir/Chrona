@@ -5,6 +5,7 @@ import { useProjects } from "@/features/projects/projects-store";
 import type { Session } from "@/features/sessions/sessions-store";
 import { Image } from "expo-image";
 import { Link } from "expo-router";
+import React from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, {
   Easing,
@@ -14,7 +15,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-export function SessionRow({
+export const SessionRow = React.memo(function SessionRow({
   session,
   index,
   overlappingEvents,
@@ -23,11 +24,8 @@ export function SessionRow({
   index: number;
   overlappingEvents: CalendarEvent[];
 }) {
-  const { projects } = useProjects();
+  const project = useProjects(s => session.projectId ? s.projects.find(p => p.id === session.projectId) ?? null : null);
   const theme = useAuroraTheme();
-  const project = session.projectId
-    ? projects.find((p) => p.id === session.projectId)
-    : null;
 
   const appsString = session.apps
     ? session.apps
@@ -136,4 +134,4 @@ export function SessionRow({
       </Link>
     </Animated.View>
   );
-}
+});

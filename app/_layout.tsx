@@ -1,11 +1,9 @@
-import { HeroOverlay } from "@/components/hero-overlay";
 import { useAwStream } from "@/features/activity-watch/use-aw-stream";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
 import { useWidgetSync } from "@/features/watch/use-widget-sync";
-import { heroProgress } from "@/lib/hero-animation";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -14,7 +12,6 @@ import { HeroUINativeProvider } from "heroui-native";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { Easing, withTiming } from "react-native-reanimated";
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
@@ -98,26 +95,35 @@ export default function RootLayout() {
           })),
         ),
         recentSessions: JSON.stringify(
-          todaySessions.slice(0, 8).map((s) => {
-            const project = projects.find((p) => p.id === s.projectId);
-            return {
-              id: s.id,
-              title: s.title || "",
-              projectName: project?.name ?? "",
-              projectColor: project?.color ?? "",
-              startTime: s.startTime,
-              duration: s.duration,
-            };
-          }),
+          (() => {
+            const projectById = new Map(projects.map((p) => [p.id, p]));
+            return todaySessions.slice(0, 8).map((s) => {
+              const project = s.projectId ? projectById.get(s.projectId) : undefined;
+              return {
+                id: s.id,
+                title: s.title || "",
+                projectName: project?.name ?? "",
+                projectColor: project?.color ?? "",
+                startTime: s.startTime,
+                duration: s.duration,
+              };
+            });
+          })()
         ),
       });
     };
 
     sync();
-    const unsubTimer = useTimerStore.subscribe(sync);
-    const unsubSessions = useSessionsStore.subscribe(sync);
-    const unsubProjects = useProjects.subscribe(sync);
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedSync = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(sync, 300);
+    };
+    const unsubTimer = useTimerStore.subscribe(debouncedSync);
+    const unsubSessions = useSessionsStore.subscribe(debouncedSync);
+    const unsubProjects = useProjects.subscribe(debouncedSync);
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       unsubTimer();
       unsubSessions();
       unsubProjects();
@@ -125,10 +131,6 @@ export default function RootLayout() {
   }, [syncWatch]);
 
   useEffect(() => {
-    heroProgress.value = withTiming(1, {
-      duration: 4000,
-      easing: Easing.bezier(0.25, 0.1, 0.15, 1.0),
-    });
     SplashScreen.hideAsync();
   }, []);
 
@@ -177,7 +179,6 @@ export default function RootLayout() {
               />
             </Stack>
             <StatusBar style="light" />
-            <HeroOverlay />
           </ThemeProvider>
         </KeyboardProvider>
       </HeroUINativeProvider>

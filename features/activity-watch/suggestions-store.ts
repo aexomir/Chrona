@@ -73,6 +73,20 @@ export const useSuggestionsStore = create<SuggestionsState>()(
         set((state) => {
           const newAssociations = { ...state.associations };
           const now = Date.now();
+          const CUTOFF_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+
+          // Prune stale entries before writing
+          for (const appName of Object.keys(newAssociations)) {
+            for (const pid of Object.keys(newAssociations[appName])) {
+              if (now - (newAssociations[appName][pid].lastUsed ?? 0) > CUTOFF_MS) {
+                delete newAssociations[appName][pid];
+              }
+            }
+            if (Object.keys(newAssociations[appName]).length === 0) {
+              delete newAssociations[appName];
+            }
+          }
+
           for (const app of apps) {
             if (!newAssociations[app.app]) {
               newAssociations[app.app] = {};

@@ -21,6 +21,8 @@ export function useWidgetSync() {
       const calendarGranted = isEnabled && permissionStatus === "granted";
 
       // ── Focus widget ──────────────────────────────────────────────
+      const projectById = new Map(projects.map((p) => [p.id, p]));
+
       let resolvedProjectId = isTracking ? projectId : null;
       if (!resolvedProjectId) {
         const today = new Date();
@@ -31,12 +33,12 @@ export function useWidgetSync() {
         resolvedProjectId = lastToday?.projectId ?? null;
       }
       const project = resolvedProjectId
-        ? (projects.find((p) => p.id === resolvedProjectId) ?? null)
+        ? (projectById.get(resolvedProjectId) ?? null)
         : null;
 
       const currentProject =
         isTracking && projectId
-          ? (projects.find((p) => p.id === projectId) ?? null)
+          ? (projectById.get(projectId) ?? null)
           : null;
 
       syncWidgetData(sessions, isTracking, startTimestamp, title, project);
@@ -77,12 +79,19 @@ export function useWidgetSync() {
 
     sync();
 
-    const unsubSessions = useSessionsStore.subscribe(sync);
-    const unsubTimer = useTimerStore.subscribe(sync);
-    const unsubProjects = useProjects.subscribe(sync);
-    const unsubCalendar = useCalendarStore.subscribe(sync);
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedSync = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(sync, 300);
+    };
+
+    const unsubSessions = useSessionsStore.subscribe(debouncedSync);
+    const unsubTimer = useTimerStore.subscribe(debouncedSync);
+    const unsubProjects = useProjects.subscribe(debouncedSync);
+    const unsubCalendar = useCalendarStore.subscribe(debouncedSync);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       unsubSessions();
       unsubTimer();
       unsubProjects();

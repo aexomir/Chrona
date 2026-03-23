@@ -11,13 +11,8 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
+import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
@@ -126,14 +121,13 @@ export default function RecoverScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior="padding"
-      className="flex-1"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
-    >
+    <View className="flex-1">
       <StaticAuraBackground />
       {/* Nav bar */}
-      <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
+      <View
+        className="flex-row items-center justify-between px-5 pt-2 pb-4"
+        style={{ paddingTop: insets.top + 8 }}
+      >
         <Pressable onPress={handleDismiss} hitSlop={12}>
           <Text className="text-neutral-400 text-base">Cancel</Text>
         </Pressable>
@@ -141,7 +135,11 @@ export default function RecoverScreen() {
         <View className="w-14" />
       </View>
 
-      <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 px-6">
+      <KeyboardAwareScrollView
+        className="flex-1 px-6"
+        bottomOffset={16}
+        contentContainerStyle={{ paddingBottom: 16 }}
+      >
         {/* Header card: calendar-specific or AW-based */}
         {period.source === "calendar" ? (
           <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
@@ -302,23 +300,24 @@ export default function RecoverScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
-      {/* Action buttons */}
-      <View className="px-6 gap-2 py-4">
-        <Button
-          variant="primary"
-          onPress={handleLog}
-          isDisabled={!title.trim() || !selectedProject}
-        >
-          <Button.Label>Log This Session</Button.Label>
-        </Button>
-        <Button variant="ghost" onPress={handleDismiss}>
-          <Button.Label>Dismiss</Button.Label>
-        </Button>
-      </View>
+      <KeyboardStickyView offset={{ closed: insets.bottom }}>
+        <View className="px-6 gap-2 py-4">
+          <Button
+            variant="primary"
+            onPress={handleLog}
+            isDisabled={!title.trim() || !selectedProject}
+          >
+            <Button.Label>Log This Session</Button.Label>
+          </Button>
+          <Button variant="ghost" onPress={handleDismiss}>
+            <Button.Label>Dismiss</Button.Label>
+          </Button>
+        </View>
+      </KeyboardStickyView>
 
       <PortalHost name="recover-modal" />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

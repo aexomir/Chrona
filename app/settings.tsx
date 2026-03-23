@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
 import { Switch } from "heroui-native";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View, Keyboard } from "react-native";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -129,13 +129,12 @@ export default function SettingsScreen() {
   }, [awAdapterMode]);
 
   useEffect(() => {
-    if (!developerMode) return;
     let cancelled = false;
     const poll = () => getCurrentApp().then((r) => { if (!cancelled) setActiveApp(r); });
     poll();
     const id = setInterval(poll, 3000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [developerMode]);
+  }, []);
 
   function handleAwModeToggle(streamEnabled: boolean) {
     setAwAdapterMode(streamEnabled ? "stream" : "localhost");
@@ -153,8 +152,8 @@ export default function SettingsScreen() {
       <AnimatedHeaderScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
       >
-        {/* ATMOSPHERE */}
-        <SectionLabel>Atmosphere</SectionLabel>
+        {/* APPEARANCE */}
+        <SectionLabel>Appearance</SectionLabel>
         <SettingsCard>
           <SettingsRow
             label="Aurora Theme"
@@ -205,6 +204,36 @@ export default function SettingsScreen() {
                 </Text>
               }
             />
+            <SettingsDivider />
+            <View className="flex-row items-center justify-between py-4 px-5">
+              <View className="flex-row items-center gap-2 flex-1">
+                <View
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 4,
+                    backgroundColor: activeApp ? "#4ade80" : "#3f3f46",
+                  }}
+                />
+                <Text className="text-white text-base font-medium">Active App</Text>
+              </View>
+              <View className="items-end" style={{ maxWidth: "55%" }}>
+                {activeApp ? (
+                  <>
+                    <Text className="text-white text-sm font-medium" numberOfLines={1}>
+                      {activeApp.app}
+                    </Text>
+                    {activeApp.title ? (
+                      <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
+                        {activeApp.title}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text className="text-neutral-600 text-sm">—</Text>
+                )}
+              </View>
+            </View>
           </SettingsCard>
         </View>
 
@@ -215,12 +244,6 @@ export default function SettingsScreen() {
             <SettingsRow
               label="Projects"
               onPress={() => router.push("/projects")}
-              suffix={<ChevronSuffix />}
-            />
-            <SettingsDivider />
-            <SettingsRow
-              label="Export Data"
-              onPress={() => {}}
               suffix={<ChevronSuffix />}
             />
           </SettingsCard>
@@ -262,6 +285,7 @@ export default function SettingsScreen() {
                       autoCorrect={false}
                       keyboardType="url"
                       returnKeyType="done"
+                      onSubmitEditing={Keyboard.dismiss}
                       style={{
                         color: "#a1a1aa",
                         fontSize: 14,
@@ -272,36 +296,6 @@ export default function SettingsScreen() {
                   </View>
                 </>
               )}
-              <SettingsDivider />
-              <View className="flex-row items-center justify-between py-4 px-5">
-                <View className="flex-row items-center gap-2 flex-1">
-                  <View
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: 4,
-                      backgroundColor: activeApp ? "#4ade80" : "#3f3f46",
-                    }}
-                  />
-                  <Text className="text-white text-base font-medium">Active App</Text>
-                </View>
-                <View className="items-end" style={{ maxWidth: "55%" }}>
-                  {activeApp ? (
-                    <>
-                      <Text className="text-white text-sm font-medium" numberOfLines={1}>
-                        {activeApp.app}
-                      </Text>
-                      {activeApp.title ? (
-                        <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
-                          {activeApp.title}
-                        </Text>
-                      ) : null}
-                    </>
-                  ) : (
-                    <Text className="text-neutral-600 text-sm">—</Text>
-                  )}
-                </View>
-              </View>
               <SettingsDivider />
               <SettingsRow
                 label="Tracking Rules"
@@ -319,42 +313,22 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* ABOUT */}
-        <View className="mt-10 mb-8">
-          <Pressable
-            onPress={() => {
-              setDevTapCount((prev) => {
-                const next = prev + 1;
-                if (next === 5) {
-                  setDeveloperMode(!developerMode);
-                  setDevTapCount(0);
-                }
-                return next % 6;
-              });
-            }}
-          >
-            <SectionLabel>About</SectionLabel>
-          </Pressable>
-          <SettingsCard>
-            <SettingsRow
-              label="Privacy Policy"
-              onPress={() => {}}
-              suffix={<ChevronSuffix />}
-            />
-            <SettingsDivider />
-            <SettingsRow
-              label="Rate Focus"
-              onPress={() => {}}
-              suffix={<ChevronSuffix />}
-            />
-            <SettingsDivider />
-            <SettingsRow
-              label="Contact"
-              onPress={() => {}}
-              suffix={<ChevronSuffix />}
-            />
-          </SettingsCard>
-        </View>
+        {/* VERSION FOOTER — tap 5× to unlock developer mode */}
+        <Pressable
+          className="mt-10 mb-8 items-center"
+          onPress={() => {
+            setDevTapCount((prev) => {
+              const next = prev + 1;
+              if (next === 5) {
+                setDeveloperMode(!developerMode);
+                return 0;
+              }
+              return next % 6;
+            });
+          }}
+        >
+          <Text className="text-neutral-600 text-xs">Focus</Text>
+        </Pressable>
       </AnimatedHeaderScrollView>
     </View>
   );

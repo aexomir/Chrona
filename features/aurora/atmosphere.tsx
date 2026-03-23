@@ -1,9 +1,9 @@
 import { getAtmosphereColors } from "@/features/aurora/atmosphereColors";
 import { detectAtmosphere } from "@/features/aurora/atmosphereDetector";
 import { AURORA_SKSL, toFloat3 } from "@/features/aurora/atmosphereShader";
-import { scrubProgress } from "@/features/timeline/playback";
 import { Session } from "@/features/sessions/sessions-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { scrubProgress } from "@/features/timeline/playback";
 import { Canvas, Fill, Shader, Skia } from "@shopify/react-native-skia";
 import { useWindowDimensions, View } from "react-native";
 import {
@@ -39,6 +39,7 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
   // Animate the continuous progress value (smooth 5s transition)
   const progressValue = reanimatedUseSharedValue(0);
   const time = reanimatedUseSharedValue(0);
+  const lastFrameTime = reanimatedUseSharedValue(0);
 
   useAnimatedReaction(
     () => metrics.progress,
@@ -48,6 +49,8 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
   );
 
   useFrameCallback((info) => {
+    if (info.timeSinceFirstFrame - lastFrameTime.value < 41) return;
+    lastFrameTime.value = info.timeSinceFirstFrame;
     time.value = info.timeSinceFirstFrame;
   });
 
@@ -61,11 +64,10 @@ export function Atmosphere({ sessions }: AtmosphereProps) {
     );
     const intensity = progressValue.value * scrubMult;
 
-    // Speed scales with progress: slow when idle, faster as day fills up
     const speed = interpolate(
       progressValue.value,
-      [0, 0.05, 0.15, 0.50, 1.0],
-      [0.12, 0.20, 0.32, 0.55, 0.80],
+      [0, 0.05, 0.15, 0.5, 1.0],
+      [0.12, 0.2, 0.32, 0.55, 0.8],
     );
 
     const skyBottomAdjusted: [number, number, number] = [

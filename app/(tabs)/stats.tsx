@@ -10,17 +10,9 @@ import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import {
   TIMEFRAMES,
   type Timeframe,
-  computeFocusConsistency,
-  computeStreak,
-  filterSessions,
   formatFocusTime,
-  getDelta,
-  getHourBuckets,
-  getPrevRange,
-  getProjectTotals,
-  getRange,
-  getTotalSeconds,
 } from "@/features/analytics/stats-utils";
+import { useStatsData } from "@/hooks/use-stats-data";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { GlassView } from "expo-glass-effect";
@@ -94,33 +86,21 @@ const styles = StyleSheet.create({
 
 export default function StatsScreen() {
   const [timeframe, setTimeframe] = useState<Timeframe>("week");
-  const { sessions: allSessions } = useSessionsStore();
-  const { projects } = useProjects();
+  const allSessions = useSessionsStore(s => s.sessions);
+  const projects = useProjects(s => s.projects);
   const theme = useAuroraTheme();
 
-  const now = new Date();
-  const { start, end } = getRange(timeframe, now);
-  const { start: prevStart, end: prevEnd } = getPrevRange(timeframe, now);
-
-  const sessions = filterSessions(allSessions, start, end);
-  const prevSessions = filterSessions(allSessions, prevStart, prevEnd);
-
-  const totalSeconds = getTotalSeconds(sessions);
-  const delta = getDelta(totalSeconds, getTotalSeconds(prevSessions));
-  const hourBuckets = getHourBuckets(sessions);
-  const projectTotals = getProjectTotals(sessions, projects);
-  const streak = computeStreak(allSessions);
-  const consistency = computeFocusConsistency(sessions, start, end);
-  const prevConsistency = computeFocusConsistency(
-    prevSessions,
-    prevStart,
-    prevEnd,
-  );
-  const consistencyDelta = getDelta(
-    consistency.percentage,
-    prevConsistency.percentage,
-  );
-  const isEmpty = sessions.length === 0;
+  const {
+    sessions,
+    totalSeconds,
+    delta,
+    hourBuckets,
+    projectTotals,
+    streak,
+    consistency,
+    consistencyDelta,
+    isEmpty,
+  } = useStatsData(allSessions, projects, timeframe);
 
   const pillLayouts = useRef<{ x: number; width: number }[]>([]);
   const indicatorX = useSharedValue(-100);

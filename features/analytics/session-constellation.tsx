@@ -1,14 +1,17 @@
-import { heroProgress } from "@/lib/hero-animation";
-import { scrubProgress } from "@/features/timeline/playback";
 import { useProjects } from "@/features/projects/projects-store";
 import { Session, useSessionsStore } from "@/features/sessions/sessions-store";
-import { useEffect, useRef, useState } from "react";
+import { scrubProgress } from "@/features/timeline/playback";
+import { heroProgress } from "@/lib/hero-animation";
+import React, { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import Animated, {
+  Easing,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -68,8 +71,7 @@ function computeConstellationLayout(
   containerHeight: number,
 ): PointLayout[] {
   const sorted = [...sessions].sort(
-    (a, b) =>
-      new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 
   const durations = sorted.map((s) => s.duration);
@@ -85,15 +87,12 @@ function computeConstellationLayout(
 
     const normalizedDuration =
       durationRange === 0 ? 1 : (session.duration - minDur) / durationRange;
-    const radius =
-      MIN_RADIUS + normalizedDuration * (MAX_RADIUS - MIN_RADIUS);
+    const radius = MIN_RADIUS + normalizedDuration * (MAX_RADIUS - MIN_RADIUS);
     const opacity =
       MIN_OPACITY + normalizedDuration * (MAX_OPACITY - MIN_OPACITY);
 
-    const driftDurX =
-      DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
-    const driftDurY =
-      DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
+    const driftDurX = DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
+    const driftDurY = DRIFT_MIN_MS + prng() * (DRIFT_MAX_MS - DRIFT_MIN_MS);
     const driftPhaseX = prng() > 0.5 ? 1 : -1;
     const driftPhaseY = prng() > 0.5 ? 1 : -1;
 
@@ -111,10 +110,7 @@ function computeConstellationLayout(
 
       let minDist = Infinity;
       for (const point of placedPoints) {
-        const dist = Math.hypot(
-          candidate.x - point.x,
-          candidate.y - point.y,
-        );
+        const dist = Math.hypot(candidate.x - point.x, candidate.y - point.y);
         minDist = Math.min(minDist, dist);
       }
 
@@ -148,7 +144,6 @@ function computeConstellationLayout(
   return layouts;
 }
 
-
 interface ConstellationPointProps {
   layout: PointLayout;
   color: string;
@@ -163,9 +158,10 @@ function ConstellationPoint({
   sessionStartFraction,
 }: ConstellationPointProps) {
   const scale = useSharedValue(0);
-  const offsetX = useSharedValue(0);
-  const offsetY = useSharedValue(0);
-  const rafIdRef = useRef<number>(0);
+  const amp = layout.radius * 0.3;
+  const offsetX = useSharedValue(-amp * layout.driftPhaseX);
+  const offsetY = useSharedValue(-amp * layout.driftPhaseY);
+  const opacityValue = useSharedValue(0);
 
   useEffect(() => {
     scale.value = withDelay(
@@ -175,50 +171,52 @@ function ConstellationPoint({
   }, [scale, index]);
 
   useEffect(() => {
-    let startTime: number;
+    const delay = index * 80 + 650;
+    offsetX.value = withDelay(
+      delay,
+      withRepeat(
+        withTiming(amp * layout.driftPhaseX, {
+          duration: layout.driftDurX,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        -1,
+        true,
+      ),
+    );
+    offsetY.value = withDelay(
+      delay,
+      withRepeat(
+        withTiming(amp * layout.driftPhaseY, {
+          duration: layout.driftDurY,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        -1,
+        true,
+      ),
+    );
+  }, []);
 
-    const animate = (now: number) => {
-      if (!startTime) startTime = now;
+  useAnimatedReaction(
+    () => {
+      const scrubSec = scrubProgress.value * DAY_SECONDS;
+      return scrubSec >= sessionStartFraction * DAY_SECONDS
+        ? layout.opacity
+        : 0;
+    },
+    (next, prev) => {
+      if (next !== prev)
+        opacityValue.value = withTiming(next, { duration: 150 });
+    },
+  );
 
-      const amp = layout.radius * 0.3;
-      const elapsedX = (now - startTime) / layout.driftDurX;
-      const elapsedY = (now - startTime) / layout.driftDurY;
-
-      const angleX = (elapsedX % 2) * Math.PI * layout.driftPhaseX;
-      const angleY = (elapsedY % 2) * Math.PI * layout.driftPhaseY;
-
-      offsetX.value = Math.sin(angleX) * amp;
-      offsetY.value = Math.sin(angleY) * amp;
-
-      rafIdRef.current = requestAnimationFrame(animate);
-    };
-
-    const timer = setTimeout(() => {
-      rafIdRef.current = requestAnimationFrame(animate);
-    }, index * 80 + 650);
-
-    return () => {
-      clearTimeout(timer);
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-    };
-  }, [offsetX, offsetY, layout, index]);
-
-  const dotStyle = useAnimatedStyle(() => {
-    const scrubSec = scrubProgress.value * DAY_SECONDS;
-    const sessionSec = sessionStartFraction * DAY_SECONDS;
-    const scrubOpacity = scrubSec >= sessionSec ? 1 : 0;
-
-    return {
-      transform: [
-        { translateX: layout.x + offsetX.value },
-        { translateY: layout.y + offsetY.value },
-        { scale: scale.value },
-      ],
-      opacity: withTiming(scrubOpacity, { duration: 150 }),
-    };
-  });
+  const dotStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: layout.x + offsetX.value },
+      { translateY: layout.y + offsetY.value },
+      { scale: scale.value },
+    ],
+    opacity: opacityValue.value,
+  }));
 
   return (
     <AnimatedView
@@ -252,17 +250,18 @@ function ConstellationPoint({
   );
 }
 
-export function SessionConstellation() {
-  const { sessions } = useSessionsStore();
-  const { projects } = useProjects();
+export const SessionConstellation = React.memo(function SessionConstellation() {
+  const sessions = useSessionsStore((s) => s.sessions);
+  const projects = useProjects((s) => s.projects);
   const [containerSize, setContainerSize] = useState<{
     width: number;
     height: number;
   } | null>(null);
 
-  const todaySessions = sessions.filter(
-    (s) => new Date(s.startTime).toDateString() === new Date().toDateString(),
-  );
+  const todaySessions = useMemo(() => {
+    const today = new Date().toDateString();
+    return sessions.filter((s) => new Date(s.startTime).toDateString() === today);
+  }, [sessions]);
 
   const containerStyle = useAnimatedStyle(() => ({
     opacity: interpolate(heroProgress.value, [0.55, 1], [0, 1], {
@@ -271,15 +270,21 @@ export function SessionConstellation() {
     }),
   }));
 
-  if (todaySessions.length === 0) return null;
+  const layouts = useMemo(() => {
+    if (!containerSize || todaySessions.length === 0) return [];
+    return computeConstellationLayout(
+      todaySessions,
+      containerSize.width,
+      containerSize.height,
+    );
+  }, [todaySessions, containerSize]);
 
-  const layouts = containerSize
-    ? computeConstellationLayout(
-        todaySessions,
-        containerSize.width,
-        containerSize.height,
-      )
-    : [];
+  const projectMap = useMemo(
+    () => new Map(projects.map((p) => [p.id, p])),
+    [projects],
+  );
+
+  if (todaySessions.length === 0) return null;
 
   return (
     <AnimatedView
@@ -300,7 +305,9 @@ export function SessionConstellation() {
     >
       {layouts.map((layout, index) => {
         const session = todaySessions.find((s) => s.id === layout.sessionId)!;
-        const project = projects.find((p) => p.id === session.projectId);
+        const project = session.projectId
+          ? projectMap.get(session.projectId)
+          : undefined;
         const sessionStartFraction =
           secondsSinceMidnight(session.startTime) / DAY_SECONDS;
         return (
@@ -315,4 +322,4 @@ export function SessionConstellation() {
       })}
     </AnimatedView>
   );
-}
+});
