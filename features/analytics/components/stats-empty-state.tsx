@@ -32,7 +32,7 @@ export function StatsEmptyState({ timeframe }: { timeframe: Timeframe }) {
                 marginBottom: 10,
               }}
             >
-              Total Focus Time
+              Total Tracked Time
             </Text>
             <Text
               style={{ color: "rgba(255,255,255,0.15)", fontSize: 28, fontWeight: "700" }}
@@ -50,7 +50,7 @@ export function StatsEmptyState({ timeframe }: { timeframe: Timeframe }) {
                 marginBottom: 10,
               }}
             >
-              Focus Consistency
+              Consistency
             </Text>
             <Text
               style={{ color: "rgba(255,255,255,0.15)", fontSize: 28, fontWeight: "700" }}
@@ -133,7 +133,7 @@ export function StatsEmptyState({ timeframe }: { timeframe: Timeframe }) {
           {label.toLowerCase()}.
         </Text>
         <Button variant="primary" onPress={() => router.push("/timer")}>
-          <Button.Label>Start a Focus Session</Button.Label>
+          <Button.Label>Start a Session</Button.Label>
         </Button>
       </Animated.View>
     </View>

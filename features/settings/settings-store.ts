@@ -16,7 +16,7 @@ type SettingsState = {
   setDeveloperMode: (enabled: boolean) => void;
   awAdapterMode: AdapterMode;
   setAwAdapterMode: (mode: AdapterMode) => void;
-  /** Hostname or IP of the FocusHelper collector (stream mode only). Defaults to "localhost". */
+  /** Hostname or IP of the ChronaHelper collector (stream mode only). Defaults to "localhost". */
   awStreamHost: string;
   setAwStreamHost: (host: string) => void;
   timerStartMode: TimerStartMode;

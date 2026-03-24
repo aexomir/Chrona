@@ -2,7 +2,7 @@ import SwiftUI
 import os
 
 @main
-struct FocusHelperApp: App {
+struct ChronaHelperApp: App {
 
     // MARK: - Instance guard
     //

@@ -6,7 +6,7 @@
 #   - maestro installed: brew install maestro
 # Run: maestro test .maestro/aw_settings_status.yaml
 
-appId: com.focus.app  # replace with your actual bundle ID from app.json
+appId: com.aexomir.Chrona  # replace with your actual bundle ID from app.json
 ---
 - launchApp
 - waitForAnimationToEnd

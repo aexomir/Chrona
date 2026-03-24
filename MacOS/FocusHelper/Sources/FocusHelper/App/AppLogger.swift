@@ -3,14 +3,14 @@ import os
 // MARK: - Centralised os.Logger instances
 //
 // One logger per logical subsystem. All entries appear in Console.app under
-// subsystem "com.focus.FocusHelper" and can be filtered by category.
+// subsystem "com.chrona.ChronaHelper" and can be filtered by category.
 //
 // Usage:
 //   Logger.lifecycle.info("App launched")
 //   Logger.watcher.error("Watcher stalled: \(reason)")
 
 extension Logger {
-    private static let subsystem = "com.focus.FocusHelper"
+    private static let subsystem = "com.chrona.ChronaHelper"
 
     /// App and process lifecycle events (launch, terminate, instance guard).
     static let lifecycle = Logger(subsystem: subsystem, category: "Lifecycle")

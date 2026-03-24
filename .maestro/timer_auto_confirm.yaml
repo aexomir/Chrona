@@ -12,7 +12,7 @@
 #
 # Run: maestro test .maestro/timer_auto_confirm.yaml
 
-appId: com.focus.app
+appId: com.aexomir.Chrona
 ---
 - launchApp
 - waitForAnimationToEnd

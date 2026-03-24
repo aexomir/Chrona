@@ -2,11 +2,11 @@
  * awStreamTransport.ts
  *
  * Implements AwStreamTransport over a WebSocket connection to the macOS
- * FocusHelper app running on the local network.
+ * ChronaHelper app running on the local network.
  *
  * Discovery:
- *   The macOS app registers a Bonjour service (_focushelper._tcp) and
- *   its hostname is shown in the FocusHelper menu bar (e.g. "MacBook-Pro.local:7777").
+ *   The macOS app registers a Bonjour service (_chronahelper._tcp) and
+ *   its hostname is shown in the ChronaHelper menu bar (e.g. "MacBook-Pro.local:7777").
  *   Pass that host + port when constructing MacBridgeTransport.
  *
  * Reconnection:
@@ -77,7 +77,7 @@ export class MacBridgeTransport implements AwStreamTransport {
 
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error(`[FocusHelper] Connection timed out after ${CONNECT_TIMEOUT_MS}ms`))
+        reject(new Error(`[ChronaHelper] Connection timed out after ${CONNECT_TIMEOUT_MS}ms`))
         // Close the pending socket so its onclose fires and schedules the reconnect.
         // Do NOT call scheduleReconnect() here — onclose handles it, and calling both
         // would double-increment reconnectAttempt and cancel the first backoff timer.
@@ -144,7 +144,7 @@ export class MacBridgeTransport implements AwStreamTransport {
 
     ws.onerror = () => {
       // onerror fires before onclose — let onclose handle reconnect
-      onError?.(new Error('[FocusHelper] WebSocket error'))
+      onError?.(new Error('[ChronaHelper] WebSocket error'))
     }
 
     ws.onclose = (evt) => {
@@ -154,7 +154,7 @@ export class MacBridgeTransport implements AwStreamTransport {
       this.notifyStatus(false)
       if (!this.intentionalDisconnect) {
         if (!wasClean) {
-          console.warn('[FocusHelper] Unclean disconnect — reconnecting')
+          console.warn('[ChronaHelper] Unclean disconnect — reconnecting')
         }
         this.scheduleReconnect()
       }
@@ -168,7 +168,7 @@ export class MacBridgeTransport implements AwStreamTransport {
     try {
       msg = JSON.parse(raw) as AwStreamEvent
     } catch {
-      console.warn('[FocusHelper] Received unparseable message — skipping')
+      console.warn('[ChronaHelper] Received unparseable message — skipping')
       return
     }
 
@@ -186,7 +186,7 @@ export class MacBridgeTransport implements AwStreamTransport {
 
     for (const handler of this.eventHandlers) {
       try { handler(msg) } catch (err) {
-        console.error('[FocusHelper] onEvent handler threw:', err)
+        console.error('[ChronaHelper] onEvent handler threw:', err)
       }
     }
   }
@@ -201,7 +201,7 @@ export class MacBridgeTransport implements AwStreamTransport {
     this.reconnectAttempt++
 
     console.log(
-      `[FocusHelper] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})…`
+      `[ChronaHelper] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})…`
     )
 
     this.reconnectTimer = setTimeout(() => {
@@ -221,7 +221,7 @@ export class MacBridgeTransport implements AwStreamTransport {
   private notifyStatus(connected: boolean): void {
     for (const handler of this.statusHandlers) {
       try { handler(connected) } catch (err) {
-        console.error('[FocusHelper] onStatusChange handler threw:', err)
+        console.error('[ChronaHelper] onStatusChange handler threw:', err)
       }
     }
   }
@@ -232,9 +232,9 @@ export class MacBridgeTransport implements AwStreamTransport {
 /**
  * Create a transport pre-configured from stored settings.
  *
- * `host` should be the value the user copied from the FocusHelper menu bar,
+ * `host` should be the value the user copied from the ChronaHelper menu bar,
  * e.g. "192.168.1.42" or "MacBook-Pro.local".
- * Store it in MMKV under the key "focushelper_host".
+ * Store it in MMKV under the key "chronahelper_host".
  */
 export function createMacBridgeTransport(host: string, port?: number): MacBridgeTransport {
   return new MacBridgeTransport(host, port)

@@ -21,7 +21,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
-	<string>FocusHelper reads the active window title to record which task you are working on.</string>
+	<string>ChronaHelper reads the active window title to record which task you are working on.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

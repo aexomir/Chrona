@@ -78,7 +78,7 @@ final class PermissionManager: ObservableObject {
 
     // MARK: - Constants
 
-    private let promptedKey       = "com.focus.FocusHelper.accessibilityPrompted"
+    private let promptedKey       = "com.chrona.ChronaHelper.accessibilityPrompted"
     private let fastPollInterval:  TimeInterval = 5
     private let slowPollInterval:  TimeInterval = 60
 
@@ -91,7 +91,7 @@ final class PermissionManager: ObservableObject {
 
     init() {
         permissionState = Self.evaluate(
-            prompted: UserDefaults.standard.bool(forKey: "com.focus.FocusHelper.accessibilityPrompted")
+            prompted: UserDefaults.standard.bool(forKey: "com.chrona.ChronaHelper.accessibilityPrompted")
         )
         Logger.watcher.info("PermissionManager init — state=\(String(describing: self.permissionState))")
     }

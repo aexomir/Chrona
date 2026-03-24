@@ -26,8 +26,8 @@ final class StreamServer {
     // MARK: - Configuration
 
     static let port: NWEndpoint.Port = 7_777
-    static let bonjourServiceType    = "_focushelper._tcp"
-    static let bonjourServiceName    = "FocusHelper"
+    static let bonjourServiceType    = "_chronahelper._tcp"
+    static let bonjourServiceName    = "ChronaHelper"
 
     // MARK: - Callbacks
 
@@ -45,7 +45,7 @@ final class StreamServer {
     private var pendingClients: [UUID: StreamClient] = [:]
 
     private let listenerQueue = DispatchQueue(
-        label: "com.focus.streamserver",
+        label: "com.chrona.streamserver",
         qos: .utility
     )
 

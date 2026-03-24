@@ -1,13 +1,13 @@
-name: FocusHelper
+name: ChronaHelper
 options:
-  bundleIdPrefix: com.focus
+  bundleIdPrefix: com.chrona
   deploymentTarget:
     macOS: "13.0"
   xcodeVersion: "15.0"
   createIntermediateGroups: true
 
 targets:
-  FocusHelper:
+  ChronaHelper:
     type: application
     platform: macOS
     sources:
@@ -18,13 +18,13 @@ targets:
         # Menu bar only — no Dock icon
         LSUIElement: true
         # Required for AXUIElement window title capture (embedded source)
-        NSAccessibilityUsageDescription: "FocusHelper reads the active window title to record which task you are working on."
+        NSAccessibilityUsageDescription: "ChronaHelper reads the active window title to record which task you are working on."
         # Allow outbound connections to an external ActivityWatch server (external source mode)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_NAME: FocusHelper
+        PRODUCT_NAME: ChronaHelper
         SWIFT_VERSION: "5.9"
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: NO

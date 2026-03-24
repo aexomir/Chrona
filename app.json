@@ -1,23 +1,23 @@
 {
   "expo": {
-    "name": "Focus",
-    "slug": "Focus",
+    "name": "Chrona",
+    "slug": "Chrona",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "focus",
+    "scheme": "chrona",
     "userInterfaceStyle": "automatic",
     "ios": {
       "appleTeamId": "998C8ZCRMH",
       "supportsTablet": true,
-      "bundleIdentifier": "com.aexomir.Focus",
+      "bundleIdentifier": "com.aexomir.Chrona",
       "infoPlist": {
-        "NSCalendarsUsageDescription": "Focus uses your calendar to suggest projects for upcoming events.",
-        "AppGroupIdentifier": "group.com.aexomir.Focus",
+        "NSCalendarsUsageDescription": "Chrona uses your calendar to suggest projects for upcoming events.",
+        "AppGroupIdentifier": "group.com.aexomir.Chrona",
         "NSSupportsLiveActivities": true
       },
       "entitlements": {
-        "com.apple.security.application-groups": ["group.com.aexomir.Focus"]
+        "com.apple.security.application-groups": ["group.com.aexomir.Chrona"]
       }
     },
     "android": {
@@ -28,7 +28,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.aexomir.Focus"
+      "package": "com.aexomir.Chrona"
     },
     "web": {
       "output": "static",
@@ -51,7 +51,7 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "Focus uses your calendar to suggest projects for upcoming events."
+          "calendarPermission": "Chrona uses your calendar to suggest projects for upcoming events."
         }
       ],
       "@bacons/apple-targets"

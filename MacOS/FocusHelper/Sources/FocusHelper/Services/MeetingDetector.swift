@@ -53,8 +53,8 @@ final class MeetingDetector: ObservableObject {
     private let pollInterval: TimeInterval = 30
 
     private enum Keys {
-        static let enabled      = "com.focus.meetingDetection.enabled"
-        static let monitoredIds = "com.focus.meetingDetection.monitoredIds"
+        static let enabled      = "com.chrona.meetingDetection.enabled"
+        static let monitoredIds = "com.chrona.meetingDetection.monitoredIds"
     }
 
     // MARK: - Init

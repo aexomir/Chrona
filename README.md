@@ -1,4 +1,4 @@
-# Focus
+# Chrona
 
 A minimal, dark-first time tracking app for people who want to be intentional about how they spend their time. Built with Expo 55 / React Native 0.83 / React 19.
 
@@ -8,7 +8,7 @@ A minimal, dark-first time tracking app for people who want to be intentional ab
 
 ## Features
 
-- **Focus Timer** — Start sessions tied to projects, with live tracking and iOS Live Activities support
+- **Chrona Timer** — Start sessions tied to projects, with live tracking and iOS Live Activities support
 - **ActivityWatch Integration** — Automatically captures app usage during sessions and learns which apps belong to which projects
 - **Smart Suggestions** — Learns from past sessions to suggest the right project when you switch context; integrates with active calendar events
 - **Missed Time Recovery** — Detects gaps >= 15 minutes in tracked time (up to 8h back) and prompts you to log them
@@ -18,7 +18,7 @@ A minimal, dark-first time tracking app for people who want to be intentional ab
 - **Stats & AI Search** — On-device AI inference via ExecutorTorch for trend analysis, insights, and natural-language search
 - **Apple Watch** — Glanceable watch app showing active timer and focus ring
 - **Widgets** — iOS home screen widgets showing focus ring and timeline
-- **macOS Helper** — Native macOS companion app (`MacOS/FocusHelper`) for ActivityWatch stream bridging
+- **macOS Helper** — Native macOS companion app (`MacOS/ChronaHelper`) for ActivityWatch stream bridging
 
 ---
 

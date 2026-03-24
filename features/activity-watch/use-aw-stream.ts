@@ -1,5 +1,5 @@
 /**
- * Manages the FocusHelper stream transport lifecycle.
+ * Manages the ChronaHelper stream transport lifecycle.
  *
  * Reads awAdapterMode and awStreamHost from the settings store and
  * reactively creates or tears down a MacBridgeTransport whenever either

@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
-  s.name           = 'FocusWatchBridge'
+  s.name           = 'ChronaWatchBridge'
   s.version        = '1.0.0'
-  s.summary        = 'WatchConnectivity bridge for Focus'
+  s.summary        = 'WatchConnectivity bridge for Chrona'
   s.description    = 'Expo native module that bridges WCSession to React Native'
   s.author         = ''
   s.homepage       = 'https://docs.expo.dev/modules/'

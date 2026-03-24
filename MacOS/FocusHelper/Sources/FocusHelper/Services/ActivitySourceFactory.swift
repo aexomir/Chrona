@@ -10,8 +10,8 @@ enum ActivitySourceFactory {
 
     // MARK: - UserDefaults keys
 
-    private static let modeKey        = "com.focus.activitySourceMode"
-    private static let externalURLKey = "com.focus.externalAWServerURL"
+    private static let modeKey        = "com.chrona.activitySourceMode"
+    private static let externalURLKey = "com.chrona.externalAWServerURL"
 
     // MARK: - Persisted configuration
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct FocusWatchApp: App {
+struct ChronaWatchApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

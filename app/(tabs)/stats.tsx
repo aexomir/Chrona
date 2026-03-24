@@ -120,16 +120,16 @@ export default function StatsScreen() {
               >
                 <SectionHeader
                   title="Trends vs Last Period"
-                  description="Compare your focus time against the previous period"
+                  description="Compare your tracked time against the previous period"
                 />
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <MetricCard
-                    label="Total Focus Time"
+                    label="Total Tracked Time"
                     value={formatFocusTime(totalSeconds)}
                     delta={delta}
                   />
                   <MetricCard
-                    label="Focus Consistency"
+                    label="Consistency"
                     value={`${consistency.percentage}%`}
                     delta={consistencyDelta}
                   />
@@ -143,7 +143,7 @@ export default function StatsScreen() {
               >
                 <SectionHeader
                   title="Most Active Hours"
-                  description="When you focus most throughout the day"
+                  description="When you track most throughout the day"
                 />
                 <BarChart24 buckets={hourBuckets} />
               </Animated.View>
@@ -156,7 +156,7 @@ export default function StatsScreen() {
                 >
                   <SectionHeader
                     title="Project Distribution"
-                    description="How your focus time is split across projects"
+                    description="How your tracked time is split across projects"
                   />
                   <ProjectDistribution totals={projectTotals} />
                 </Animated.View>

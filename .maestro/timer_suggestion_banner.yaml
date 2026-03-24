@@ -12,7 +12,7 @@
 #   - AW running locally
 # Run: maestro test .maestro/timer_suggestion_banner.yaml
 
-appId: com.focus.app
+appId: com.aexomir.Chrona
 ---
 - launchApp
 - waitForAnimationToEnd
