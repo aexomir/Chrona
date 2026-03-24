@@ -1,5 +1,6 @@
 import { ChronaSplash } from "@/components/chrona-splash";
 import { useAwStream } from "@/features/activity-watch/use-aw-stream";
+import { hasCompletedOnboarding } from "@/features/onboarding/onboarding-storage";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
@@ -8,7 +9,7 @@ import { useWidgetSync } from "@/features/watch/use-widget-sync";
 import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { HeroUINativeProvider } from "heroui-native";
@@ -140,6 +141,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      if (!hasCompletedOnboarding()) {
+        router.replace("/onboarding");
+      }
     }
   }, [fontsLoaded, fontError]);
 
@@ -179,6 +183,10 @@ export default function RootLayout() {
               <Stack.Screen
                 name="timer-style"
                 options={{ presentation: "modal", headerShown: false }}
+              />
+              <Stack.Screen
+                name="onboarding"
+                options={{ headerShown: false, gestureEnabled: false }}
               />
               <Stack.Screen
                 name="settings"

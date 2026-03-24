@@ -1,4 +1,4 @@
-import { EmptyState } from "@/components/empty-state";
+import { StatsEmptyState } from "@/features/analytics/components/stats-empty-state";
 import { TextAlpha } from "@/constants/theme";
 import { BarChart24 } from "@/features/analytics/components/bar-chart24";
 import { MetricCard } from "@/features/analytics/components/metric-card";
@@ -17,7 +17,6 @@ import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useStatsData } from "@/hooks/use-stats-data";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
 import { ScrollShadow, Tabs } from "heroui-native";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -111,13 +110,7 @@ export default function StatsScreen() {
           scrollEventThrottle={16}
         >
           {isEmpty ? (
-            <EmptyState
-              icon="chart.bar"
-              title="No Sessions"
-              description="You haven't logged any focus sessions for this period."
-              ctaLabel="Start a Focus Session"
-              onCta={() => router.push("/timer")}
-            />
+            <StatsEmptyState timeframe={timeframe} />
           ) : (
             <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
               <Animated.View

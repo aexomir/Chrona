@@ -1,4 +1,4 @@
-import { EmptyState } from "@/components/empty-state";
+import { TimelineEmptyState } from "@/features/timeline/components/timeline-empty-state";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import type { CalendarEvent } from "@/features/calendar/calendar";
@@ -405,13 +405,7 @@ export default function TimelineScreen() {
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
-          <View style={{ paddingHorizontal: 12 }}>
-            <EmptyState
-              icon="timer"
-              title="No Sessions"
-              description="Start a focus session — your completed work will show up here."
-            />
-          </View>
+          <TimelineEmptyState selectedDate={selectedDate} />
         }
       />
 
