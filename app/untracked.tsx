@@ -104,7 +104,7 @@ export default function UntrackedScreen() {
             value={selectedProject}
             onValueChange={(v) => setSelectedProject(v as SelectOption | undefined)}
           >
-            <Select.Trigger>
+            <Select.Trigger className="bg-transparent shadow-none border border-white/10">
               <View className="flex-row items-center gap-2 flex-1">
                 {selectedProj && (
                   <Image
@@ -122,7 +122,7 @@ export default function UntrackedScreen() {
             </Select.Trigger>
             <Select.Portal hostName="untracked-modal">
               <Select.Overlay />
-              <Select.Content presentation="popover" width="trigger">
+              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none" style={{ backgroundColor: "#18181b" }}>
                 <Select.ListLabel>Select a project</Select.ListLabel>
                 {projects.map((p) => (
                   <Select.Item key={p.id} value={p.id} label={p.name}>
@@ -159,6 +159,7 @@ export default function UntrackedScreen() {
               value={windowTitleFilter}
               onChangeText={setWindowTitleFilter}
               description="Rule only applies to windows with title containing this text"
+              className="bg-transparent border-white/10"
             />
           </View>
         )}
@@ -170,6 +171,7 @@ export default function UntrackedScreen() {
             value={defaultTitle}
             onChangeText={setDefaultTitle}
             description="If empty, uses app name"
+            className="bg-transparent border-white/10"
           />
         </View>
       </KeyboardAwareScrollView>

@@ -1,4 +1,6 @@
+import { getAtmosphereColors } from "@/features/aurora/atmosphereColors";
 import { heroProgress } from "@/lib/hero-animation";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { useEffect, useState } from "react";
 import {
   Dimensions,
@@ -38,7 +40,6 @@ const UNDERLINE_GAP = 16;
 const UNDERLINE_Y = TEXT_BASELINE_Y + UNDERLINE_GAP;
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
-const BG_COLOR = "#FE192F";
 const TEXT_COLOR = "#FFFFFF";
 const LINE_COLOR = "#FFFFFF";
 
@@ -56,6 +57,14 @@ const AnimatedLine = Animated.createAnimatedComponent(Line);
 //  1470    Done — component unmounts
 
 export function ChronaSplash() {
+  const auroraEnabled = useSettingsStore((s) => s.auroraEnabled);
+  const bgColor = auroraEnabled
+    ? (() => {
+        const [r, g, b] = getAtmosphereColors("calm").background;
+        return `rgb(${r}, ${g}, ${b})`;
+      })()
+    : "#18181b";
+
   const [isDone, setIsDone] = useState(false);
 
   const [lineWidth, setLineWidth] = useState(0);
@@ -137,8 +146,8 @@ export function ChronaSplash() {
     <View style={styles.overlay} pointerEvents="none">
       {/* Single Animated.View — everything bursts together as one unit */}
       <Animated.View style={[StyleSheet.absoluteFillObject, burstStyle]}>
-        {/* Solid red background — visually identical to native launch screen */}
-        <View style={styles.bg} />
+        {/* Background — matches native launch screen color */}
+        <View style={[styles.bg, { backgroundColor: bgColor }]} />
 
         {/* Hidden native Text */}
         <Text
@@ -204,7 +213,6 @@ const styles = StyleSheet.create({
   },
   bg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: BG_COLOR,
   },
   center: {
     ...StyleSheet.absoluteFillObject,

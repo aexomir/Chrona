@@ -279,6 +279,7 @@ export default function TimerScreen() {
   const handleProjectChange = (v: SelectOption | undefined) => {
     setSelectedProject(v);
     updateProjectId(v?.value ?? null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
   };
 
   const handleAcceptSuggestion = () => {
@@ -351,7 +352,7 @@ export default function TimerScreen() {
             </View>
           )}
 
-          {/* Elapsed counter  */}
+          {/* Elapsed counter */}
           <View className="gap-1">
             <Text className="text-neutral-500 text-xs uppercase tracking-widest">
               elapsed
@@ -364,20 +365,35 @@ export default function TimerScreen() {
             </Text>
           </View>
 
-          {/* Title input */}
-          <Input
-            placeholder="session title"
-            value={taskTitle}
-            onChangeText={setTaskTitle}
-            onBlur={() => {
-              if (taskTitle.trim()) updateTitle(taskTitle.trim());
-            }}
-            onSubmitEditing={() => {
-              if (taskTitle.trim()) updateTitle(taskTitle.trim());
-            }}
-            returnKeyType="done"
-            style={{ color: "rgba(255,255,255,0.55)" }}
-          />
+          {/* Title — editable label */}
+          <View className="gap-3">
+            <TextInput
+              value={taskTitle}
+              onChangeText={(v) => {
+                setTaskTitle(v);
+                updateTitle(v);
+              }}
+              onBlur={() => {
+                const trimmed = taskTitle.trim();
+                updateTitle(trimmed);
+                if (trimmed) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              onSubmitEditing={() => {
+                if (taskTitle.trim()) updateTitle(taskTitle.trim());
+              }}
+              returnKeyType="done"
+              placeholder="session title"
+              placeholderTextColor="rgba(255,255,255,0.15)"
+              style={{
+                fontSize: 26,
+                color: "#ffffff",
+                letterSpacing: -0.5,
+                paddingVertical: 8,
+                fontWeight: "600",
+              }}
+            />
+            <View className="h-px bg-white/10" />
+          </View>
 
           <Select
             value={selectedProject}
@@ -385,7 +401,7 @@ export default function TimerScreen() {
               handleProjectChange(v as SelectOption | undefined)
             }
           >
-            <Select.Trigger>
+            <Select.Trigger className="bg-transparent shadow-none border border-white/10">
               <View className="flex-row items-center gap-2 flex-1">
                 {selProj && (
                   <Image
@@ -399,7 +415,7 @@ export default function TimerScreen() {
             </Select.Trigger>
             <Select.Portal hostName="timer-modal">
               <Select.Overlay />
-              <Select.Content presentation="popover" width="trigger">
+              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none" style={{ backgroundColor: "#18181b" }}>
                 <Select.ListLabel>Select a project</Select.ListLabel>
                 {projects.map((p) => (
                   <Select.Item key={p.id} value={p.id} label={p.name}>
@@ -1073,6 +1089,7 @@ function HoldView({
         onChangeText={setTaskTitle}
         returnKeyType="done"
         autoFocus
+        className="bg-transparent border-white/10"
       />
 
       <Select
@@ -1081,7 +1098,7 @@ function HoldView({
           setSelectedProject(v as SelectOption | undefined)
         }
       >
-        <Select.Trigger>
+        <Select.Trigger className="bg-transparent shadow-none border border-white/10">
           <View className="flex-row items-center gap-2 flex-1">
             {selProj && (
               <Image
@@ -1281,6 +1298,7 @@ function ProjectFirstView({
         onSubmitEditing={onStart}
         returnKeyType="go"
         autoFocus
+        className="bg-transparent border-white/10"
       />
 
       <Button variant="primary" onPress={onStart} isDisabled={!taskTitle.trim()}>

@@ -1,4 +1,3 @@
-import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
@@ -9,17 +8,12 @@ import {
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
-import {
-  Link,
-  router,
-  Stack,
-  useLocalSearchParams,
-  useNavigation,
-} from "expo-router";
-import { Button, Input, PortalHost, Select } from "heroui-native";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Link, router, Stack, useLocalSearchParams } from "expo-router";
+import { Input, PortalHost, Select } from "heroui-native";
+import { useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Alert, Modal, Pressable, Text, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 type SelectOption = { value: string; label: string };
 
@@ -58,7 +52,7 @@ function formatTimeRange(startISO: string, endISO: string): string {
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <Text className="text-zinc-500 text-xs uppercase tracking-wider font-medium px-4 pt-4 pb-2">
+    <Text className="text-zinc-500 text-xs uppercase tracking-wider font-medium px-1 pt-4 pb-2">
       {label}
     </Text>
   );
@@ -91,12 +85,7 @@ export default function SessionDetailScreen() {
   const [draftNotes, setDraftNotes] = useState(session?.notes ?? "");
   const [draftApps, setDraftApps] = useState<Set<string>>(() => {
     if (!session?.apps) return new Set();
-    const defaults = getSmartDefaultApps(
-      session.apps,
-      session.projectId,
-      associations,
-    );
-    return defaults;
+    return getSmartDefaultApps(session.apps, session.projectId, associations);
   });
 
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -104,28 +93,11 @@ export default function SessionDetailScreen() {
     null,
   );
 
-  const navigation = useNavigation();
-
   useEffect(() => {
-    if (!session) {
-      router.back();
-    }
+    if (!session) router.back();
   }, [session]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerTitle: draftTitle || "Session",
-      headerTitleStyle: {
-        color: "white",
-        fontSize: 17,
-        fontWeight: "600",
-      },
-    });
-  }, [navigation, draftTitle]);
-
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
   const computedDuration = Math.max(
     0,
@@ -143,13 +115,10 @@ export default function SessionDetailScreen() {
   const selectedProj = projects.find((p) => p.id === draftProjectId?.value);
 
   const handleToggleApp = (app: string) => {
-    const newSelected = new Set(draftApps);
-    if (newSelected.has(app)) {
-      newSelected.delete(app);
-    } else {
-      newSelected.add(app);
-    }
-    setDraftApps(newSelected);
+    const next = new Set(draftApps);
+    if (next.has(app)) next.delete(app);
+    else next.add(app);
+    setDraftApps(next);
   };
 
   const handleSave = () => {
@@ -157,8 +126,7 @@ export default function SessionDetailScreen() {
       Alert.alert("Error", "Title is required");
       return;
     }
-
-    const updated = {
+    updateSession({
       ...session,
       title: draftTitle.trim(),
       projectId: draftProjectId?.value ?? null,
@@ -167,13 +135,11 @@ export default function SessionDetailScreen() {
       duration: computedDuration,
       notes: draftNotes.trim() || undefined,
       apps: session.apps?.filter((a) => draftApps.has(a.app)),
-    };
-
-    updateSession(updated);
+    });
     router.back();
   };
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = () => {
     Alert.alert("Delete Session", "This can't be undone.", [
       { text: "Cancel", style: "cancel" },
       {
@@ -185,26 +151,27 @@ export default function SessionDetailScreen() {
         },
       },
     ]);
-  }, [session.id, removeSession]);
+  };
 
   const handleTimeChange = (date: Date) => {
-    if (editingField === "start") {
-      // Ensure start is before end
-      if (date < draftEndTime) {
-        setDraftStartTime(date);
-      }
-    } else if (editingField === "end") {
-      // Ensure end is after start
-      if (date > draftStartTime) {
-        setDraftEndTime(date);
-      }
+    if (editingField === "start" && date < draftEndTime) {
+      setDraftStartTime(date);
+    } else if (editingField === "end" && date > draftStartTime) {
+      setDraftEndTime(date);
     }
     setShowTimePicker(false);
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.modalSheet }}>
+      <Stack.Screen options={{ title: draftTitle || "Session" }} />
       <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon="checkmark"
+          tintColor="#3b82f6"
+          variant="prominent"
+          onPress={handleSave}
+        />
         <Stack.Toolbar.Button
           icon="trash.fill"
           tintColor="#ef4444"
@@ -212,11 +179,15 @@ export default function SessionDetailScreen() {
           onPress={handleDelete}
         />
       </Stack.Toolbar>
+
       <Link.AppleZoomTarget>
-        <AnimatedHeaderScrollView
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 60 }}
+        <KeyboardAwareScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {/* Header summary card */}
+          {/* Hero summary card */}
           <View
             className="mb-6 rounded-3xl p-5 border"
             style={{
@@ -224,7 +195,10 @@ export default function SessionDetailScreen() {
               borderColor: theme.cardBorder,
             }}
           >
-            <Text className="text-white text-4xl font-bold mb-2">
+            <Text
+              className="text-white font-bold mb-1"
+              style={{ fontSize: 40, letterSpacing: -1.5 }}
+            >
               {formatDuration(computedDuration)}
             </Text>
             <Text className="text-zinc-500 text-sm mb-4">
@@ -237,20 +211,19 @@ export default function SessionDetailScreen() {
               <View className="flex-row items-center gap-2">
                 <Image
                   source={`sf:${selectedProj.icon}`}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    tintColor: selectedProj.color,
-                  }}
+                  style={{ width: 13, height: 13, tintColor: selectedProj.color }}
                 />
-                <Text className="text-white text-sm font-medium">
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: selectedProj.color }}
+                >
                   {selectedProj.name}
                 </Text>
               </View>
             )}
           </View>
 
-          {/* Details section */}
+          {/* Details */}
           <View className="mb-4">
             <SectionLabel label="Details" />
             <View
@@ -262,16 +235,13 @@ export default function SessionDetailScreen() {
             >
               <View
                 className="px-4 py-3"
-                style={{
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.cardBorder,
-                }}
+                style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}
               >
                 <Input
                   placeholder="Session title"
                   value={draftTitle}
                   onChangeText={setDraftTitle}
-                  className="text-white"
+                  className="text-white bg-transparent border-white/10"
                 />
               </View>
               <View className="px-4 py-3">
@@ -281,7 +251,7 @@ export default function SessionDetailScreen() {
                     setDraftProjectId(v as SelectOption | undefined)
                   }
                 >
-                  <Select.Trigger>
+                  <Select.Trigger className="bg-transparent shadow-none border border-white/10">
                     <View className="flex-row items-center gap-2 flex-1">
                       {selectedProj && (
                         <Image
@@ -299,18 +269,19 @@ export default function SessionDetailScreen() {
                   </Select.Trigger>
                   <Select.Portal hostName="session-detail">
                     <Select.Overlay />
-                    <Select.Content presentation="popover" width="trigger">
+                    <Select.Content
+                      presentation="popover"
+                      width="trigger"
+                      className="border border-white/10 shadow-none"
+                      style={{ backgroundColor: "#18181b" }}
+                    >
                       <Select.ListLabel>Select a project</Select.ListLabel>
                       {projects.map((p) => (
                         <Select.Item key={p.id} value={p.id} label={p.name}>
                           <View className="flex-row items-center gap-3 flex-1">
                             <Image
                               source={`sf:${p.icon}`}
-                              style={{
-                                width: 18,
-                                height: 18,
-                                tintColor: p.color,
-                              }}
+                              style={{ width: 18, height: 18, tintColor: p.color }}
                             />
                             <Select.ItemLabel />
                           </View>
@@ -324,7 +295,7 @@ export default function SessionDetailScreen() {
             </View>
           </View>
 
-          {/* Time section */}
+          {/* Time */}
           <View className="mb-4">
             <SectionLabel label="Time" />
             <View
@@ -335,15 +306,9 @@ export default function SessionDetailScreen() {
               }}
             >
               <Pressable
-                onPress={() => {
-                  setEditingField("start");
-                  setShowTimePicker(true);
-                }}
+                onPress={() => { setEditingField("start"); setShowTimePicker(true); }}
                 className="flex-row items-center justify-between px-4 py-3"
-                style={{
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.cardBorder,
-                }}
+                style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}
               >
                 <Text className="text-zinc-400 text-sm">Start</Text>
                 <Text className="text-white text-sm font-medium">
@@ -351,15 +316,9 @@ export default function SessionDetailScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => {
-                  setEditingField("end");
-                  setShowTimePicker(true);
-                }}
+                onPress={() => { setEditingField("end"); setShowTimePicker(true); }}
                 className="flex-row items-center justify-between px-4 py-3"
-                style={{
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.cardBorder,
-                }}
+                style={{ borderBottomWidth: 1, borderBottomColor: theme.cardBorder }}
               >
                 <Text className="text-zinc-400 text-sm">End</Text>
                 <Text className="text-white text-sm font-medium">
@@ -375,7 +334,7 @@ export default function SessionDetailScreen() {
             </View>
           </View>
 
-          {/* Notes section */}
+          {/* Notes */}
           <View className="mb-4">
             <SectionLabel label="Notes" />
             <View
@@ -390,14 +349,14 @@ export default function SessionDetailScreen() {
                 value={draftNotes}
                 onChangeText={setDraftNotes}
                 multiline
-                className="text-white"
+                className="text-white bg-transparent border-transparent"
               />
             </View>
           </View>
 
-          {/* Apps section */}
+          {/* Apps */}
           {session.apps && session.apps.length > 0 && (
-            <View className="mb-6">
+            <View className="mb-2">
               <SectionLabel label="Apps" />
               <View
                 className="rounded-2xl border overflow-hidden"
@@ -416,10 +375,7 @@ export default function SessionDetailScreen() {
                       className="flex-row items-start gap-3 px-4 py-3"
                       style={
                         i < session.apps!.length - 1
-                          ? {
-                              borderBottomWidth: 1,
-                              borderBottomColor: theme.cardBorder,
-                            }
+                          ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder }
                           : undefined
                       }
                     >
@@ -432,18 +388,19 @@ export default function SessionDetailScreen() {
                           }`}
                         >
                           {isSelected && (
-                            <Text className="text-white text-xs font-bold">
-                              ✓
-                            </Text>
+                            <Image
+                              source="sf:checkmark"
+                              style={{ width: 10, height: 10, tintColor: "white" }}
+                            />
                           )}
                         </View>
                       </View>
                       <View className="flex-1">
                         <View className="flex-row items-baseline gap-2 mb-1">
-                          <Text className="text-white text-base font-medium">
+                          <Text className="text-white text-sm font-medium">
                             {app.app}
                           </Text>
-                          <Text className="text-zinc-500 text-sm">
+                          <Text className="text-zinc-500 text-xs">
                             {formatDuration(app.duration)}
                           </Text>
                         </View>
@@ -452,10 +409,10 @@ export default function SessionDetailScreen() {
                             {titles.slice(0, 2).map((t, idx) => (
                               <Text
                                 key={idx}
-                                className="text-zinc-400 text-xs"
+                                className="text-zinc-500 text-xs"
                                 numberOfLines={1}
                               >
-                                · {t}
+                                {t}
                               </Text>
                             ))}
                           </View>
@@ -467,24 +424,10 @@ export default function SessionDetailScreen() {
               </View>
             </View>
           )}
-        </AnimatedHeaderScrollView>
+        </KeyboardAwareScrollView>
       </Link.AppleZoomTarget>
 
-      {/* Action buttons */}
-      <View
-        className="px-6 gap-2 py-4"
-        style={{ paddingBottom: insets.bottom }}
-      >
-        <Button
-          variant="primary"
-          onPress={handleSave}
-          isDisabled={!draftTitle.trim() || !hasChanges}
-        >
-          <Button.Label>Save Changes</Button.Label>
-        </Button>
-      </View>
-
-      {/* Time picker modal */}
+      {/* Time picker sheet */}
       {showTimePicker && editingField && (
         <Modal
           transparent
@@ -492,7 +435,7 @@ export default function SessionDetailScreen() {
           onRequestClose={() => setShowTimePicker(false)}
         >
           <Pressable
-            style={StyleSheet.absoluteFill}
+            style={{ flex: 1 }}
             onPress={() => setShowTimePicker(false)}
           />
           <View
@@ -501,9 +444,7 @@ export default function SessionDetailScreen() {
           >
             <Host matchContents>
               <DatePicker
-                selection={
-                  editingField === "start" ? draftStartTime : draftEndTime
-                }
+                selection={editingField === "start" ? draftStartTime : draftEndTime}
                 displayedComponents={["date", "hourAndMinute"]}
                 onDateChange={handleTimeChange}
                 modifiers={[datePickerStyle("graphical")]}

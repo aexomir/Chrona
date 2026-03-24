@@ -189,8 +189,8 @@ export default function ProjectsScreen() {
             placeholder="Project name"
             placeholderTextColor="#636366"
             autoFocus
-            className="text-white px-4 py-3 rounded-xl text-base mb-6"
-            style={{ backgroundColor: theme.card }}
+            className="text-white px-4 py-3 rounded-xl text-base mb-6 border border-white/10"
+            style={{ backgroundColor: "transparent" }}
           />
 
           <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">

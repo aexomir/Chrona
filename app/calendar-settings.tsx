@@ -413,8 +413,8 @@ export default function CalendarSettingsScreen() {
                   onChangeText={setTitleKeywords}
                   placeholder="e.g., meeting, standup, review"
                   placeholderTextColor="#636366"
-                  className="text-white px-4 py-3 rounded-xl text-base mb-8"
-                  style={{ backgroundColor: theme.card }}
+                  className="text-white px-4 py-3 rounded-xl text-base mb-8 border border-white/10"
+                  style={{ backgroundColor: "transparent" }}
                   multiline
                 />
               </>
@@ -430,7 +430,7 @@ export default function CalendarSettingsScreen() {
                   setSelectedProject(v as SelectOption | undefined)
                 }
               >
-                <Select.Trigger>
+                <Select.Trigger className="bg-transparent shadow-none border border-white/10">
                   <Text className="text-white flex-1">
                     {selectedProject
                       ? projects.find((p) => p.id === selectedProject.value)
@@ -441,7 +441,7 @@ export default function CalendarSettingsScreen() {
                 </Select.Trigger>
                 <Select.Portal hostName="calendar-settings">
                   <Select.Overlay />
-                  <Select.Content presentation="popover" width="trigger">
+                  <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none" style={{ backgroundColor: "#18181b" }}>
                     <Select.ListLabel>Select a project</Select.ListLabel>
                     {projects.map((p) => (
                       <Select.Item
