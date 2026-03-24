@@ -136,7 +136,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <HeroUINativeProvider>
+      <HeroUINativeProvider config={{ toast: { defaultProps: { placement: "top" } } }}>
         <KeyboardProvider>
           <ThemeProvider value={DarkTheme}>
             <Stack>

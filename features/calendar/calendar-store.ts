@@ -32,7 +32,7 @@ type CalendarState = {
   syncPermissionStatus(): Promise<void>;
   requestPermission(): Promise<void>;
   setEnabled(enabled: boolean): void;
-  fetchEvents(): Promise<void>;
+  fetchEvents(): Promise<boolean>;
   addMapping(m: Omit<CalendarMapping, "id">): void;
   updateMapping(id: string, patch: Partial<Omit<CalendarMapping, "id">>): void;
   removeMapping(id: string): void;
@@ -72,8 +72,9 @@ export const useCalendarStore = create<CalendarState>()(
             events,
             eventsLastFetched: new Date().toISOString(),
           });
+          return true;
         } catch {
-          // Silent fail
+          return false;
         }
       },
 

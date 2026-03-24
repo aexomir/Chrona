@@ -8,6 +8,7 @@ import { useProjects } from "@/features/projects/projects-store";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { ListGroup, PortalHost, Select, Separator } from "heroui-native";
 import { useCallback, useState } from "react";
 import {
@@ -35,7 +36,8 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 export default function CalendarSettingsScreen() {
-  const theme = useAuroraTheme()
+  const theme = useAuroraTheme();
+  const toast = useAppToast();
   const { projects } = useProjects();
   const {
     permissionStatus,
@@ -101,6 +103,7 @@ export default function CalendarSettingsScreen() {
     }
 
     setAddMappingModalVisible(false);
+    toast.show({ label: "Mapping added", variant: "success" });
   }
 
   function removeMapping_(id: string) {
@@ -109,7 +112,10 @@ export default function CalendarSettingsScreen() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => removeMapping(id),
+        onPress: () => {
+          removeMapping(id);
+          toast.show({ label: "Mapping removed" });
+        },
       },
     ]);
   }
@@ -119,10 +125,20 @@ export default function CalendarSettingsScreen() {
       Linking.openSettings();
     } else {
       await requestPermission();
-      if (permissionStatus === "granted") {
+      const newStatus = useCalendarStore.getState().permissionStatus;
+      if (newStatus === "granted") {
         const calendars = await getCalendars();
         setAvailableCalendars(calendars);
+      } else {
+        toast.show({ label: "Calendar access required — enable in Settings", variant: "warning" });
       }
+    }
+  }
+
+  async function handleRefreshEvents() {
+    const success = await fetchEvents();
+    if (!success) {
+      toast.show({ label: "Failed to sync calendar events", variant: "danger" });
     }
   }
 
@@ -183,7 +199,7 @@ export default function CalendarSettingsScreen() {
               {isEnabled && (
                 <>
                   <Separator className="mx-4" />
-                  <ListGroup.Item onPress={() => fetchEvents()}>
+                  <ListGroup.Item onPress={handleRefreshEvents}>
                     <ListGroup.ItemContent>
                       <ListGroup.ItemTitle>Refresh Events</ListGroup.ItemTitle>
                     </ListGroup.ItemContent>

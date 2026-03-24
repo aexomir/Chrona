@@ -9,6 +9,7 @@ import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
@@ -46,6 +47,7 @@ export default function RecoverScreen() {
   const { period, dismiss } = useRecoveryStore();
   const { addSession } = useSessionsStore();
   const { learnFromSession, associations } = useSuggestionsStore();
+  const toast = useAppToast();
 
   const [title, setTitle] = useState(() => {
     if (period?.source === "calendar" && period?.eventTitle) return period.eventTitle;
@@ -111,6 +113,7 @@ export default function RecoverScreen() {
 
     if (selected.length > 0) learnFromSession(selected, selectedProject.value);
 
+    toast.show({ label: "Session recovered", variant: "success" });
     dismiss();
     router.back();
   };

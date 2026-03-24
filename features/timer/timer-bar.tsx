@@ -13,6 +13,7 @@ import { useAutoTrackingStore } from "@/features/activity-watch/auto-tracking-st
 import { Neutral } from "@/constants/theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -64,6 +65,7 @@ export function TimerBar() {
     eventTitle: string;
     projectId: string;
   } | null>(null);
+  const toast = useAppToast();
   const [activeMeeting, setActiveMeeting] = useState(getMeetingState);
   const [untrackedApp, setUntrackedApp] = useState<string | null>(null);
   const [untrackedTitle, setUntrackedTitle] = useState<string | null>(null);
@@ -371,6 +373,7 @@ export function TimerBar() {
               e.stopPropagation();
               addRule(ruleCreationOffer.app, ruleCreationOffer.projectId);
               setRuleCreationOffer(null);
+              toast.show({ label: `Rule created for ${ruleCreationOffer.app}` });
             }}
             hitSlop={8}
           >

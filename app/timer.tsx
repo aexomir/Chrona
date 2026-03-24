@@ -15,6 +15,7 @@ import {
 import { useTimerStore } from "@/features/timer/timer-store";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
+import { useAppToast } from "@/hooks/use-app-toast";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -83,6 +84,7 @@ export default function TimerScreen() {
   const { addSession } = useSessionsStore();
   const { learnFromSession, suggestProject, associations } =
     useSuggestionsStore();
+  const toast = useAppToast();
   const insets = useSafeAreaInsets();
   const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
     suggestProjectId?: string;
@@ -181,6 +183,7 @@ export default function TimerScreen() {
     if (session.projectId !== null && selectedApps.length > 0) {
       learnFromSession(selectedApps, session.projectId);
     }
+    toast.show({ label: "Session logged", variant: "success" });
     setReviewData(null);
     router.back();
   };
@@ -255,6 +258,7 @@ export default function TimerScreen() {
       id: Date.now().toString(),
       ...reviewData.session,
     });
+    toast.show({ label: "Session logged", variant: "success" });
     setReviewData(null);
     router.back();
   };
