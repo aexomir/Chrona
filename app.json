@@ -39,12 +39,9 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/focus-logo.png",
-          "imageWidth": 110,
-          "resizeMode": "contain",
-          "backgroundColor": "#000000",
+          "backgroundColor": "#FE192F",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#FE192F"
           }
         }
       ],

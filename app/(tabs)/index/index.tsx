@@ -1,17 +1,18 @@
-import { Atmosphere } from "@/features/aurora/atmosphere";
-import { FocusRing } from "@/features/timer/focus-ring";
 import { SessionConstellation } from "@/features/analytics/session-constellation";
-import { heroProgress } from "@/lib/hero-animation";
-import { scrubProgress } from "@/features/timeline/playback";
+import { Atmosphere } from "@/features/aurora/atmosphere";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { scrubProgress } from "@/features/timeline/playback";
+import { FocusRing } from "@/features/timer/focus-ring";
+import { heroProgress } from "@/lib/hero-animation";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
 import { ScrollView, View } from "react-native";
 import Animated, {
   Easing,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
+  useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 
@@ -21,20 +22,21 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { sessions } = useSessionsStore();
   const { constellationEnabled } = useSettingsStore();
-  const hasPlayedRef = useRef(false);
+  const hasPlayed = useSharedValue(false);
 
-  // Auto-playback on first mount only
-  useEffect(() => {
-    if (hasPlayedRef.current) return;
-    hasPlayedRef.current = true;
-
-    // Reset to start-of-day, then animate to "now" in 1 second
-    scrubProgress.value = 0;
-    scrubProgress.value = withTiming(1, {
-      duration: 1000,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, []);
+  useAnimatedReaction(
+    () => heroProgress.value,
+    (p) => {
+      if (!hasPlayed.value && p > 0) {
+        hasPlayed.value = true;
+        scrubProgress.value = 0;
+        scrubProgress.value = withTiming(1, {
+          duration: 1000,
+          easing: Easing.out(Easing.cubic),
+        });
+      }
+    },
+  );
 
   const dashboardStyle = useAnimatedStyle(() => ({
     opacity: interpolate(heroProgress.value, [0.4, 1], [0, 1], {

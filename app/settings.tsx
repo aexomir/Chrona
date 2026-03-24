@@ -5,7 +5,7 @@ import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { checkAwAvailability, getCurrentApp } from "@/features/activity-watch/aw-adapter";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
-import { useSettingsStore } from "@/features/settings/settings-store";
+import { useSettingsStore, type TimerStartMode } from "@/features/settings/settings-store";
 import { useTrackingRulesStore } from "@/features/tracking-rules/tracking-rules-store";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
@@ -117,7 +117,14 @@ export default function SettingsScreen() {
     setAwAdapterMode,
     awStreamHost,
     setAwStreamHost,
+    timerStartMode,
   } = useSettingsStore();
+
+  const TIMER_MODE_LABELS: Record<TimerStartMode, string> = {
+    a: "Conversational",
+    b: "Hold to Start",
+    c: "Project First",
+  };
   const { rules } = useTrackingRulesStore();
   const [devTapCount, setDevTapCount] = useState(0);
   const [awAvailable, setAwAvailable] = useState<boolean | null>(null);
@@ -173,6 +180,12 @@ export default function SettingsScreen() {
                 onSelectedChange={setConstellationEnabled}
               />
             }
+          />
+          <SettingsDivider />
+          <SettingsRow
+            label="Timer Style"
+            onPress={() => router.push("/timer-style")}
+            suffix={<ValueSuffix value={TIMER_MODE_LABELS[timerStartMode]} />}
           />
         </SettingsCard>
 

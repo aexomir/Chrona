@@ -1,6 +1,7 @@
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, Text, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -10,6 +11,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React from "react";
+
+const AnimatedKeyboardAwareScrollView = Animated.createAnimatedComponent(KeyboardAwareScrollView);
 
 export interface AnimatedHeaderScrollViewProps {
   title: string;
@@ -154,7 +157,7 @@ export function AnimatedHeaderScrollView({
 
   return (
     <View style={styles.container}>
-      <Animated.ScrollView
+      <AnimatedKeyboardAwareScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={{
@@ -164,9 +167,10 @@ export function AnimatedHeaderScrollView({
         onScroll={scrollHandler}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        bottomOffset={16}
       >
         {children}
-      </Animated.ScrollView>
+      </AnimatedKeyboardAwareScrollView>
 
       {/* Fixed header — rendered above scroll area */}
       <View
