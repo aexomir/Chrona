@@ -1,10 +1,13 @@
+import { ChronaSplash } from "@/components/chrona-splash";
 import { useAwStream } from "@/features/activity-watch/use-aw-stream";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
 import { useWidgetSync } from "@/features/watch/use-widget-sync";
+import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -21,6 +24,8 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({ Pacifico_400Regular });
+
   useWidgetSync();
   useAwStream();
   useWatchMessages(
@@ -98,7 +103,9 @@ export default function RootLayout() {
           (() => {
             const projectById = new Map(projects.map((p) => [p.id, p]));
             return todaySessions.slice(0, 8).map((s) => {
-              const project = s.projectId ? projectById.get(s.projectId) : undefined;
+              const project = s.projectId
+                ? projectById.get(s.projectId)
+                : undefined;
               return {
                 id: s.id,
                 title: s.title || "",
@@ -108,7 +115,7 @@ export default function RootLayout() {
                 duration: s.duration,
               };
             });
-          })()
+          })(),
         ),
       });
     };
@@ -131,12 +138,16 @@ export default function RootLayout() {
   }, [syncWatch]);
 
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <HeroUINativeProvider config={{ toast: { defaultProps: { placement: "top" } } }}>
+      <HeroUINativeProvider
+        config={{ toast: { defaultProps: { placement: "top" } } }}
+      >
         <KeyboardProvider>
           <ThemeProvider value={DarkTheme}>
             <Stack>
@@ -166,6 +177,10 @@ export default function RootLayout() {
                 options={{ presentation: "modal", headerShown: false }}
               />
               <Stack.Screen
+                name="timer-style"
+                options={{ presentation: "modal", headerShown: false }}
+              />
+              <Stack.Screen
                 name="settings"
                 options={{
                   title: "Settings",
@@ -182,6 +197,7 @@ export default function RootLayout() {
           </ThemeProvider>
         </KeyboardProvider>
       </HeroUINativeProvider>
+      <ChronaSplash />
     </GestureHandlerRootView>
   );
 }

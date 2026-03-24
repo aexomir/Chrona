@@ -3,6 +3,8 @@ import type { AdapterMode } from "@/features/activity-watch/aw-adapter";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type TimerStartMode = "a" | "b" | "c";
+
 type SettingsState = {
   auroraEnabled: boolean;
   setAuroraEnabled: (enabled: boolean) => void;
@@ -17,6 +19,8 @@ type SettingsState = {
   /** Hostname or IP of the FocusHelper collector (stream mode only). Defaults to "localhost". */
   awStreamHost: string;
   setAwStreamHost: (host: string) => void;
+  timerStartMode: TimerStartMode;
+  setTimerStartMode: (mode: TimerStartMode) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -34,6 +38,8 @@ export const useSettingsStore = create<SettingsState>()(
       setAwAdapterMode: (mode) => set({ awAdapterMode: mode }),
       awStreamHost: "localhost",
       setAwStreamHost: (host) => set({ awStreamHost: host }),
+      timerStartMode: "a",
+      setTimerStartMode: (mode) => set({ timerStartMode: mode }),
     }),
     {
       name: "settings",
