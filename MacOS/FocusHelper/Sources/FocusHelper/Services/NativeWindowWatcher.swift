@@ -3,37 +3,16 @@ import ApplicationServices
 import Combine
 import os
 
-/// Low-level macOS window observer used by `EmbeddedActivitySource`.
-///
-/// Tracks the frontmost application via NSWorkspace notifications.
-/// Window titles are captured via the AXUIElement API only when
-/// `permissionManager.permissionState == .granted`.
-///
-/// Permission logic is fully delegated to `PermissionManager`.
-/// This class only observes `permissionManager.permissionState` and reacts:
-///   - `.granted`  → immediate re-capture of the current window with title
-///   - other       → window titles remain nil; app-name tracking continues
 @MainActor
 final class NativeWindowWatcher: ObservableObject {
-
-    // MARK: - Public state
-
-    /// True when Accessibility is granted and window titles are being captured.
     @Published private(set) var hasAccessibility = false
 
-    /// Called on MainActor whenever a completed attention span is ready.
     var onEvent: ((ActivityWindow) -> Void)?
-
-    // MARK: - Dependencies
 
     let permissionManager: PermissionManager
 
-    // MARK: - Tunables
-
     private let flushInterval: TimeInterval = 30
     private let minDuration:   TimeInterval = 1
-
-    // MARK: - Private state
 
     private var currentApp:   String?
     private var currentTitle: String?
@@ -42,14 +21,10 @@ final class NativeWindowWatcher: ObservableObject {
     private var flushTimer: Timer?
     private var permissionCancellable: AnyCancellable?
 
-    // MARK: - Init
-
     init(permissionManager: PermissionManager) {
         self.permissionManager = permissionManager
         self.hasAccessibility  = permissionManager.permissionState.isGranted
     }
-
-    // MARK: - Lifecycle
 
     func start() {
         hasAccessibility = permissionManager.permissionState.isGranted
@@ -93,8 +68,6 @@ final class NativeWindowWatcher: ObservableObject {
         Logger.watcher.info("NativeWindowWatcher stopped")
     }
 
-    // MARK: - Private – permission change handling
-
     private func handlePermissionChange(_ state: AccessibilityPermissionState) {
         let newValue = state.isGranted
         guard newValue != hasAccessibility else { return }
@@ -102,21 +75,11 @@ final class NativeWindowWatcher: ObservableObject {
         Logger.watcher.info("Watcher accessibility updated: \(newValue)")
     }
 
-    /// Called by PermissionManager when state transitions to .granted.
-    /// Performs a full stop/start cycle so the watcher comes up cleanly with
-    /// `hasAccessibility = true` and a fresh NSWorkspace observer and flush timer.
-    /// This is safer than patching the live state because:
-    ///   - `frontmostApplication` can be nil at the exact moment permission is detected
-    ///     (System Settings is closing), which would leave `currentApp`/`sessionStart` nil
-    ///     and permanently silence event emission.
-    ///   - The flush timer and observer retain their correct state after the restart.
     private func recoverAfterGrant() {
         Logger.watcher.info("Recovery after accessibility grant — restarting watcher")
-        stop()   // flushes current session, clears state, removes old observers
-        start()  // re-registers everything with hasAccessibility = true
+        stop()
+        start()
     }
-
-    // MARK: - Private – observation
 
     private func subscribeToAppActivation() {
         activationToken = NSWorkspace.shared.notificationCenter.addObserver(
@@ -143,16 +106,9 @@ final class NativeWindowWatcher: ObservableObject {
 
     // MARK: - On-demand flush
 
-    /// Emit the current in-progress session immediately without waiting for
-    /// the next app switch or the periodic flush timer.
-    /// Resets `sessionStart` so the emitted slice is non-overlapping — identical
-    /// behaviour to the 30-second flush timer.
-    /// Called when a new iOS client connects so it sees the active app right away.
     func triggerImmediateFlush() {
         emitCurrentSession(resetStart: true)
     }
-
-    // MARK: - Private – periodic flush
 
     private func startFlushTimer() {
         flushTimer = Timer.scheduledTimer(
@@ -162,7 +118,6 @@ final class NativeWindowWatcher: ObservableObject {
             guard let self else { return }
             Task { @MainActor in
                 self.emitCurrentSession(resetStart: true)
-                // Re-sample title in case it changed (e.g. new browser tab).
                 if self.hasAccessibility,
                    let app = NSWorkspace.shared.frontmostApplication {
                     self.currentTitle = self.windowTitle(for: app)
@@ -170,8 +125,6 @@ final class NativeWindowWatcher: ObservableObject {
             }
         }
     }
-
-    // MARK: - Private – event emission
 
     private func emitCurrentSession(resetStart: Bool = false) {
         guard let app = currentApp, let start = sessionStart else { return }
@@ -189,8 +142,6 @@ final class NativeWindowWatcher: ObservableObject {
         if resetStart { sessionStart = Date() }
     }
 
-    // MARK: - Private – Accessibility API
-
     private func windowTitle(for app: NSRunningApplication) -> String? {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
 
@@ -199,7 +150,6 @@ final class NativeWindowWatcher: ObservableObject {
             axApp, kAXFocusedWindowAttribute as CFString, &rawWindow
         ) == .success, let rawWindow else { return nil }
 
-        // swiftlint:disable:next force_cast
         let windowElement = rawWindow as! AXUIElement
 
         var rawTitle: CFTypeRef?

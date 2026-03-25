@@ -1,7 +1,20 @@
 import { GlassCard } from "./glass-card";
 import { Semantic } from "@/constants/theme";
 import { Image } from "expo-image";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+const styles = StyleSheet.create({
+  card: {
+    flex: 1,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  noDataContainer: {
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+});
 
 export function MetricCard({
   label,
@@ -15,11 +28,11 @@ export function MetricCard({
   noData?: boolean;
 }) {
   return (
-    <GlassCard style={{ flex: 1 }}>
-      <View style={{ padding: 16 }}>
+    <GlassCard style={styles.card}>
+      <View style={styles.cardContent}>
         <Text className="text-zinc-400 text-xs mb-2">{label}</Text>
         {noData ? (
-          <View style={{ paddingVertical: 16, alignItems: "center" }}>
+          <View style={styles.noDataContainer}>
             <Text className="text-zinc-600 text-sm">No data yet</Text>
           </View>
         ) : (

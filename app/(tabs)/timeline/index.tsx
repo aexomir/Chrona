@@ -40,8 +40,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
-
 export default function TimelineScreen() {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -72,7 +70,6 @@ export default function TimelineScreen() {
     );
   }
 
-  // Filter to selected day + active project filters, sort ascending
   const daySessions = useMemo(() =>
     sessions
       .filter((s) => {
@@ -87,7 +84,6 @@ export default function TimelineScreen() {
     [sessions, selectedDate, filtersActive, selectedProjectIds],
   );
 
-  // Filter calendar events to selected day (only when enabled + permission granted)
   const dayCalendarEvents = useMemo(() =>
     calendarEnabled && permissionStatus === "granted"
       ? calendarEvents.filter((e) =>
@@ -103,7 +99,6 @@ export default function TimelineScreen() {
     isSameDay(new Date(startTimestamp), selectedDate) &&
     (!filtersActive || selectedProjectIds.includes(timerProjectId ?? ""));
 
-  // Merge live timer and calendar events into sorted list by startTimestamp
   type BaseItem =
     | { kind: "session"; session: Session; startTime: number }
     | { kind: "live"; startTime: number }

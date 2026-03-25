@@ -1,58 +1,70 @@
 import Foundation
 import Darwin   // getifaddrs, getnameinfo
 
-// MARK: - EventBroadcaster
+// MARK: - Broadcast record wrapper (title redaction for privacy)
 
-/// Sits between the activity coordinator and the WebSocket server.
-///
-/// Responsibilities:
-///   - Buffer incoming StoredRecords and flush them in controlled batches
-///   - Send a `hello` frame to each newly-connected client
-///   - Send periodic `status` heartbeats so the iOS side can detect a stale link
-///   - Expose connection metadata (IP, hostname, port) for display in the menu bar
-///
-/// Batching policy:
-///   • Hard flush when pending buffer reaches `maxBatchSize`    (threshold)
-///   • Timer flush every `flushInterval` seconds               (cadence)
-///   • Heartbeat every `heartbeatInterval` even with no data   (keepalive)
-///   • No empty flushes — nothing is sent when the buffer is empty
+/// Wraps StoredRecord for broadcasting, with optional title redaction.
+private struct BroadcastRecord: Encodable {
+    let record: StoredRecord
+    let redactTitle: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case v, id, ts, app, dur, title, bucket, wt
+        case srcId = "src_id"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(record.v, forKey: .v)
+        try container.encode(record.id, forKey: .id)
+        try container.encode(record.ts, forKey: .ts)
+        try container.encode(record.app, forKey: .app)
+        try container.encode(record.dur, forKey: .dur)
+        try container.encodeIfPresent(redactTitle ? nil : record.title, forKey: .title)
+        try container.encode(record.bucket, forKey: .bucket)
+        try container.encode(record.srcId, forKey: .srcId)
+        try container.encode(record.wt, forKey: .wt)
+    }
+}
+
+/// Broadcast-specific events payload with privacy redaction applied.
+private struct EventsPayloadForBroadcast: Encodable {
+    let records: [BroadcastRecord]
+    let batchId: String
+    let sentAt: String
+    let count: Int
+}
 
 @MainActor
 final class EventBroadcaster: ObservableObject {
-
-    // MARK: - Published state (drives MenuBarView)
-
     @Published private(set) var connectedClients = 0
     @Published private(set) var isServerRunning  = false
 
-    // MARK: - Callbacks
-
-    /// Called after the hello frame is sent to each newly connected client.
-    /// ActivityCoordinator uses this to trigger an immediate source state flush
-    /// so the iOS app sees the active app right away without waiting for the
-    /// next natural app-switch or 30-second periodic flush.
     var onNewClientConnected: (() -> Void)?
-
-    // MARK: - Batching config
 
     private let maxBatchSize       = 20
     private let flushInterval:     TimeInterval = 5
     private let heartbeatInterval: TimeInterval = 60
 
-    // MARK: - Dependencies
+    private let privacySensitiveApps = Set([
+        "Terminal",
+        "iTerm2",
+        "iTerm",
+        "1Password 7 - Password Manager",
+        "1Password",
+        "Keychain Access",
+        "System Preferences",
+        "System Settings",
+    ])
 
     let server = StreamServer()
     private let encoder: JSONEncoder
-
-    // MARK: - State
 
     private var pending: [StoredRecord] = []
     private var flushTimer:     Timer?
     private var heartbeatTimer: Timer?
     private var eventsToday = 0
     private var isPolling   = false
-
-    // MARK: - Init
 
     init() {
         encoder = JSONEncoder()
@@ -61,18 +73,11 @@ final class EventBroadcaster: ObservableObject {
         server.onClientCountChanged = { [weak self] count in
             self?.connectedClients = count
         }
-        // Send hello frame to every client when a new one connects.
-        // Existing clients receive it too — it's idempotent state refresh.
-        // After the hello, notify the coordinator so it can push the current
-        // active-app state immediately (without waiting for the next app-switch
-        // or the 30-second periodic flush).
-        server.onClientConnected = { [weak self] in
-            self?.sendHello()
+        server.onClientConnected = { [weak self] (clientId: UUID) in
+            self?.sendHelloToClient(clientId)
             self?.onNewClientConnected?()
         }
     }
-
-    // MARK: - Lifecycle
 
     func start() throws {
         try server.start()
@@ -89,10 +94,6 @@ final class EventBroadcaster: ObservableObject {
         isServerRunning = false
     }
 
-    // MARK: - Meeting state
-
-    /// Called by ActivityCoordinator whenever meeting detection state changes.
-    /// Meeting events are not buffered — they are sent immediately to all clients.
     func broadcastMeeting(_ state: MeetingState) {
         let payload = MeetingPayload(
             isInMeeting:    state.isInMeeting,
@@ -102,10 +103,6 @@ final class EventBroadcaster: ObservableObject {
         broadcast(StreamEnvelope(type: "meeting", payload: payload))
     }
 
-    // MARK: - Queueing
-
-    /// Called by ActivityCoordinator after each successful DataStore write.
-    /// Buffers records and triggers an immediate flush at the batch threshold.
     func queue(records: [StoredRecord], eventsToday: Int, isPolling: Bool) {
         guard !records.isEmpty else { return }
         self.eventsToday = eventsToday
@@ -114,14 +111,20 @@ final class EventBroadcaster: ObservableObject {
         if pending.count >= maxBatchSize { flush() }
     }
 
-    // MARK: - Private flush
-
     private func flush() {
         guard !pending.isEmpty else { return }
         let batch  = pending
         pending    = []
-        let payload = EventsPayload(
-            records:  batch,
+
+        let broadcastRecords = batch.map { record -> BroadcastRecord in
+            let shouldRedact = privacySensitiveApps.contains(
+                where: { record.app.lowercased().contains($0.lowercased()) }
+            )
+            return BroadcastRecord(record: record, redactTitle: shouldRedact)
+        }
+
+        let payload = EventsPayloadForBroadcast(
+            records:  broadcastRecords,
             batchId:  UUID().uuidString,
             sentAt:   ISO8601Formatter.shared.string(from: Date()),
             count:    batch.count
@@ -129,13 +132,14 @@ final class EventBroadcaster: ObservableObject {
         broadcast(StreamEnvelope(type: "events", payload: payload))
     }
 
-    private func sendHello() {
+    private func sendHelloToClient(_ clientId: UUID) {
         let payload = HelloPayload(
             version:     kProtocolVersion,
             hostname:    localHostname,
             eventsToday: eventsToday
         )
-        broadcast(StreamEnvelope(type: "hello", payload: payload))
+        guard let data = try? encoder.encode(StreamEnvelope(type: "hello", payload: payload)) else { return }
+        server.send(data: data, toClient: clientId)
     }
 
     private func sendHeartbeat() {
@@ -149,8 +153,6 @@ final class EventBroadcaster: ObservableObject {
         server.broadcast(data: data)
     }
 
-    // MARK: - Timers
-
     private func scheduleTimers() {
         flushTimer = Timer.scheduledTimer(
             withTimeInterval: flushInterval,
@@ -162,8 +164,6 @@ final class EventBroadcaster: ObservableObject {
             repeats: true
         ) { [weak self] _ in self?.sendHeartbeat() }
     }
-
-    // MARK: - Network info (for menu bar display)
 
     var localHostname: String { ProcessInfo.processInfo.hostName }
 
@@ -179,7 +179,6 @@ final class EventBroadcaster: ObservableObject {
         return "\(localHostname):\(StreamServer.port)"
     }
 
-    /// Returns the primary WiFi (en0) IPv4 address using getifaddrs.
     private func localWiFiIP() -> String? {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let head = ifaddr else { return nil }

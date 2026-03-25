@@ -33,6 +33,40 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  metricsView: {
+    marginTop: 28,
+  },
+  chartView: {
+    marginTop: 24,
+  },
+  projectsView: {
+    marginTop: 24,
+  },
+  fixedHeader: {
+    height: 56,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
+  tabsList: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    paddingVertical: 3,
+  },
+  tabsTrigger: {
+    flex: 1,
+    paddingVertical: 9,
+  },
+  tabsLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
   compactTitleContainer: {
     position: "absolute",
     top: 0,
@@ -92,7 +126,7 @@ export default function StatsScreen() {
   const headerHeight = insets.top + 56;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <StaticAuraBackground />
       <ScrollShadow
         className="flex-1"
@@ -112,17 +146,17 @@ export default function StatsScreen() {
           {isEmpty ? (
             <StatsEmptyState timeframe={timeframe} />
           ) : (
-            <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+            <View style={styles.contentContainer}>
               <Animated.View
                 key={`metrics-${timeframe}`}
                 entering={FadeInDown.duration(380)}
-                style={{ marginTop: 28 }}
+                style={styles.metricsView}
               >
                 <SectionHeader
                   title="Trends vs Last Period"
                   description="Compare your tracked time against the previous period"
                 />
-                <View style={{ flexDirection: "row", gap: 12 }}>
+                <View className="flex-row gap-3">
                   <MetricCard
                     label="Total Tracked Time"
                     value={formatFocusTime(totalSeconds)}
@@ -139,7 +173,7 @@ export default function StatsScreen() {
               <Animated.View
                 key={`chart-${timeframe}`}
                 entering={FadeInDown.delay(70).duration(380)}
-                style={{ marginTop: 24 }}
+                style={styles.chartView}
               >
                 <SectionHeader
                   title="Most Active Hours"
@@ -152,7 +186,7 @@ export default function StatsScreen() {
                 <Animated.View
                   key={`projects-${timeframe}`}
                   entering={FadeInDown.delay(140).duration(380)}
-                  style={{ marginTop: 24 }}
+                  style={styles.projectsView}
                 >
                   <SectionHeader
                     title="Project Distribution"
@@ -204,13 +238,7 @@ export default function StatsScreen() {
           />
         </Animated.View>
 
-        <View
-          style={{
-            height: 56,
-            paddingHorizontal: 16,
-            justifyContent: "center",
-          }}
-        >
+        <View style={styles.fixedHeader}>
           {/* Compact title */}
           <Animated.View
             style={[styles.compactTitleContainer, compactAnimStyle]}
@@ -233,27 +261,22 @@ export default function StatsScreen() {
                 }
               }}
             >
-              <Tabs.List
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 20,
-                  paddingVertical: 3,
-                }}
-              >
+              <Tabs.List style={styles.tabsList}>
                 <Tabs.Indicator className="bg-white/90 rounded-[20px]" />
                 {TIMEFRAMES.map((tf) => (
                   <Tabs.Trigger
                     key={tf.value}
                     value={tf.value}
-                    style={{ flex: 1, paddingVertical: 9 }}
+                    style={styles.tabsTrigger}
                   >
                     {({ isSelected }) => (
                       <Tabs.Label
-                        style={{
-                          fontSize: 13,
-                          fontWeight: "500",
-                          color: isSelected ? "#000" : TextAlpha.tertiary,
-                        }}
+                        style={[
+                          styles.tabsLabel,
+                          {
+                            color: isSelected ? "#000" : TextAlpha.tertiary,
+                          },
+                        ]}
                       >
                         {tf.label}
                       </Tabs.Label>

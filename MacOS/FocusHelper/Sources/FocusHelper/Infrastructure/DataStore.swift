@@ -1,7 +1,5 @@
 import Foundation
-import Darwin   // for O_APPEND, open(), write(), close()
-
-// MARK: - Errors
+import Darwin
 
 enum DataStoreError: Error, LocalizedError {
     case cannotOpenSegment(URL)
@@ -59,27 +57,18 @@ enum DataStoreError: Error, LocalizedError {
 ///    identified by date. A sync layer can ship only files modified after the
 ///    last sync without any coordination protocol.
 final class DataStore {
-
-    // MARK: - Public directories
-
-    let dataDir: URL        // …/ChronaHelper/v1
-    let eventsDir: URL      // …/v1/events
+    let dataDir: URL
+    let eventsDir: URL
     private let indexDir: URL
     private let stagingDir: URL
-
-    // MARK: - Live stats (incremental; rebuilt from disk on init)
 
     private(set) var todayCount = 0
     private(set) var totalCount = 0
     private(set) var corruptedCount = 0
 
-    // MARK: - Private state
-
     private var seen = SeenIndex()
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
-
-    // MARK: - Init
 
     init() throws {
         let support = try FileManager.default.url(
@@ -113,14 +102,6 @@ final class DataStore {
         rebuildStats()
     }
 
-    // MARK: - Write
-
-    /// Write a batch of normalized events.
-    ///
-    /// Returns the StoredRecords actually persisted (after dedup).
-    /// Events already in the seen index are silently dropped.
-    /// Events are grouped by calendar day before writing so each daily segment
-    /// stays self-contained (important for incremental sync and streaming).
     @discardableResult
     func write(batch events: [NormalizedEvent]) throws -> [StoredRecord] {
         // Filter duplicates before any I/O
@@ -137,38 +118,21 @@ final class DataStore {
         return written
     }
 
-    /// Atomically commit one day's worth of events to the segment file.
-    ///
-    /// Steps:
-    ///   1. Encode records → JSON lines (each must be < 512 bytes for atomic O_APPEND)
-    ///   2. Write all lines to a staging file (Data.write uses tmp+rename → atomic)
-    ///   3. Open the day segment with O_APPEND and write each line (atomic per POSIX)
-    ///   4. Update in-memory stats and seen index; persist the seen index atomically
-    ///   5. Delete staging file (cleanup)
     private func commitBatch(_ events: [NormalizedEvent], toSegment day: String) throws -> [StoredRecord] {
         let segmentURL = eventsDir.appendingPathComponent("\(day).jsonl")
         let stagingURL = stagingDir.appendingPathComponent(".write-\(UUID().uuidString)")
 
-        // Step 1 — encode
         let records = events.map { StoredRecord(from: $0) }
         let lines: [Data] = try records.map { record in
             var line = try encoder.encode(record)
-            line.append(0x0A)   // newline
-            // Sanity check: warn if a line is suspiciously large (> 400 bytes).
-            // This means the record won't be atomic under strict POSIX, though
-            // APFS handles it correctly in practice.
+            line.append(0x0A)
             assert(line.count < 512, "StoredRecord line exceeded 512 bytes (\(line.count) B). Check field sizes.")
             return line
         }
 
-        // Step 2 — write full batch to staging (atomic at the file level)
         let stagingData = lines.reduce(Data(), +)
         try stagingData.write(to: stagingURL, options: [.atomic])
 
-        // Step 3 — open segment with O_APPEND and write line-by-line
-        //   O_CREAT creates the file on first write for the day.
-        //   O_APPEND positions the write offset at EOF before each write() syscall,
-        //   making concurrent writers safe (not a concern here, but good practice).
         ensureFile(at: segmentURL)
         let fd = Darwin.open(segmentURL.path, O_WRONLY | O_APPEND | O_CREAT, 0o644)
         guard fd != -1 else { throw DataStoreError.cannotOpenSegment(segmentURL) }
@@ -181,7 +145,6 @@ final class DataStore {
             }
         }
 
-        // Step 4 — update in-memory state
         let today = localTodayKey()
         for record in records {
             seen.mark(bucket: record.bucket, srcId: record.srcId)
@@ -189,20 +152,12 @@ final class DataStore {
             if day == today { todayCount += 1 }
         }
 
-        // Persist seen index atomically (atomic write via Foundation's .atomic option)
         try persistSeenIndex()
-
-        // Step 5 — cleanup staging file (non-fatal if it fails)
         try? FileManager.default.removeItem(at: stagingURL)
 
         return records
     }
 
-    // MARK: - Read / Verification
-
-    /// Parse all valid records from a day segment.
-    /// Lines that fail JSON decoding are skipped and counted separately.
-    /// The segment file is never modified.
     func readSegment(date: String) -> (records: [StoredRecord], corrupted: Int) {
         let url = eventsDir.appendingPathComponent("\(date).jsonl")
         guard let raw = try? String(contentsOf: url, encoding: .utf8) else { return ([], 0) }
@@ -226,8 +181,6 @@ final class DataStore {
         return (records, corrupted)
     }
 
-    /// Scan every segment file and return a per-file integrity report.
-    /// Useful for debugging and future sync coordination.
     func verifyAll() -> [SegmentReport] {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: eventsDir,
@@ -253,8 +206,6 @@ final class DataStore {
             }
     }
 
-    // MARK: - Cursor
-
     func loadCursor() -> PollingCursor? {
         guard let data = try? Data(contentsOf: indexDir.appendingPathComponent("cursor.json")) else { return nil }
         return try? decoder.decode(PollingCursor.self, from: data)
@@ -262,11 +213,8 @@ final class DataStore {
 
     func saveCursor(_ cursor: PollingCursor) {
         guard let data = try? encoder.encode(cursor) else { return }
-        // .atomic uses tmp + rename internally — safe across power loss
         try? data.write(to: indexDir.appendingPathComponent("cursor.json"), options: .atomic)
     }
-
-    // MARK: - Dedup index
 
     private func loadSeenIndex() -> SeenIndex {
         guard
@@ -278,14 +226,9 @@ final class DataStore {
     }
 
     private func persistSeenIndex() throws {
-        var toWrite = seen
-        toWrite.prune(keepingDays: 7)
-        let data = try encoder.encode(toWrite)
-        // .atomic: Foundation writes to a temp file, then renames — single syscall, safe
+        let data = try encoder.encode(seen)
         try data.write(to: indexDir.appendingPathComponent("seen.json"), options: .atomic)
     }
-
-    // MARK: - Startup helpers
 
     private func cleanStagingDirectory() {
         guard let files = try? FileManager.default.contentsOfDirectory(
@@ -317,14 +260,11 @@ final class DataStore {
         corruptedCount = corrupted
     }
 
-    // MARK: - Utilities
-
     private func ensureFile(at url: URL) {
         guard !FileManager.default.fileExists(atPath: url.path) else { return }
         FileManager.default.createFile(atPath: url.path, contents: nil)
     }
 
-    /// Calendar day key in the user's local timezone (e.g. "2024-01-15").
     private func localTodayKey() -> String {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
@@ -332,18 +272,15 @@ final class DataStore {
         return f.string(from: Date())
     }
 
-    /// Convert an ISO8601 UTC timestamp to a local calendar day key.
     private func localDayKey(from isoTimestamp: String) -> String {
         guard let date = ISO8601Formatter.shared.date(from: isoTimestamp) else {
-            return String(isoTimestamp.prefix(10))  // best-effort fallback
+            return String(isoTimestamp.prefix(10))
         }
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         f.timeZone = .current
         return f.string(from: date)
     }
-
-    // MARK: - File metadata
 
     var segmentCount: Int {
         (try? FileManager.default.contentsOfDirectory(at: eventsDir, includingPropertiesForKeys: nil)

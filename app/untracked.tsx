@@ -7,8 +7,21 @@ import { useLocalSearchParams, router } from "expo-router";
 import { Button, Input, PortalHost, Select, Switch } from "heroui-native";
 import { useEffect, useState } from "react";
 import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const styles = StyleSheet.create({
+  navBar: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  scrollViewContainer: {
+    paddingHorizontal: 24,
+  },
+});
 
 type SelectOption = { value: string; label: string };
 
@@ -27,7 +40,6 @@ export default function UntrackedScreen() {
   const [windowTitleFilter, setWindowTitleFilter] = useState("");
   const [defaultTitle, setDefaultTitle] = useState("");
 
-  // Guard: redirect if app param missing
   useEffect(() => {
     if (!app) {
       router.back();
@@ -60,10 +72,9 @@ export default function UntrackedScreen() {
   return (
     <View className="flex-1">
       <StaticAuraBackground />
-      {/* Nav bar */}
       <View
-        className="flex-row items-center justify-between px-5 pt-2 pb-4"
-        style={{ paddingTop: insets.top + 8 }}
+        className="flex-row items-center justify-between"
+        style={[styles.navBar, { paddingTop: insets.top + 8 }]}
       >
         <Pressable onPress={handleDismiss} hitSlop={12}>
           <Text className="text-neutral-400 text-base">Cancel</Text>
@@ -77,7 +88,6 @@ export default function UntrackedScreen() {
         bottomOffset={16}
         contentContainerStyle={{ paddingBottom: 16 }}
       >
-        {/* Header card: untracked app */}
         <View
           className="mb-6 rounded-3xl p-5 border"
           style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}
@@ -97,7 +107,6 @@ export default function UntrackedScreen() {
           )}
         </View>
 
-        {/* Project selector */}
         <View className="mb-6">
           <Text className="text-white text-sm font-medium mb-2">Project *</Text>
           <Select
@@ -122,7 +131,7 @@ export default function UntrackedScreen() {
             </Select.Trigger>
             <Select.Portal hostName="untracked-modal">
               <Select.Overlay />
-              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none" style={{ backgroundColor: "#18181b" }}>
+              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none bg-zinc-900">
                 <Select.ListLabel>Select a project</Select.ListLabel>
                 {projects.map((p) => (
                   <Select.Item key={p.id} value={p.id} label={p.name}>
@@ -145,13 +154,11 @@ export default function UntrackedScreen() {
           </Select>
         </View>
 
-        {/* Match window title toggle */}
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-white text-sm font-medium">Match window title</Text>
           <Switch value={matchTitle} onValueChange={setMatchTitle} />
         </View>
 
-        {/* Window title filter input */}
         {matchTitle && (
           <View className="mb-6">
             <Input
@@ -164,7 +171,6 @@ export default function UntrackedScreen() {
           </View>
         )}
 
-        {/* Default title input */}
         <View className="mb-6">
           <Input
             placeholder="Default session title (optional)"

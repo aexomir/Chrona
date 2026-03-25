@@ -172,12 +172,41 @@ export function TimerBar() {
     })();
   }, [sessions, isTracking, autoTrackingEnabled]);
 
+  // Real-time activity monitoring: always show current app when idle
+  useEffect(() => {
+    if (isTracking) {
+      setUntrackedApp(null);
+      setUntrackedDismissed(false);
+      return;
+    }
+
+    const pollActivity = async () => {
+      const current = await getCurrentApp();
+      if (!current) {
+        setDetectedApp(null, null);
+        return;
+      }
+
+      setDetectedApp(current.app, current.title);
+
+      const rule = matchRule(current.app, current.title);
+      if (rule) {
+        setUntrackedApp(null);
+      } else if (!untrackedDismissedRef.current) {
+        setUntrackedApp(current.app);
+        setUntrackedTitle(current.title);
+      }
+    };
+
+    pollActivity();
+    const id = setInterval(pollActivity, 12_000);
+    return () => clearInterval(id);
+  }, [isTracking, matchRule, setDetectedApp]);
+
   // Polling effect: auto-track apps when idle (if enabled)
   useEffect(() => {
     if (isTracking || !autoTrackingEnabled) {
       if (isAutoTrackingRef.current) saveAutoSession();
-      setUntrackedApp(null);
-      setUntrackedDismissed(false);
       return;
     }
 
@@ -188,17 +217,13 @@ export function TimerBar() {
         if (consecutiveOfflineCountRef.current >= 2 && isAutoTrackingRef.current) {
           saveAutoSession();
         }
-        setDetectedApp(null, null);
         return;
       }
 
       resetOfflineCount();
-      setDetectedApp(current.app, current.title);
 
       const rule = matchRule(current.app, current.title);
       if (rule) {
-        setUntrackedApp(null);
-        setUntrackedDismissed(false);
         if (isAutoTrackingRef.current && matchedRuleIdRef.current !== rule.id) {
           saveAutoSession();
         }
@@ -208,10 +233,6 @@ export function TimerBar() {
       } else {
         if (isAutoTrackingRef.current) {
           saveAutoSession();
-        }
-        if (!untrackedDismissedRef.current) {
-          setUntrackedApp(current.app);
-          setUntrackedTitle(current.title);
         }
       }
     };

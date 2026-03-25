@@ -3,20 +3,8 @@ import Foundation
 import Combine
 import os
 
-/// Orchestrates activity collection, storage, and broadcasting.
-///
-/// Responsibilities beyond basic event routing:
-///   - Auto-restarts the activity source on failure with exponential backoff
-///   - Performs a clean shutdown when the app terminates (flushes in-progress session)
-///   - Owns a `HealthMonitor` that periodically verifies all components are live
-///   - Emits structured `os.Logger` entries for every lifecycle transition
-///
-/// Runs on MainActor so @Published properties drive SwiftUI updates directly.
 @MainActor
 final class ActivityCoordinator: ObservableObject {
-
-    // MARK: - Published state
-
     @Published var isRunning             = false
     @Published var sourceStatus          = ActivitySourceStatus.idle
     @Published var lastEventTime: Date?
@@ -34,39 +22,25 @@ final class ActivityCoordinator: ObservableObject {
         return false
     }
 
-    // MARK: - Stream info (forwarded from broadcaster)
-
     var streamConnectionAddress: String { broadcaster.connectionAddress }
     var streamHostnameAddress: String    { broadcaster.hostnameAddress }
 
-    // MARK: - Storage info
-
-    /// Summary of on-disk storage (segment count and total size).
     var storeSummary: String {
         guard let store else { return "—" }
         return "\(store.segmentCount) files · \(store.totalSizeString)"
     }
 
-    /// Opens the events data folder in Finder.
     func openDataFolder() {
         guard let store else { return }
         NSWorkspace.shared.open(store.eventsDir)
     }
 
-    // MARK: - Permission access
-
-    /// The permission manager for the current source, if any.
-    /// MenuBarView observes this to display the correct permission UI.
     var permissionManager: PermissionManager? {
         source.permissionManager
     }
 
-    // MARK: - Sub-systems
-
-    let healthMonitor: HealthMonitor     // weak-refs self; safe
+    let healthMonitor: HealthMonitor
     let meetingDetector = MeetingDetector()
-
-    // MARK: - Private – infrastructure
 
     private let broadcaster = EventBroadcaster()
     private var source:  any ActivitySource
@@ -75,19 +49,10 @@ final class ActivityCoordinator: ObservableObject {
     private var infraCancellables  = Set<AnyCancellable>()
     private var sourceCancellables = Set<AnyCancellable>()
 
-    // MARK: - Private – restart state
-    //
-    // Exponential backoff: delay = min(5 × 2^attempt, 300) seconds.
-    // The counter resets after the source stays healthy for `resetAfter`.
-
     private var restartAttempts = 0
     private var restartTask: Task<Void, Never>?
-    /// How long (seconds) the source must run without failure before the backoff
-    /// counter resets to zero.
     private let resetAfter: TimeInterval = 120
     private var resetTask: Task<Void, Never>?
-
-    // MARK: - Init
 
     init() {
         source        = ActivitySourceFactory.make()
@@ -108,8 +73,6 @@ final class ActivityCoordinator: ObservableObject {
         Logger.poller.info("ActivityCoordinator initialised, mode=\(self.sourceMode.rawValue)")
     }
 
-    // MARK: - Control
-
     func start() {
         guard !isRunning, store != nil else { return }
         isRunning = true
@@ -118,8 +81,6 @@ final class ActivityCoordinator: ObservableObject {
         Logger.poller.info("Activity collection started")
     }
 
-    /// Stops collection cleanly. The source flushes its in-progress session before
-    /// returning so the last activity window is not lost.
     func stop() {
         restartTask?.cancel()
         resetTask?.cancel()
@@ -129,7 +90,6 @@ final class ActivityCoordinator: ObservableObject {
         Logger.poller.info("Activity collection stopped")
     }
 
-    /// Switches the data source at runtime and immediately restarts collection.
     func switchMode(to mode: ActivitySourceMode) {
         Logger.poller.info("Switching source mode: \(self.sourceMode.rawValue) → \(mode.rawValue)")
         stop()
@@ -153,12 +113,7 @@ final class ActivityCoordinator: ObservableObject {
         health = report
     }
 
-    // MARK: - Private – setup
-
     private func setUpInfrastructure() {
-        // When a new iOS client connects, immediately push the current in-progress
-        // activity state so the app sees the active app without waiting for the
-        // next natural app-switch or the 30-second periodic flush.
         broadcaster.onNewClientConnected = { [weak self] in
             self?.source.emitCurrentState()
         }
@@ -210,8 +165,6 @@ final class ActivityCoordinator: ObservableObject {
             .store(in: &sourceCancellables)
     }
 
-    // MARK: - Private – shutdown
-
     private func registerShutdownHandler() {
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
@@ -233,8 +186,6 @@ final class ActivityCoordinator: ObservableObject {
         Logger.lifecycle.info("Clean shutdown complete")
     }
 
-    // MARK: - Private – status handling
-
     private func apply(status: ActivitySourceStatus) {
         let previous = sourceStatus
         sourceStatus = status
@@ -242,29 +193,20 @@ final class ActivityCoordinator: ObservableObject {
         switch status {
         case .idle:
             statusMessage = "Idle"
-
         case .running(let ta):
             statusMessage = ta == .available ? "Watching…" : "Watching (app names only)"
-
-            // If we just transitioned from failed/stopped back to running,
-            // schedule a backoff-counter reset.
             if case .failed = previous { scheduleBackoffReset() }
-
             Logger.poller.info("Source running — titleAccess=\(ta == .available)")
-
         case .failed(let msg):
             isRunning = false
             statusMessage = "Error: \(msg)"
             Logger.poller.error("Source failed: \(msg) — scheduling restart")
             scheduleRestart()
-
         case .stopped:
             isRunning = false
             Logger.poller.info("Source stopped")
         }
     }
-
-    // MARK: - Private – restart with exponential backoff
 
     private func scheduleRestart() {
         let delay = min(5.0 * pow(2.0, Double(restartAttempts)), 300.0)
@@ -294,8 +236,6 @@ final class ActivityCoordinator: ObservableObject {
         source.start()
     }
 
-    /// After a stable running period, reset the backoff counter so the next
-    /// transient failure gets a short delay instead of the accumulated long one.
     private func scheduleBackoffReset() {
         resetTask?.cancel()
         resetTask = Task { [weak self] in
@@ -311,8 +251,6 @@ final class ActivityCoordinator: ObservableObject {
             }
         }
     }
-
-    // MARK: - Private – event ingestion
 
     private func ingest(_ window: ActivityWindow) {
         guard let store else { return }
@@ -341,8 +279,6 @@ final class ActivityCoordinator: ObservableObject {
             statusMessage = error.localizedDescription
         }
     }
-
-    // MARK: - Private – helpers
 
     private func syncStats(from store: DataStore) {
         eventsLoggedToday = store.todayCount

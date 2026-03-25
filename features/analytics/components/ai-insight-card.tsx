@@ -46,6 +46,41 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 6,
   },
+  cardContainer: {
+    marginTop: 12,
+  },
+  cardContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  insightHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 8,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 8,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
 });
 
 function ShimmerRow({ width, height, style }: { width: string | number; height: number; style?: object }) {
@@ -96,8 +131,8 @@ export function AiInsightCard({
   }
 
   return (
-    <GlassCard style={{ marginTop: 12 }}>
-      <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+    <GlassCard style={styles.cardContainer}>
+      <View style={styles.cardContent}>
         {/* State A: Downloading */}
         {!isReady && !insight && isGenerating && (
           <View>
@@ -126,7 +161,7 @@ export function AiInsightCard({
         {/* State C: Data ready */}
         {insight && !isGenerating && (
           <View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+            <View style={styles.insightHeaderRow}>
               <Image
                 source="sf:sparkles"
                 style={{ width: 16, height: 16, tintColor: '#818cf8', marginTop: 2 }}
@@ -137,7 +172,7 @@ export function AiInsightCard({
             <Text className="text-zinc-400 text-sm mb-2">{insight.data.body}</Text>
 
             {insight.data.tip && (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 10 }}>
+              <View style={styles.tipRow}>
                 <Image
                   source="sf:lightbulb.fill"
                   style={{ width: 14, height: 14, tintColor: '#fbbf24', marginTop: 1 }}
@@ -146,9 +181,9 @@ export function AiInsightCard({
               </View>
             )}
 
-            <View style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.05)', marginBottom: 8 }} />
+            <View style={styles.divider} />
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={styles.footerRow}>
               <Text className="text-zinc-600 text-xs">
                 {new Date(insight.generatedAt).toLocaleString('en-US', {
                   month: 'short',
@@ -159,12 +194,7 @@ export function AiInsightCard({
               </Text>
               <Pressable
                 onPress={onRefresh}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                }}
+                style={styles.refreshButton}
               >
                 <Text className="text-white text-xs font-medium">Refresh</Text>
               </Pressable>

@@ -24,6 +24,7 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -48,6 +49,24 @@ type StartMode = "a" | "b" | "c";
 const HOLD_R = 72;
 const HOLD_CIRCUMFERENCE = 2 * Math.PI * HOLD_R;
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const styles = StyleSheet.create({
+  titleInput: {
+    fontSize: 26,
+    color: "#ffffff",
+    letterSpacing: -0.5,
+    paddingVertical: 8,
+    fontWeight: "600",
+  },
+  elapsed: {
+    fontSize: 72,
+    lineHeight: 80,
+    letterSpacing: -2,
+  },
+  dotIndicator: {
+    height: 6,
+  },
+});
 
 type PendingSession = {
   title: string;
@@ -359,7 +378,7 @@ export default function TimerScreen() {
             </Text>
             <Text
               className="text-white font-mono font-bold"
-              style={{ fontSize: 72, lineHeight: 80, letterSpacing: -2 }}
+              style={styles.elapsed}
             >
               {formatTime(elapsed)}
             </Text>
@@ -384,13 +403,7 @@ export default function TimerScreen() {
               returnKeyType="done"
               placeholder="session title"
               placeholderTextColor="rgba(255,255,255,0.15)"
-              style={{
-                fontSize: 26,
-                color: "#ffffff",
-                letterSpacing: -0.5,
-                paddingVertical: 8,
-                fontWeight: "600",
-              }}
+              style={styles.titleInput}
             />
             <View className="h-px bg-white/10" />
           </View>
@@ -415,7 +428,7 @@ export default function TimerScreen() {
             </Select.Trigger>
             <Select.Portal hostName="timer-modal">
               <Select.Overlay />
-              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none" style={{ backgroundColor: "#18181b" }}>
+              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none bg-zinc-900">
                 <Select.ListLabel>Select a project</Select.ListLabel>
                 {projects.map((p) => (
                   <Select.Item key={p.id} value={p.id} label={p.name}>
@@ -922,13 +935,7 @@ function ConversationalView({
           autoFocus
           placeholder="deep work, reading, gym..."
           placeholderTextColor="rgba(255,255,255,0.15)"
-          style={{
-            fontSize: 26,
-            color: "#ffffff",
-            letterSpacing: -0.5,
-            paddingVertical: 8,
-            fontWeight: "600",
-          }}
+          style={styles.titleInput}
         />
         <View className="h-px bg-white/10" />
       </View>
@@ -941,24 +948,18 @@ function ConversationalView({
       >
         <Pressable
           onPress={() => setSelectedProject(undefined)}
-          className="px-3 py-1.5 rounded-full border"
-          style={
+          className={`px-3 py-1.5 rounded-full border ${
             selectedProject === undefined
-              ? {
-                  borderColor: "rgba(255,255,255,0.4)",
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                }
-              : { borderColor: "rgba(255,255,255,0.12)" }
-          }
+              ? "border-white/40 bg-white/8"
+              : "border-white/12"
+          }`}
         >
           <Text
-            className="text-xs font-medium"
-            style={{
-              color:
-                selectedProject === undefined
-                  ? "rgba(255,255,255,0.8)"
-                  : "rgba(255,255,255,0.3)",
-            }}
+            className={`text-xs font-medium ${
+              selectedProject === undefined
+                ? "text-white/80"
+                : "text-white/30"
+            }`}
           >
             No project
           </Text>
@@ -1393,15 +1394,12 @@ function DotIndicator({ isActive }: { isActive: boolean }) {
 
   return (
     <Animated.View
-      className="rounded-full"
+      className={`rounded-full ${
+        isActive ? "bg-white/55" : "bg-white/18"
+      }`}
       style={[
         style,
-        {
-          height: 6,
-          backgroundColor: isActive
-            ? "rgba(255,255,255,0.55)"
-            : "rgba(255,255,255,0.18)",
-        },
+        styles.dotIndicator,
       ]}
     />
   );

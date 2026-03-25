@@ -54,7 +54,7 @@ export default function SearchScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <StaticAuraBackground />
 
       <ScrollView
@@ -62,31 +62,19 @@ export default function SearchScreen() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
-        {/* Search bar */}
         <View
+          className="px-4 pb-6"
           style={{
             paddingTop: insets.top + 16,
-            paddingHorizontal: 16,
-            paddingBottom: 24,
           }}
         >
           <GlassView
             glassEffectStyle="regular"
             colorScheme="dark"
-            style={{
-              borderRadius: 24,
-              overflow: "hidden",
-            }}
+            className="rounded-3xl overflow-hidden"
           >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                gap: 10,
-              }}
-            >
+            <View className="flex-row items-center px-4 py-3 gap-[10px]">
+            </View>
               <Image
                 source="sf:magnifyingglass"
                 style={{
@@ -115,7 +103,7 @@ export default function SearchScreen() {
               {queryText.trim() && (
                 <Pressable
                   onPress={handleClear}
-                  style={{ padding: 4 }}
+                  className="p-1"
                   hitSlop={8}
                 >
                   <Image
@@ -132,13 +120,11 @@ export default function SearchScreen() {
           </GlassView>
         </View>
 
-        {/* Empty state or results */}
         {!specs ? (
-          <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+          <View className="px-4 pb-10">
             {queryText.trim() ? (
-              // Loading state
               isSearching && (
-                <View style={{ gap: 12, marginTop: 12 }}>
+                <View className="gap-3 mt-3">
                   {[0, 1, 2].map((i) => (
                     <Animated.View
                       key={i}
@@ -153,11 +139,9 @@ export default function SearchScreen() {
                 </View>
               )
             ) : (
-              // Trending insights + suggestion chips
               <View>
-                {/* Trending Insights */}
                 {trendingInsights.length > 0 && (
-                  <View style={{ marginBottom: 28, gap: 10 }}>
+                  <View className="mb-7 gap-[10px]">
                     <Animated.Text
                       entering={FadeInDown.duration(400)}
                       style={{
@@ -196,12 +180,8 @@ export default function SearchScreen() {
                             }}
                           >
                             <View
+                              className="px-[14px] py-3 flex-row items-center gap-3"
                               style={{
-                                paddingHorizontal: 14,
-                                paddingVertical: 12,
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 12,
                                 borderLeftWidth: 3,
                                 borderLeftColor: insight.color,
                               }}
@@ -214,7 +194,7 @@ export default function SearchScreen() {
                                   tintColor: insight.color,
                                 }}
                               />
-                              <View style={{ flex: 1, gap: 2 }}>
+                              <View className="flex-1 gap-0.5">
                                 <Text
                                   style={{
                                     color: "#fff",
@@ -249,27 +229,16 @@ export default function SearchScreen() {
                   </View>
                 )}
 
-                {/* Suggestion Chips */}
-                <View
-                  style={{
-                    marginBottom: 20,
-                    paddingHorizontal: 0,
-                  }}
-                >
+                <View className="mb-5">
                   <Animated.Text
                     entering={FadeInDown.duration(400)}
-                    style={{
-                      color: "rgba(255, 255, 255, 0.7)",
-                      fontSize: 15,
-                      fontWeight: "600",
-                      marginBottom: 12,
-                    }}
+                    className="text-white/70 text-[15px] font-semibold mb-3"
                   >
                     Try asking...
                   </Animated.Text>
                 </View>
 
-                <View style={{ gap: 10 }}>
+                <View className="gap-[10px]">
                   {SUGGESTION_CHIPS.map((chip, idx) => (
                     <Animated.View
                       key={chip}
@@ -277,14 +246,7 @@ export default function SearchScreen() {
                     >
                       <Pressable
                         onPress={() => handleChipTap(chip)}
-                        style={{
-                          paddingHorizontal: 14,
-                          paddingVertical: 12,
-                          backgroundColor: "rgba(255, 255, 255, 0.1)",
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: "rgba(255, 255, 255, 0.15)",
-                        }}
+                        className="px-[14px] py-3 bg-white/10 rounded-xl border border-white/[0.15]"
                       >
                         <Animated.Text
                           style={{

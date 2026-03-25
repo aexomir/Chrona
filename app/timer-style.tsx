@@ -61,18 +61,17 @@ export default function TimerStyleScreen() {
   };
 
   return (
-    <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+    <View className="flex-1" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       <StaticAuraBackground />
 
-      {/* Nav bar */}
       <View style={styles.nav}>
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <Pressable onPress={() => router.back()} hitSlop={12}>
             <Text style={styles.navCancel}>Cancel</Text>
           </Pressable>
         </View>
         <Text style={styles.navTitle}>Timer Style</Text>
-        <View style={{ flex: 1 }} />
+        <View className="flex-1" />
       </View>
 
       <ScrollView
@@ -84,7 +83,7 @@ export default function TimerStyleScreen() {
           Choose how you start a focus session
         </Text>
 
-        <View style={{ gap: 14 }}>
+        <View className="gap-[14px]">
           {MODES.map((mode, i) => {
             const isSelected = timerStartMode === mode.id;
             return (
@@ -106,9 +105,8 @@ export default function TimerStyleScreen() {
                     },
                   ]}
                 >
-                  {/* Header row */}
                   <View style={styles.cardHeader}>
-                    <View style={{ flex: 1, gap: 3 }}>
+                    <View className="flex-1 gap-[3px]">
                       <Text
                         style={[
                           styles.modeName,
@@ -129,12 +127,10 @@ export default function TimerStyleScreen() {
                     )}
                   </View>
 
-                  {/* Preview */}
                   <View style={styles.preview}>
                     <mode.Preview />
                   </View>
 
-                  {/* Description */}
                   <Text style={styles.description}>{mode.description}</Text>
                 </Pressable>
               </Animated.View>
@@ -150,19 +146,17 @@ export default function TimerStyleScreen() {
 
 function PreviewConversational() {
   return (
-    <View style={{ gap: 18 }}>
-      {/* Bare input */}
-      <View style={{ gap: 8 }}>
+    <View className="gap-[18px]">
+      <View className="gap-2">
         <Text style={previewStyles.eyebrow}>what are you focusing on?</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 2 }}>
+        <View className="flex-row items-center gap-[3px] py-0.5">
           <Text style={previewStyles.inputText}>deep work</Text>
           <View style={previewStyles.cursor} />
         </View>
         <View style={previewStyles.inputLine} />
       </View>
 
-      {/* Project chips */}
-      <View style={{ flexDirection: "row", gap: 7, flexWrap: "wrap" }}>
+      <View className="flex-row gap-[7px] flex-wrap">
         <View style={[previewStyles.chip, { borderColor: "rgba(255,255,255,0.1)" }]}>
           <Text style={[previewStyles.chipText, { color: "rgba(255,255,255,0.25)" }]}>
             No project
@@ -193,12 +187,10 @@ function PreviewHold() {
   const r = 36;
   const circumference = 2 * Math.PI * r;
   return (
-    <View style={{ gap: 14 }}>
-      {/* Input ghost */}
+    <View className="gap-3.5">
       <View style={previewStyles.inputGhost} />
 
-      {/* Ring */}
-      <View style={{ alignItems: "center", gap: 8, paddingVertical: 6 }}>
+      <View className="items-center gap-2 py-1.5">
         <Svg width={96} height={96}>
           <Circle
             cx={48}
@@ -235,9 +227,9 @@ function PreviewProjectFirst() {
     { color: "#34d399", name: "Health" },
   ];
   return (
-    <View style={{ gap: 10 }}>
+    <View className="gap-2.5">
       <Text style={previewStyles.eyebrow}>what are you working on?</Text>
-      <View style={{ gap: 6 }}>
+      <View className="gap-1.5">
         {rows.map((row, i) => (
           <View
             key={row.name}

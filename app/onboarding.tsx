@@ -18,8 +18,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function formatClock(s: number) {
   const hh = String(Math.floor(s / 3600)).padStart(2, "0");
   const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
@@ -34,8 +32,6 @@ function hexToRgb(hex: string) {
   return `${r}, ${g}, ${b}`;
 }
 
-// ─── Slide 0: Welcome — ticking clock, tap anywhere ──────────────────────────
-
 function WelcomeSlide({ onDismiss }: { onDismiss: () => void }) {
   const [elapsed, setElapsed] = useState(0);
 
@@ -47,7 +43,7 @@ function WelcomeSlide({ onDismiss }: { onDismiss: () => void }) {
   return (
     <Pressable
       onPress={onDismiss}
-      style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+      className="flex-1 items-center justify-center"
     >
       <Text
         style={{
@@ -63,7 +59,7 @@ function WelcomeSlide({ onDismiss }: { onDismiss: () => void }) {
 
       <Animated.View
         entering={FadeIn.delay(2000).duration(800)}
-        style={{ marginTop: 18 }}
+        className="mt-[18px]"
       >
         <Text
           style={{
@@ -78,7 +74,7 @@ function WelcomeSlide({ onDismiss }: { onDismiss: () => void }) {
 
       <Animated.View
         entering={FadeIn.delay(4000).duration(600)}
-        style={{ position: "absolute", bottom: 52 }}
+        className="absolute bottom-[52px]"
       >
         <Text
           style={{
@@ -93,8 +89,6 @@ function WelcomeSlide({ onDismiss }: { onDismiss: () => void }) {
     </Pressable>
   );
 }
-
-// ─── Slide 1: Projects — color mosaic, tap to deselect ───────────────────────
 
 // Alternating wide/narrow: [wide, narrow], [narrow, wide], [wide, narrow]
 const MOSAIC_ROWS: [string, string][] = [
@@ -145,7 +139,7 @@ function ProjectTile({
       entering={FadeIn.delay(delay).duration(350)}
       style={{ flex }}
     >
-      <Pressable onPress={() => onToggle(project.id)} style={{ flex: 1 }}>
+      <Pressable onPress={() => onToggle(project.id)} className="flex-1">
         <Animated.View
           style={[
             {
@@ -156,7 +150,6 @@ function ProjectTile({
             tileStyle,
           ]}
         >
-          {/* Icon */}
           <Animated.View style={iconStyle}>
             <Image
               source={`sf:${project.icon}`}
@@ -164,8 +157,7 @@ function ProjectTile({
             />
           </Animated.View>
 
-          {/* Name */}
-          <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <View className="flex-1 justify-end">
             <Animated.Text
               style={[
                 {
@@ -198,11 +190,10 @@ function ProjectsSlide({
   const projectById = Object.fromEntries(PROJECTS.map((p) => [p.id, p]));
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Question */}
+    <View className="flex-1">
       <Animated.View
         entering={FadeIn.duration(350)}
-        style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20 }}
+        className="px-6 pt-4 pb-5"
       >
         <Text
           style={{
@@ -227,10 +218,9 @@ function ProjectsSlide({
         </Text>
       </Animated.View>
 
-      {/* Color mosaic */}
-      <View style={{ flex: 1, gap: 3, paddingHorizontal: 20 }}>
+      <View className="flex-1 gap-[3px] px-5">
         {MOSAIC_ROWS.map(([idA, idB], rowIdx) => (
-          <View key={rowIdx} style={{ flex: 1, flexDirection: "row", gap: 3 }}>
+          <View key={rowIdx} className="flex-1 flex-row gap-[3px]">
             <ProjectTile
               project={projectById[idA]}
               selected={selectedIds.has(idA)}
@@ -249,19 +239,11 @@ function ProjectsSlide({
         ))}
       </View>
 
-      {/* Continue */}
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingTop: 16,
-          paddingBottom: 8,
-          alignItems: "flex-end",
-        }}
-      >
+      <View className="px-6 pt-4 pb-2 items-end">
         {selectedIds.size > 0 ? (
           <Pressable
             onPress={onContinue}
-            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            className="flex-row items-center gap-1.5"
           >
             <Text
               style={{
@@ -290,8 +272,6 @@ function ProjectsSlide({
     </View>
   );
 }
-
-// ─── Slide 2: Mac — terminal prompt, auto-check on blur ──────────────────────
 
 type AwStatus = null | "checking" | boolean;
 
@@ -327,10 +307,10 @@ function MacSlide({
           : "";
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
+    <View className="flex-1 justify-center px-6">
       <Animated.View
         entering={FadeIn.duration(350)}
-        style={{ marginBottom: 36 }}
+        className="mb-9"
       >
         <Text
           style={{
@@ -356,7 +336,6 @@ function MacSlide({
       </Animated.View>
 
       <Animated.View entering={FadeIn.delay(200).duration(350)}>
-        {/* Terminal-style prompt */}
         <View
           style={{
             flexDirection: "row",
@@ -424,12 +403,7 @@ function MacSlide({
 
       <Animated.View
         entering={FadeIn.delay(450).duration(350)}
-        style={{
-          marginTop: 36,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+        className="mt-9 flex-row justify-between items-center"
       >
         <Pressable onPress={onContinue} hitSlop={10}>
           <Text style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>
@@ -438,7 +412,7 @@ function MacSlide({
         </Pressable>
         <Pressable
           onPress={onContinue}
-          style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+          className="flex-row items-center gap-1.5"
         >
           <Text
             style={{
@@ -463,8 +437,6 @@ function MacSlide({
   );
 }
 
-// ─── Slide 3: Calendar — abstract timeline preview ────────────────────────────
-
 const CALENDAR_BLOCKS = [
   { left: "4%", width: "22%", color: "#3b82f6", label: "9am" },
   { left: "30%", width: "14%", color: "#22c55e", label: "12pm" },
@@ -482,10 +454,10 @@ function CalendarSlide({
   onContinue: () => void;
 }) {
   return (
-    <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
+    <View className="flex-1 justify-center px-6">
       <Animated.View
         entering={FadeIn.duration(350)}
-        style={{ marginBottom: 8 }}
+        className="mb-2"
       >
         <Text
           style={{
@@ -510,10 +482,9 @@ function CalendarSlide({
         </Text>
       </Animated.View>
 
-      {/* Abstract timeline */}
       <Animated.View
         entering={FadeIn.delay(200).duration(400)}
-        style={{ marginVertical: 28, height: 52, position: "relative" }}
+        className="my-7 h-[52px] relative"
       >
         <View
           style={{
@@ -524,7 +495,6 @@ function CalendarSlide({
             overflow: "hidden",
           }}
         >
-          {/* Hour ticks */}
           {["25%", "50%", "75%"].map((left, i) => (
             <View
               key={i}
@@ -539,7 +509,6 @@ function CalendarSlide({
             />
           ))}
 
-          {/* Event blocks — only when granted */}
           {granted &&
             CALENDAR_BLOCKS.map((b, i) => (
               <Animated.View
@@ -563,7 +532,6 @@ function CalendarSlide({
             ))}
         </View>
 
-        {/* Time labels */}
         <Text
           style={{
             position: "absolute",
@@ -590,13 +558,12 @@ function CalendarSlide({
 
       <Animated.View
         entering={FadeIn.delay(400).duration(350)}
-        style={{ marginTop: 32, gap: 12 }}
+        className="mt-8 gap-3"
       >
         {granted ? (
-          <View style={{ gap: 12 }}>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-            >
+          <View className="gap-3">
+            <View className="flex-row items-center gap-2">
+            </View>
               <Image
                 source="sf:checkmark.circle.fill"
                 style={{ width: 15, height: 15, tintColor: "#22c55e" }}
@@ -607,12 +574,7 @@ function CalendarSlide({
             </View>
             <Pressable
               onPress={onContinue}
-              style={{
-                alignSelf: "flex-end",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-              }}
+              className="self-end flex-row items-center gap-1.5"
             >
               <Text
                 style={{
@@ -634,17 +596,10 @@ function CalendarSlide({
             </Pressable>
           </View>
         ) : (
-          <View style={{ gap: 14 }}>
+          <View className="gap-[14px]">
             <Pressable
               onPress={onGrant}
-              style={{
-                paddingVertical: 13,
-                backgroundColor: "rgba(255,255,255,0.06)",
-                borderRadius: 11,
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.1)",
-                alignItems: "center",
-              }}
+              className="py-[13px] bg-[rgba(255,255,255,0.06)] rounded-[11px] border border-[rgba(255,255,255,0.1)] items-center"
             >
               <Text
                 style={{
@@ -668,8 +623,6 @@ function CalendarSlide({
   );
 }
 
-// ─── Slide 4: Ready — concentric rings, single word, full-screen tap ──────────
-
 function ReadySlide({ onFinish }: { onFinish: () => void }) {
   const pulse = useSharedValue(1);
 
@@ -685,14 +638,8 @@ function ReadySlide({ onFinish }: { onFinish: () => void }) {
   return (
     <Pressable
       onPress={onFinish}
-      style={{
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 48,
-      }}
+      className="flex-1 items-center justify-center gap-12"
     >
-      {/* Concentric rings */}
       <Animated.View style={outerRingStyle}>
         <View
           style={{
@@ -729,7 +676,6 @@ function ReadySlide({ onFinish }: { onFinish: () => void }) {
         </View>
       </Animated.View>
 
-      {/* Single word */}
       <Animated.View entering={FadeIn.delay(400).duration(600)}>
         <Text
           style={{
@@ -745,7 +691,7 @@ function ReadySlide({ onFinish }: { onFinish: () => void }) {
 
       <Animated.View
         entering={FadeIn.delay(1200).duration(600)}
-        style={{ position: "absolute", bottom: 52 }}
+        className="absolute bottom-[52px]"
       >
         <Text
           style={{
@@ -761,11 +707,9 @@ function ReadySlide({ onFinish }: { onFinish: () => void }) {
   );
 }
 
-// ─── Progress dots ────────────────────────────────────────────────────────────
-
 function ProgressDots({ total, current }: { total: number; current: number }) {
   return (
-    <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+    <View className="flex-row gap-1.5 items-center">
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
@@ -784,15 +728,12 @@ function ProgressDots({ total, current }: { total: number; current: number }) {
   );
 }
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
-
 const TOTAL_SLIDES = 5;
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Projects
   const { removeProject } = useProjects();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(PROJECTS.map((p) => p.id)),
@@ -807,7 +748,6 @@ export default function OnboardingScreen() {
     });
   };
 
-  // ChronaHelper
   const { awStreamHost, setAwStreamHost, setAwAdapterMode, addRecentHost } =
     useSettingsStore();
   const [localHost, setLocalHost] = useState(awStreamHost);
@@ -826,7 +766,6 @@ export default function OnboardingScreen() {
     }
   };
 
-  // Calendar
   const { permissionStatus, requestPermission } = useCalendarStore();
   const [calGranted, setCalGranted] = useState(permissionStatus === "granted");
 
@@ -850,18 +789,17 @@ export default function OnboardingScreen() {
     router.replace("/(tabs)");
   };
 
-  // Slides 0 and 4 are full-screen — no dots shown
   const showDots = currentSlide > 0 && currentSlide < TOTAL_SLIDES - 1;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#18181b" }}>
+    <View className="flex-1 bg-[#18181b]">
       <StaticAuraBackground />
 
-      <View style={{ flex: 1, paddingTop: insets.top }}>
+      <View className="flex-1" style={{ paddingTop: insets.top }}>
         <Animated.View
           key={currentSlide}
           entering={FadeIn.duration(350)}
-          style={{ flex: 1 }}
+          className="flex-1"
         >
           {currentSlide === 0 && <WelcomeSlide onDismiss={goNext} />}
           {currentSlide === 1 && (
@@ -890,11 +828,10 @@ export default function OnboardingScreen() {
           {currentSlide === 4 && <ReadySlide onFinish={handleFinish} />}
         </Animated.View>
 
-        {/* Progress dots — only on setup slides */}
         {showDots && (
           <View
+            className="items-center"
             style={{
-              alignItems: "center",
               paddingBottom: insets.bottom + 36,
             }}
           >

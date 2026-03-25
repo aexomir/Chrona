@@ -13,8 +13,18 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const styles = StyleSheet.create({
+  navBar: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+});
 
 type SelectOption = { value: string; label: string };
 
@@ -60,13 +70,10 @@ export default function RecoverScreen() {
   });
   const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
 
-
-  // Redirect back if no period
   useEffect(() => {
     if (!period) router.back();
   }, [period]);
 
-  // Initialize smart-selected apps when period changes
   useEffect(() => {
     if (!period) return;
     const defaults = getSmartDefaultApps(period.apps, period.suggestion.projectId, associations);
@@ -128,8 +135,7 @@ export default function RecoverScreen() {
       <StaticAuraBackground />
       {/* Nav bar */}
       <View
-        className="flex-row items-center justify-between px-5 pt-2 pb-4"
-        style={{ paddingTop: insets.top + 8 }}
+        style={[styles.navBar, { paddingTop: insets.top + 8 }]}
       >
         <Pressable onPress={handleDismiss} hitSlop={12}>
           <Text className="text-neutral-400 text-base">Cancel</Text>
@@ -143,7 +149,6 @@ export default function RecoverScreen() {
         bottomOffset={16}
         contentContainerStyle={{ paddingBottom: 16 }}
       >
-        {/* Header card: calendar-specific or AW-based */}
         {period.source === "calendar" ? (
           <View className="mb-6 rounded-3xl p-5 border" style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}>
             <View className="flex-row items-center gap-2 mb-3">
@@ -185,7 +190,6 @@ export default function RecoverScreen() {
           </View>
         )}
 
-        {/* Title input */}
         <View className="mb-4">
           <Input
             placeholder="What was this session?"
@@ -196,7 +200,6 @@ export default function RecoverScreen() {
           />
         </View>
 
-        {/* Project selector */}
         <View className="mb-6">
           <Select
             value={selectedProject}
@@ -220,7 +223,7 @@ export default function RecoverScreen() {
             </Select.Trigger>
             <Select.Portal hostName="recover-modal">
               <Select.Overlay />
-              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none" style={{ backgroundColor: "#18181b" }}>
+              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none bg-zinc-900">
                 <Select.ListLabel>Select a project</Select.ListLabel>
                 {projects.map((p) => (
                   <Select.Item key={p.id} value={p.id} label={p.name}>
@@ -243,7 +246,6 @@ export default function RecoverScreen() {
           </Select>
         </View>
 
-        {/* Apps section */}
         <View className="mb-6">
           <Text className="text-white text-base font-semibold mb-3">Apps Detected</Text>
           {period.apps.length === 0 ? (

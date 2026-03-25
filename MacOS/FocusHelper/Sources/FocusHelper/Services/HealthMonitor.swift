@@ -1,44 +1,27 @@
 import Foundation
 import os
 
-// MARK: - HealthReport
-
-/// Point-in-time snapshot of every trackable component.
-/// Produced by `HealthMonitor` every `checkInterval` seconds and on demand.
 struct HealthReport {
-
-    // MARK: Overall verdict
-
     enum Verdict: Equatable {
-        /// All components are operating within normal parameters.
+        
         case healthy
-        /// Something is suboptimal but collection is still running.
         case degraded(String)
-        /// A critical component is not functioning; data may be lost.
+        
         case unhealthy(String)
     }
 
     let checkedAt: Date
     let verdict: Verdict
 
-    // MARK: Per-component flags
-
-    /// The activity source is in `.running` state.
     let sourceRunning: Bool
-    /// Seconds since the last successfully stored event; nil if no event yet.
     let eventStaleness: TimeInterval?
-    /// The DataStore events directory exists and is writable.
     let storeHealthy: Bool
-    /// The WebSocket broadcaster is listening for iOS connections.
     let broadcasterListening: Bool
-
-    // MARK: Derived helpers
 
     var isHealthy:   Bool { verdict == .healthy }
     var isDegraded:  Bool { if case .degraded  = verdict { return true }; return false }
     var isUnhealthy: Bool { if case .unhealthy = verdict { return true }; return false }
 
-    /// Short human-readable string suitable for the menu bar status row.
     var summary: String {
         switch verdict {
         case .healthy:              return "All systems normal"
@@ -48,57 +31,34 @@ struct HealthReport {
     }
 }
 
-// MARK: - HealthMonitor
-
-/// Runs a periodic background check and publishes a `HealthReport`.
-///
-/// Checks performed every `checkInterval` seconds:
-///   1. Is the activity source in `.running` state?
-///   2. How long since the last event? (staleness)
-///   3. Can the DataStore events directory be written to?
-///   4. Is the WebSocket broadcaster listening?
-///
-/// Staleness thresholds:
-///   - Embedded source: the watcher flushes every 30 s, so > 120 s with no
-///     event while supposedly running indicates a stall.
-///   - External source: polls a remote server that may be idle; > 600 s is used.
-///
-/// Consumers observe `report` via Combine or SwiftUI `@Published`.
 @MainActor
 final class HealthMonitor {
-
-    // MARK: - Published
-
     @Published private(set) var report: HealthReport?
-
-    // MARK: - Configuration
 
     /// How often to run the full health check (seconds).
     let checkInterval: TimeInterval
 
-    // MARK: - Inputs (weak to avoid retain cycles)
+    /// Maximum time without an event before reporting degraded health.
+    /// Embedded source (NativeWindowWatcher flushes every 30s): 120s = 4x flush interval.
+    /// External source (REST polling every 30s): 600s = 20x poll interval (conservative for idle periods).
+    let stalenessThreshold: (embedded: TimeInterval, external: TimeInterval)
 
     private weak var coordinatorRef: ActivityCoordinator?
-
-    // MARK: - Private
-
     private var monitorTask: Task<Void, Never>?
 
-    // MARK: - Init
-
-    /// Pass `nil` when constructing inside a class `init()` before `self` is complete;
-    /// call `configure(coordinator:)` immediately after all stored properties are set.
-    init(coordinator: ActivityCoordinator? = nil, checkInterval: TimeInterval = 60) {
+    init(
+        coordinator: ActivityCoordinator? = nil,
+        checkInterval: TimeInterval = 60,
+        stalenessThreshold: (embedded: TimeInterval, external: TimeInterval) = (120, 600)
+    ) {
         self.coordinatorRef = coordinator
-        self.checkInterval  = checkInterval
+        self.checkInterval = checkInterval
+        self.stalenessThreshold = stalenessThreshold
     }
 
-    /// Attaches the coordinator reference. Must be called before `start()`.
     func configure(coordinator: ActivityCoordinator) {
         coordinatorRef = coordinator
     }
-
-    // MARK: - Lifecycle
 
     func start() {
         guard monitorTask == nil else { return }
@@ -118,13 +78,9 @@ final class HealthMonitor {
         monitorTask = nil
     }
 
-    /// Runs a check immediately (outside the regular interval).
-    /// Safe to call at any time.
     func checkNow() {
         Task { [weak self] in await self?.runCheck() }
     }
-
-    // MARK: - Private – check logic
 
     private func runCheck() async {
         guard let coordinator = coordinatorRef else { return }
@@ -181,7 +137,7 @@ final class HealthMonitor {
         }
 
         // Degraded conditions — collection is running but may have gaps.
-        let stalenessLimit: TimeInterval = mode == .embedded ? 120 : 600
+        let stalenessLimit: TimeInterval = mode == .embedded ? stalenessThreshold.embedded : stalenessThreshold.external
         if let age = staleness, age > stalenessLimit {
             let mins = Int(age / 60)
             return .degraded("No event received for \(mins) min")
@@ -192,8 +148,6 @@ final class HealthMonitor {
 
         return .healthy
     }
-
-    // MARK: - Private – helpers
 
     private func isStoreWritable() -> Bool {
         guard let support = try? FileManager.default.url(

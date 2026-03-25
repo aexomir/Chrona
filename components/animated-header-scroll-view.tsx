@@ -123,12 +123,10 @@ export function AnimatedHeaderScrollView({
     },
   });
 
-  // Compact header (reveals as you scroll)
   const compactAnimStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [15, 45], [0, 1], Extrapolation.CLAMP),
   }));
 
-  // Large header (fades out as you scroll)
   const largeAnimStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 30], [1, 0], Extrapolation.CLAMP),
     transform: [
@@ -143,7 +141,6 @@ export function AnimatedHeaderScrollView({
     ],
   }));
 
-  // Shadow gradient opacity
   const shadowAnimStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       scrollY.value,
@@ -172,12 +169,10 @@ export function AnimatedHeaderScrollView({
         {children}
       </AnimatedKeyboardAwareScrollView>
 
-      {/* Fixed header — rendered above scroll area */}
       <View
         style={[styles.fixedHeader, { paddingTop: insets.top }]}
         pointerEvents="box-none"
       >
-        {/* Scroll shadow gradient */}
         <Animated.View style={[styles.shadowGradientContainer, shadowAnimStyle]}>
           <LinearGradient
             colors={theme.headerGradient}
@@ -188,7 +183,6 @@ export function AnimatedHeaderScrollView({
         </Animated.View>
 
         <View style={styles.compactHeaderContainer}>
-          {/* Compact title (hidden initially) */}
           <Animated.View
             style={[styles.compactTitleWrapper, compactAnimStyle]}
             pointerEvents="none"
@@ -203,7 +197,6 @@ export function AnimatedHeaderScrollView({
         </View>
       </View>
 
-      {/* Large title area — fades out as you scroll */}
       <View
         style={[styles.largeHeader, { paddingTop: insets.top + 16 }]}
         pointerEvents="box-none"
