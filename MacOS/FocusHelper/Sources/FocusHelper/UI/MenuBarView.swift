@@ -82,31 +82,74 @@ struct MenuBarView: View {
 
     private var streamSection: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // Header row
             HStack(spacing: 6) {
                 Circle()
-                    .fill(coordinator.isStreamServerRunning ? Color.blue : Color.gray)
+                    .fill(connectionDotColor)
                     .frame(width: 6, height: 6)
-                Text("iOS Stream")
+                Text("iOS")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                if coordinator.connectedClients > 0 {
-                    Text("\(coordinator.connectedClients) connected")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.blue)
-                }
+                Text(connectionLabel)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(connectionLabelColor)
             }
 
             let addr = coordinator.streamConnectionAddress
             if addr != "offline" {
-                StatRow(label: "IP",   value: coordinator.streamConnectionAddress)
+                // IP row — copyable
+                HStack {
+                    Text("IP")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(addr)
+                        .font(.system(size: 11, weight: .medium))
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(addr, forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Copy IP address")
+                }
+
                 StatRow(label: "Host", value: coordinator.streamHostnameAddress)
+
+                // Nudge when nobody is connected yet
+                if coordinator.connectedClients == 0 {
+                    Text("Open Chrona on iPhone to connect")
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.tertiary)
+                        .italic()
+                        .padding(.top, 2)
+                }
             } else {
                 StatRow(label: "Stream", value: "Server offline", valueColor: .secondary)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+    }
+
+    private var connectionDotColor: Color {
+        guard coordinator.isStreamServerRunning else { return .secondary }
+        return coordinator.connectedClients > 0 ? .green : .blue
+    }
+
+    private var connectionLabel: String {
+        guard coordinator.isStreamServerRunning else { return "Offline" }
+        let n = coordinator.connectedClients
+        return n > 0 ? "\(n) connected" : "Waiting"
+    }
+
+    private var connectionLabelColor: Color {
+        guard coordinator.isStreamServerRunning else { return .secondary }
+        return coordinator.connectedClients > 0 ? .green : .secondary
     }
 
     private var meetingsSection: some View {

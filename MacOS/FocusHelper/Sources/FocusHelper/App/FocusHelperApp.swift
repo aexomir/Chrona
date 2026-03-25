@@ -35,24 +35,45 @@ struct ChronaHelperApp: App {
     }
 
     // MARK: - Menu bar icon
-
-    /// The icon reflects the aggregate health of the system:
-    ///   green  (circle.fill)         — running and healthy
-    ///   yellow (exclamationmark.circle.fill) — degraded
-    ///   red    (xmark.circle.fill)   — unhealthy or stopped
+    //
+    // Symbol:  waveform          — running & healthy
+    //          waveform.badge.exclamationmark — degraded / permission issue
+    //          waveform (gray)   — stopped or unhealthy
+    //
+    // Badge:   green dot         — at least one iOS client connected
+    //          (none)            — no client / stopped
+    // MARK: - Menu bar icon
+    //
+    // Symbol:  timer (stopwatch)  — always; color + badge carry the state
+    //
+    // Color:   .primary  — running & healthy
+    //          .yellow   — degraded / permission issue
+    //          .secondary — stopped or unhealthy
+    //
+    // Badge:   green dot — at least one iOS client connected
+    //          (none)    — no client / stopped
     @ViewBuilder
     private var menuBarIcon: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Image(systemName: "timer")
+                .font(.system(size: 13, weight: .light))
+                .foregroundStyle(iconTint)
+                .frame(width: 18, height: 16)
+
+            if coordinator.isRunning && coordinator.connectedClients > 0 {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 5, height: 5)
+                    .offset(x: 1, y: 1)
+            }
+        }
+    }
+
+    private var iconTint: Color {
         switch iconState {
-        case .running:
-            Image(systemName: "circle.fill")
-                .symbolRenderingMode(.monochrome)
-        case .degraded:
-            Image(systemName: "exclamationmark.circle.fill")
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(.yellow)
-        case .stopped, .unhealthy:
-            Image(systemName: "circle.dotted")
-                .symbolRenderingMode(.monochrome)
+        case .running:            return .primary
+        case .degraded:           return .yellow
+        case .stopped, .unhealthy: return .secondary
         }
     }
 
@@ -62,9 +83,9 @@ struct ChronaHelperApp: App {
         guard coordinator.isRunning else { return .stopped }
         guard let h = coordinator.health else { return .running }
         switch h.verdict {
-        case .healthy:          return .running
-        case .degraded:         return .degraded
-        case .unhealthy:        return .unhealthy
+        case .healthy:   return .running
+        case .degraded:  return .degraded
+        case .unhealthy: return .unhealthy
         }
     }
 
