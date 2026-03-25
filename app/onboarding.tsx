@@ -563,7 +563,6 @@ function CalendarSlide({
         {granted ? (
           <View className="gap-3">
             <View className="flex-row items-center gap-2">
-            </View>
               <Image
                 source="sf:checkmark.circle.fill"
                 style={{ width: 15, height: 15, tintColor: "#22c55e" }}

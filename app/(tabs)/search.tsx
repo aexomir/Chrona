@@ -74,7 +74,6 @@ export default function SearchScreen() {
             className="rounded-3xl overflow-hidden"
           >
             <View className="flex-row items-center px-4 py-3 gap-[10px]">
-            </View>
               <Image
                 source="sf:magnifyingglass"
                 style={{
