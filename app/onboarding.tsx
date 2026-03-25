@@ -1,10 +1,10 @@
+import { PROJECTS, type Project } from "@/constants/projects";
 import { checkAwAvailability } from "@/features/activity-watch/aw-adapter";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { markOnboardingComplete } from "@/features/onboarding/onboarding-storage";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { PROJECTS, type Project } from "@/constants/projects";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -102,7 +102,11 @@ const MOSAIC_ROWS: [string, string][] = [
   ["exercise", "creative"],
   ["personal", "rest"],
 ];
-const MOSAIC_RATIOS = [[1.55, 1], [1, 1.55], [1.55, 1]];
+const MOSAIC_RATIOS = [
+  [1.55, 1],
+  [1, 1.55],
+  [1.55, 1],
+];
 
 function ProjectTile({
   project,
@@ -125,13 +129,15 @@ function ProjectTile({
   }, [selected, progress]);
 
   const tileStyle = useAnimatedStyle(() => ({
-    backgroundColor: `rgba(${rgb}, ${0.04 + progress.value * 0.22})`,
-    borderTopColor: `rgba(${rgb}, ${0.12 + progress.value * 0.88})`,
+    backgroundColor: `rgba(${rgb}, ${0.04 + progress.value * 0.28})`,
+  }));
+
+  const iconStyle = useAnimatedStyle(() => ({
+    opacity: 0.18 + progress.value * 0.82,
   }));
 
   const labelStyle = useAnimatedStyle(() => ({
-    opacity: 0.28 + progress.value * 0.72,
-    color: `rgba(255, 255, 255, 1)`,
+    opacity: 0.25 + progress.value * 0.75,
   }));
 
   return (
@@ -144,30 +150,36 @@ function ProjectTile({
           style={[
             {
               flex: 1,
-              borderTopWidth: 1.5,
-              borderRightWidth: 0,
-              borderBottomWidth: 0,
-              borderLeftWidth: 0,
               borderRadius: 6,
-              paddingHorizontal: 12,
-              paddingBottom: 12,
-              justifyContent: "flex-end",
+              padding: 12,
             },
             tileStyle,
           ]}
         >
-          <Animated.Text
-            style={[
-              {
-                fontSize: 13,
-                fontWeight: "500",
-                letterSpacing: -0.2,
-              },
-              labelStyle,
-            ]}
-          >
-            {project.name}
-          </Animated.Text>
+          {/* Icon */}
+          <Animated.View style={iconStyle}>
+            <Image
+              source={`sf:${project.icon}`}
+              style={{ width: 22, height: 22, tintColor: project.color }}
+            />
+          </Animated.View>
+
+          {/* Name */}
+          <View style={{ flex: 1, justifyContent: "flex-end" }}>
+            <Animated.Text
+              style={[
+                {
+                  fontSize: 13,
+                  fontWeight: "500",
+                  letterSpacing: -0.2,
+                  color: "white",
+                },
+                labelStyle,
+              ]}
+            >
+              {project.name}
+            </Animated.Text>
+          </View>
         </Animated.View>
       </Pressable>
     </Animated.View>
@@ -218,10 +230,7 @@ function ProjectsSlide({
       {/* Color mosaic */}
       <View style={{ flex: 1, gap: 3, paddingHorizontal: 20 }}>
         {MOSAIC_ROWS.map(([idA, idB], rowIdx) => (
-          <View
-            key={rowIdx}
-            style={{ flex: 1, flexDirection: "row", gap: 3 }}
-          >
+          <View key={rowIdx} style={{ flex: 1, flexDirection: "row", gap: 3 }}>
             <ProjectTile
               project={projectById[idA]}
               selected={selectedIds.has(idA)}
@@ -314,12 +323,15 @@ function MacSlide({
       : status === true
         ? "Connected"
         : status === false
-          ? "Not reachable — is ActivityWatch running?"
+          ? "Not reachable — is ChronaHelper running?"
           : "";
 
   return (
     <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
-      <Animated.View entering={FadeIn.duration(350)} style={{ marginBottom: 36 }}>
+      <Animated.View
+        entering={FadeIn.duration(350)}
+        style={{ marginBottom: 36 }}
+      >
         <Text
           style={{
             fontSize: 32,
@@ -330,7 +342,7 @@ function MacSlide({
             marginBottom: 8,
           }}
         >
-          {"ActivityWatch\nrunning?"}
+          {"ChronaHelper\nrunning?"}
         </Text>
         <Text
           style={{
@@ -339,7 +351,7 @@ function MacSlide({
             lineHeight: 20,
           }}
         >
-          Install it on your Mac for automatic app tracking.
+          Install ChronaHelper on your Mac for automatic app tracking.
         </Text>
       </Animated.View>
 
@@ -420,9 +432,7 @@ function MacSlide({
         }}
       >
         <Pressable onPress={onContinue} hitSlop={10}>
-          <Text
-            style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}
-          >
+          <Text style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>
             Set up later
           </Text>
         </Pressable>
@@ -473,7 +483,10 @@ function CalendarSlide({
 }) {
   return (
     <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
-      <Animated.View entering={FadeIn.duration(350)} style={{ marginBottom: 8 }}>
+      <Animated.View
+        entering={FadeIn.duration(350)}
+        style={{ marginBottom: 8 }}
+      >
         <Text
           style={{
             fontSize: 32,
@@ -487,7 +500,11 @@ function CalendarSlide({
           {"What's on\ntoday?"}
         </Text>
         <Text
-          style={{ color: "rgba(255,255,255,0.28)", fontSize: 14, lineHeight: 20 }}
+          style={{
+            color: "rgba(255,255,255,0.28)",
+            fontSize: 14,
+            lineHeight: 20,
+          }}
         >
           Overlay calendar events on your tracked sessions.
         </Text>
@@ -640,9 +657,7 @@ function CalendarSlide({
               </Text>
             </Pressable>
             <Pressable onPress={onContinue} style={{ alignItems: "center" }}>
-              <Text
-                style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}
-              >
+              <Text style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>
                 Skip
               </Text>
             </Pressable>
@@ -659,11 +674,7 @@ function ReadySlide({ onFinish }: { onFinish: () => void }) {
   const pulse = useSharedValue(1);
 
   useEffect(() => {
-    pulse.value = withRepeat(
-      withTiming(1.04, { duration: 2800 }),
-      -1,
-      true,
-    );
+    pulse.value = withRepeat(withTiming(1.04, { duration: 2800 }), -1, true);
   }, [pulse]);
 
   const outerRingStyle = useAnimatedStyle(() => ({
@@ -674,7 +685,12 @@ function ReadySlide({ onFinish }: { onFinish: () => void }) {
   return (
     <Pressable
       onPress={onFinish}
-      style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 48 }}
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 48,
+      }}
     >
       {/* Concentric rings */}
       <Animated.View style={outerRingStyle}>
@@ -747,17 +763,9 @@ function ReadySlide({ onFinish }: { onFinish: () => void }) {
 
 // ─── Progress dots ────────────────────────────────────────────────────────────
 
-function ProgressDots({
-  total,
-  current,
-}: {
-  total: number;
-  current: number;
-}) {
+function ProgressDots({ total, current }: { total: number; current: number }) {
   return (
-    <View
-      style={{ flexDirection: "row", gap: 6, alignItems: "center" }}
-    >
+    <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
@@ -799,7 +807,7 @@ export default function OnboardingScreen() {
     });
   };
 
-  // ActivityWatch
+  // ChronaHelper
   const { awStreamHost, setAwStreamHost, setAwAdapterMode } =
     useSettingsStore();
   const [localHost, setLocalHost] = useState(awStreamHost);
@@ -817,15 +825,11 @@ export default function OnboardingScreen() {
 
   // Calendar
   const { permissionStatus, requestPermission } = useCalendarStore();
-  const [calGranted, setCalGranted] = useState(
-    permissionStatus === "granted",
-  );
+  const [calGranted, setCalGranted] = useState(permissionStatus === "granted");
 
   const handleGrantCalendar = async () => {
     await requestPermission();
-    setCalGranted(
-      useCalendarStore.getState().permissionStatus === "granted",
-    );
+    setCalGranted(useCalendarStore.getState().permissionStatus === "granted");
   };
 
   const goNext = () =>
