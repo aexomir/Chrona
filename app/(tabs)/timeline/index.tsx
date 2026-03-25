@@ -343,7 +343,7 @@ export default function TimelineScreen() {
         }}
         ListHeaderComponent={
           <View
-            className="relative border-b border-zinc-800/60 overflow-hidden"
+            className="relative border-b border-zinc-800/60 overflow-hidden pb-3"
             onLayout={(e) => onStripLayout(e.nativeEvent.layout.width)}
           >
             <Animated.View style={animatedWeek}>
