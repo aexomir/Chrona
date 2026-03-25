@@ -18,7 +18,7 @@ struct ChronaHelperApp: App {
 
     init() {
         enforceSingleInstance()
-        Logger.lifecycle.info("FocusHelper launched — pid=\(ProcessInfo.processInfo.processIdentifier)")
+        Logger.lifecycle.info("ChronaHelper launched — pid=\(ProcessInfo.processInfo.processIdentifier)")
     }
 
     // MARK: - Scene
@@ -78,7 +78,7 @@ struct ChronaHelperApp: App {
             create: true
         ) else { return }
 
-        let lockDir = support.appendingPathComponent("FocusHelper")
+        let lockDir = support.appendingPathComponent("ChronaHelper")
 
         if !instanceGuard.acquire(in: lockDir) {
             showDuplicateAlert()
@@ -87,8 +87,8 @@ struct ChronaHelperApp: App {
 
     private func showDuplicateAlert() {
         let alert = NSAlert()
-        alert.messageText    = "FocusHelper is already running"
-        alert.informativeText = "Only one instance of FocusHelper can run at a time. " +
+        alert.messageText    = "ChronaHelper is already running"
+        alert.informativeText = "Only one instance of ChronaHelper can run at a time. " +
                                 "Check the menu bar for the existing instance."
         alert.alertStyle     = .warning
         alert.addButton(withTitle: "OK")

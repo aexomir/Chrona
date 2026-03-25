@@ -204,7 +204,7 @@ final class HealthMonitor {
         ) else { return false }
 
         let eventsDir = support
-            .appendingPathComponent("FocusHelper/v1/events")
+            .appendingPathComponent("ChronaHelper/v1/events")
         return FileManager.default.isWritableFile(atPath: eventsDir.path)
     }
 

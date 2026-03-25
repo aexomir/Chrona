@@ -19,7 +19,7 @@ struct MenuBarView: View {
             Divider().padding(.horizontal, 8)
             controls
             Divider().padding(.horizontal, 8).padding(.vertical, 2)
-            MenuButton(label: "Quit FocusHelper", systemImage: "power") {
+            MenuButton(label: "Quit ChronaHelper", systemImage: "power") {
                 NSApplication.shared.terminate(nil)
             }
             .padding(.bottom, 4)

@@ -85,7 +85,7 @@ targets/
 └── widget/                  # iOS widget + Live Activity target (SwiftUI)
 
 MacOS/
-└── FocusHelper/             # Native macOS companion (Swift, ActivityWatch bridge)
+└── ChronaHelper/            # Native macOS companion (Swift, ActivityWatch bridge)
 
 storage/
 └── index.ts                 # MMKV adapter for Zustand persist
@@ -145,7 +145,7 @@ All persistent state uses Zustand with MMKV via the adapter in `storage/index.ts
 Logic, stores, and components are colocated under `features/<domain>/` rather than split across a flat `stores/` directory. Each feature owns its state, utilities, and domain-specific components.
 
 ### ActivityWatch Integration
-`features/activity-watch/activitywatch.ts` — `getAppUsage(startTime, endTime)` returns aggregated app usage with top 3 window titles per app. Used in the timer review screen and for missed-time detection. The macOS FocusHelper bridges the ActivityWatch WebSocket stream to the iOS app.
+`features/activity-watch/activitywatch.ts` — `getAppUsage(startTime, endTime)` returns aggregated app usage with top 3 window titles per app. Used in the timer review screen and for missed-time detection. The macOS ChronaHelper bridges the ActivityWatch WebSocket stream to the iOS app.
 
 ### Missed Time Detection
 `features/recovery/detectMissedTime.ts` — Looks back 8 hours, finds gaps >= 15 minutes, skips gaps with < 10 minutes of AW data, applies a 5-minute end buffer. Returns the best gap with a project suggestion, or null.

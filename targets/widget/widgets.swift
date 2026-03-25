@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - Shared helpers
 
-private let appGroup = "group.com.aexomir.Focus"
+private let appGroup = "group.com.aexomir.Chrona"
 
 extension Color {
     init?(hex: String) {
@@ -49,7 +49,7 @@ private func currentSuggestion() -> String {
 
 private let focusKey = "focus_data"
 
-struct FocusWidgetData {
+struct ChronaWidgetData {
     let focusMinutesToday: Int
     let isTracking: Bool
     let currentSessionMinutes: Int
@@ -66,17 +66,17 @@ struct FocusWidgetData {
         return parseISO(startTimestamp)
     }
 
-    static var empty: FocusWidgetData {
-        FocusWidgetData(focusMinutesToday: 0, isTracking: false, currentSessionMinutes: 0,
+    static var empty: ChronaWidgetData {
+        ChronaWidgetData(focusMinutesToday: 0, isTracking: false, currentSessionMinutes: 0,
                         startTimestamp: "", currentSessionTitle: "", projectName: "", projectIcon: "", projectColor: "")
     }
 
-    static func load() -> FocusWidgetData {
+    static func load() -> ChronaWidgetData {
         let defaults = UserDefaults(suiteName: appGroup)
         guard let data = defaults?.data(forKey: focusKey),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return .empty }
-        return FocusWidgetData(
+        return ChronaWidgetData(
             focusMinutesToday: json["focusMinutesToday"] as? Int ?? 0,
             isTracking: (json["isTracking"] as? Int ?? 0) == 1,
             currentSessionMinutes: json["currentSessionMinutes"] as? Int ?? 0,
@@ -89,23 +89,23 @@ struct FocusWidgetData {
     }
 }
 
-struct FocusWidgetProvider: WidgetKit.TimelineProvider {
-    func placeholder(in context: Context) -> FocusWidgetEntry { FocusWidgetEntry(date: Date(), data: .empty) }
-    func getSnapshot(in context: Context, completion: @escaping (FocusWidgetEntry) -> Void) {
-        completion(FocusWidgetEntry(date: Date(), data: FocusWidgetData.load()))
+struct ChronaWidgetProvider: WidgetKit.TimelineProvider {
+    func placeholder(in context: Context) -> ChronaWidgetEntry { ChronaWidgetEntry(date: Date(), data: .empty) }
+    func getSnapshot(in context: Context, completion: @escaping (ChronaWidgetEntry) -> Void) {
+        completion(ChronaWidgetEntry(date: Date(), data: ChronaWidgetData.load()))
     }
-    func getTimeline(in context: Context, completion: @escaping (WidgetKit.Timeline<FocusWidgetEntry>) -> Void) {
-        let data = FocusWidgetData.load()
-        let entry = FocusWidgetEntry(date: Date(), data: data)
+    func getTimeline(in context: Context, completion: @escaping (WidgetKit.Timeline<ChronaWidgetEntry>) -> Void) {
+        let data = ChronaWidgetData.load()
+        let entry = ChronaWidgetEntry(date: Date(), data: data)
         let interval = data.isTracking ? 1 : 5
         let next = Calendar.current.date(byAdding: .minute, value: interval, to: Date())!
         completion(WidgetKit.Timeline(entries: [entry], policy: .after(next)))
     }
 }
 
-struct FocusWidgetEntry: WidgetKit.TimelineEntry {
+struct ChronaWidgetEntry: WidgetKit.TimelineEntry {
     let date: Date
-    let data: FocusWidgetData
+    let data: ChronaWidgetData
 }
 
 // MARK: - Shared subviews
@@ -124,7 +124,7 @@ private struct LiveBadge: View {
 }
 
 private struct TrackingRightView: View {
-    let data: FocusWidgetData
+    let data: ChronaWidgetData
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack {
@@ -185,12 +185,12 @@ private struct IdleRightView: View {
 
 // MARK: - Small
 
-struct SmallFocusView: View {
-    let data: FocusWidgetData
+struct SmallChronaView: View {
+    let data: ChronaWidgetData
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("FOCUS")
+                Text("CHRONA")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .kerning(1.5)
@@ -248,13 +248,13 @@ struct SmallFocusView: View {
 
 // MARK: - Medium
 
-struct MediumFocusView: View {
-    let data: FocusWidgetData
+struct MediumChronaView: View {
+    let data: ChronaWidgetData
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("FOCUS")
+                    Text("CHRONA")
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .kerning(1.5)
@@ -292,22 +292,22 @@ struct MediumFocusView: View {
     }
 }
 
-struct FocusTimeWidgetEntryView: View {
+struct ChronaTimeWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
-    var entry: FocusWidgetEntry
+    var entry: ChronaWidgetEntry
     var body: some View {
-        if family == .systemMedium { MediumFocusView(data: entry.data) }
-        else { SmallFocusView(data: entry.data) }
+        if family == .systemMedium { MediumChronaView(data: entry.data) }
+        else { SmallChronaView(data: entry.data) }
     }
 }
 
-struct FocusTimeWidget: Widget {
-    let kind = "com.aexomir.FocusTimeWidget"
+struct ChronaTimeWidget: Widget {
+    let kind = "com.aexomir.ChronaTimeWidget"
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: FocusWidgetProvider()) { entry in
-            FocusTimeWidgetEntryView(entry: entry)
+        StaticConfiguration(kind: kind, provider: ChronaWidgetProvider()) { entry in
+            ChronaTimeWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Focus Time")
+        .configurationDisplayName("Chrona Time")
         .description("Your focus time and active project at a glance.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
@@ -556,7 +556,7 @@ struct MediumTimelineView: View {
 
             Spacer(minLength: 0)
         }
-        .widgetURL(URL(string: "focus://(tabs)/timeline"))
+        .widgetURL(URL(string: "chrona://(tabs)/timeline"))
         .containerBackground(.fill.quaternary, for: .widget)
     }
 }
@@ -597,7 +597,7 @@ struct LargeTimelineView: View {
 
             Spacer(minLength: 0)
         }
-        .widgetURL(URL(string: "focus://(tabs)/timeline"))
+        .widgetURL(URL(string: "chrona://(tabs)/timeline"))
         .containerBackground(.fill.quaternary, for: .widget)
     }
 }
@@ -622,7 +622,7 @@ struct TimelineWidget: Widget {
             TimelineWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Timeline")
-        .description("Your focus sessions for today at a glance.")
+        .description("Your Chrona sessions for today at a glance.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }

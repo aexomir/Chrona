@@ -2,7 +2,7 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-struct FocusActivityAttributes: ActivityAttributes {
+struct ChronaActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var startDate: Date
         var title: String
@@ -14,8 +14,8 @@ struct FocusActivityAttributes: ActivityAttributes {
 
 // MARK: - Lock Screen
 
-private struct FocusLockScreenView: View {
-    let context: ActivityViewContext<FocusActivityAttributes>
+private struct ChronaLockScreenView: View {
+    let context: ActivityViewContext<ChronaActivityAttributes>
 
     private var color: Color { Color(hex: context.state.projectColor) ?? .green }
     private var icon: String { context.state.projectIcon.isEmpty ? "timer" : context.state.projectIcon }
@@ -34,11 +34,11 @@ private struct FocusLockScreenView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(context.state.title.isEmpty ? "Focus Session" : context.state.title)
+                Text(context.state.title.isEmpty ? "Chrona Session" : context.state.title)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                Text(context.state.projectName.isEmpty ? "Focus" : context.state.projectName)
+                Text(context.state.projectName.isEmpty ? "Chrona" : context.state.projectName)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(color)
                     .lineLimit(1)
@@ -76,11 +76,11 @@ private struct FocusDILeading: View {
                     .foregroundStyle(color)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(context.state.title.isEmpty ? "Focus Session" : context.state.title)
+                Text(context.state.title.isEmpty ? "Chrona Session" : context.state.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                Text(context.state.projectName.isEmpty ? "Focus" : context.state.projectName)
+                Text(context.state.projectName.isEmpty ? "Chrona" : context.state.projectName)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(color)
                     .lineLimit(1)

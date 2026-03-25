@@ -20,7 +20,7 @@ export function useWidgetSync() {
 
       const calendarGranted = isEnabled && permissionStatus === "granted";
 
-      // ── Focus widget ──────────────────────────────────────────────
+      // ── Chrona widget ─────────────────────────────────────────────
       const projectById = new Map(projects.map((p) => [p.id, p]));
 
       let resolvedProjectId = isTracking ? projectId : null;

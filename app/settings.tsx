@@ -204,7 +204,7 @@ export default function SettingsScreen() {
             />
             <SettingsDivider />
             <SettingsRow
-              label="Activity Tracking"
+              label="ChronaHelper"
               suffix={
                 <Text className="text-neutral-500 text-sm">
                   {awAvailable === null
@@ -340,7 +340,7 @@ export default function SettingsScreen() {
             });
           }}
         >
-          <Text className="text-neutral-600 text-xs">Focus</Text>
+          <Text className="text-neutral-600 text-xs">Chrona</Text>
         </Pressable>
       </AnimatedHeaderScrollView>
     </View>

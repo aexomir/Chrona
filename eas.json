@@ -1,0 +1,16 @@
+{
+  "build": {
+    "production": {
+      "macos": {
+        "distribution": "universal"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "macos": {
+        "beta": true
+      }
+    }
+  }
+}

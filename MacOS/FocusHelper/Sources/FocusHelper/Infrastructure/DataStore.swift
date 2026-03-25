@@ -23,7 +23,7 @@ enum DataStoreError: Error, LocalizedError {
 ///
 /// Directory layout (never changes — `v1` prefix enables future schema migrations):
 /// ```
-/// ~/Library/Application Support/FocusHelper/
+/// ~/Library/Application Support/ChronaHelper/
 ///   v1/
 ///     events/
 ///       2024-01-01.jsonl    ← one segment per calendar day (local time)
@@ -62,7 +62,7 @@ final class DataStore {
 
     // MARK: - Public directories
 
-    let dataDir: URL        // …/FocusHelper/v1
+    let dataDir: URL        // …/ChronaHelper/v1
     let eventsDir: URL      // …/v1/events
     private let indexDir: URL
     private let stagingDir: URL
@@ -88,7 +88,7 @@ final class DataStore {
             appropriateFor: nil,
             create: true
         )
-        dataDir    = support.appendingPathComponent("FocusHelper/v1")
+        dataDir    = support.appendingPathComponent("ChronaHelper/v1")
         eventsDir  = dataDir.appendingPathComponent("events")
         indexDir   = dataDir.appendingPathComponent("index")
         stagingDir = dataDir.appendingPathComponent("staging")

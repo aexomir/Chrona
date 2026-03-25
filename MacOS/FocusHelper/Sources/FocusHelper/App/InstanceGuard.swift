@@ -4,7 +4,7 @@ import os
 
 // MARK: - InstanceGuard
 //
-// Prevents two copies of FocusHelper from running simultaneously using a
+// Prevents two copies of ChronaHelper from running simultaneously using a
 // POSIX advisory lock via lockf(3). Unlike NSDistributedLock, an lockf lock
 // is held by the kernel and is automatically released when the process exits
 // (normal quit, crash, or SIGKILL) — no stale lock files.

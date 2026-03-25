@@ -1,7 +1,7 @@
 import ExpoModulesCore
 import ActivityKit
 
-struct FocusActivityAttributes: ActivityAttributes {
+struct ChronaActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var startDate: Date
         var title: String
@@ -24,7 +24,7 @@ public class ActivityControllerModule: Module {
             }
 
             if let existingId = self.activityId {
-                for activity in Activity<FocusActivityAttributes>.activities
+                for activity in Activity<ChronaActivityAttributes>.activities
                 where activity.id == existingId {
                     Task { await activity.end(dismissalPolicy: .immediate) }
                 }
@@ -41,7 +41,7 @@ public class ActivityControllerModule: Module {
                 ?? ISO8601DateFormatter().date(from: tsStr)
                 ?? Date()
 
-            let state = FocusActivityAttributes.ContentState(
+            let state = ChronaActivityAttributes.ContentState(
                 startDate: startDate,
                 title: params["title"] as? String ?? "",
                 projectName: params["projectName"] as? String ?? "",
@@ -51,7 +51,7 @@ public class ActivityControllerModule: Module {
 
             do {
                 let activity = try Activity.request(
-                    attributes: FocusActivityAttributes(),
+                    attributes: ChronaActivityAttributes(),
                     content: .init(state: state, staleDate: nil),
                     pushType: nil
                 )
@@ -73,9 +73,9 @@ public class ActivityControllerModule: Module {
                 return
             }
 
-            for activity in Activity<FocusActivityAttributes>.activities
+            for activity in Activity<ChronaActivityAttributes>.activities
             where activity.id == existingId {
-                let updated = FocusActivityAttributes.ContentState(
+                let updated = ChronaActivityAttributes.ContentState(
                     startDate: activity.content.state.startDate,
                     title: params["title"] as? String ?? activity.content.state.title,
                     projectName: params["projectName"] as? String ?? activity.content.state.projectName,
@@ -94,7 +94,7 @@ public class ActivityControllerModule: Module {
             }
 
             if let existingId = self.activityId {
-                for activity in Activity<FocusActivityAttributes>.activities
+                for activity in Activity<ChronaActivityAttributes>.activities
                 where activity.id == existingId {
                     Task { await activity.end(dismissalPolicy: .immediate) }
                 }

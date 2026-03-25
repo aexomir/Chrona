@@ -2,7 +2,7 @@ import type { Project } from "@/constants/projects";
 import type { Session } from "@/features/sessions/sessions-store";
 import { ExtensionStorage } from "@bacons/apple-targets";
 
-const APP_GROUP = "group.com.aexomir.Focus";
+const APP_GROUP = "group.com.aexomir.Chrona";
 const FOCUS_KEY = "focus_data";
 
 const widgetStorage = new ExtensionStorage(APP_GROUP);
@@ -13,7 +13,7 @@ export type WidgetProject = {
   color: string;
 };
 
-// ─── Focus widget ────────────────────────────────────────────────────────────
+// ─── Chrona widget ───────────────────────────────────────────────────────────
 
 export function syncWidgetData(
   sessions: Session[],
