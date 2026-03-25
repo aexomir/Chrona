@@ -808,7 +808,7 @@ export default function OnboardingScreen() {
   };
 
   // ChronaHelper
-  const { awStreamHost, setAwStreamHost, setAwAdapterMode } =
+  const { awStreamHost, setAwStreamHost, setAwAdapterMode, addRecentHost } =
     useSettingsStore();
   const [localHost, setLocalHost] = useState(awStreamHost);
   const [awStatus, setAwStatus] = useState<AwStatus>(null);
@@ -821,6 +821,9 @@ export default function OnboardingScreen() {
     setAwStatus("checking");
     const result = await checkAwAvailability();
     setAwStatus(result);
+    if (result === true && trimmed !== "localhost") {
+      addRecentHost(trimmed);
+    }
   };
 
   // Calendar

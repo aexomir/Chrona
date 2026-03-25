@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -19,10 +20,16 @@ const PROJECT_COLORS = [
   "#ef4444",
   "#f97316",
   "#f59e0b",
+  "#eab308",
   "#22c55e",
+  "#84cc16",
+  "#06b6d4",
   "#3b82f6",
+  "#6366f1",
   "#a855f7",
   "#ec4899",
+  "#f43f5e",
+  "#0ea5e9",
   "#636366",
 ];
 
@@ -30,19 +37,66 @@ const PROJECT_ICONS = [
   "briefcase.fill",
   "book.fill",
   "figure.run",
+  "dumbbell",
   "paintbrush.fill",
+  "lightbulb.fill",
   "house.fill",
   "moon.stars.fill",
   "heart.fill",
   "star.fill",
   "cart.fill",
+  "camera.fill",
   "music.note",
   "gamecontroller.fill",
   "laptopcomputer",
+  "film",
+  "pencil",
+  "doc.fill",
 ];
 
+const styles = StyleSheet.create({
+  badgeSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconSm: { width: 16, height: 16 },
+  iconMd: { width: 20, height: 20 },
+  iconLg: { width: 30, height: 30 },
+  previewBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  colorSwatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  colorSwatchSelected: {
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  iconCell: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCellSelected: {
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+});
+
 export default function ProjectsScreen() {
-  const theme = useAuroraTheme()
+  const theme = useAuroraTheme();
   const { projects, addProject, updateProject, removeProject } = useProjects();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -103,11 +157,7 @@ export default function ProjectsScreen() {
             className="w-10 h-10 rounded-full items-center justify-center"
             style={{ backgroundColor: theme.card }}
           >
-            <Image
-              source="sf:plus"
-              style={{ width: 16, height: 16 }}
-              tintColor="#fff"
-            />
+            <Image source="sf:plus" style={styles.iconSm} tintColor="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -123,18 +173,14 @@ export default function ProjectsScreen() {
                 <ListGroup.Item onPress={() => openEdit(project)}>
                   <ListGroup.ItemPrefix>
                     <View
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
-                        backgroundColor: project.color,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      style={[
+                        styles.badgeSmall,
+                        { backgroundColor: project.color },
+                      ]}
                     >
                       <Image
                         source={`sf:${project.icon}`}
-                        style={{ width: 16, height: 16 }}
+                        style={styles.iconSm}
                         tintColor="#fff"
                       />
                     </View>
@@ -149,7 +195,7 @@ export default function ProjectsScreen() {
                     >
                       <Image
                         source="sf:trash"
-                        style={{ width: 16, height: 16 }}
+                        style={styles.iconSm}
                         tintColor="#ef4444"
                       />
                     </TouchableOpacity>
@@ -167,8 +213,12 @@ export default function ProjectsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardAvoidingView behavior="padding" className="flex-1 px-5 pt-6" style={{ backgroundColor: theme.modalSheet }}>
-          <View className="flex-row items-center justify-between mb-8">
+        <KeyboardAvoidingView
+          behavior="padding"
+          className="flex-1 px-5 pt-6"
+          style={{ backgroundColor: theme.modalSheet }}
+        >
+          <View className="flex-row items-center justify-between mb-6">
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text className="text-neutral-400 text-base">Cancel</Text>
             </TouchableOpacity>
@@ -180,6 +230,23 @@ export default function ProjectsScreen() {
             </TouchableOpacity>
           </View>
 
+          <View className="items-center mb-7">
+            <View
+              style={[styles.previewBadge, { backgroundColor: selectedColor }]}
+            >
+              <Image
+                source={`sf:${selectedIcon}`}
+                style={styles.iconLg}
+                tintColor="#fff"
+              />
+            </View>
+            <Text
+              className={`text-base font-semibold ${name.trim() ? "text-white" : "text-neutral-500"}`}
+            >
+              {name.trim() || "Project Name"}
+            </Text>
+          </View>
+
           <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-2 ml-1">
             Name
           </Text>
@@ -189,26 +256,23 @@ export default function ProjectsScreen() {
             placeholder="Project name"
             placeholderTextColor="#636366"
             autoFocus
-            className="text-white px-4 py-3 rounded-xl text-base mb-6 border border-white/10"
-            style={{ backgroundColor: "transparent" }}
+            className="text-white px-4 py-3 rounded-xl text-base mb-6"
+            style={{ backgroundColor: theme.card }}
           />
 
           <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
             Color
           </Text>
-          <View className="flex-row flex-wrap gap-3 mb-6">
+          <View className="flex-row flex-wrap gap-3 mb-6 justify-center">
             {PROJECT_COLORS.map((color) => (
               <TouchableOpacity
                 key={color}
                 onPress={() => setSelectedColor(color)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: color,
-                  borderWidth: selectedColor === color ? 3 : 0,
-                  borderColor: "#fff",
-                }}
+                style={[
+                  styles.colorSwatch,
+                  { backgroundColor: color },
+                  selectedColor === color && styles.colorSwatchSelected,
+                ]}
               />
             ))}
           </View>
@@ -216,26 +280,23 @@ export default function ProjectsScreen() {
           <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
             Icon
           </Text>
-          <View className="flex-row flex-wrap gap-3">
+          <View className="flex-row flex-wrap gap-3 justify-center">
             {PROJECT_ICONS.map((icon) => (
               <TouchableOpacity
                 key={icon}
                 onPress={() => setSelectedIcon(icon)}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 10,
-                  backgroundColor:
-                    selectedIcon === icon ? selectedColor : theme.card,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: selectedIcon === icon ? 2 : 0,
-                  borderColor: "#fff",
-                }}
+                style={[
+                  styles.iconCell,
+                  {
+                    backgroundColor:
+                      selectedIcon === icon ? selectedColor : theme.card,
+                  },
+                  selectedIcon === icon && styles.iconCellSelected,
+                ]}
               >
                 <Image
                   source={`sf:${icon}`}
-                  style={{ width: 20, height: 20 }}
+                  style={styles.iconMd}
                   tintColor={selectedIcon === icon ? "#fff" : "#636366"}
                 />
               </TouchableOpacity>

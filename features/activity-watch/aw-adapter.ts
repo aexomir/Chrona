@@ -19,12 +19,16 @@ import {
   getCurrentApp as _localhostGetCurrentApp,
   getWindowBucketId as _localhostGetWindowBucketId,
 } from "./activitywatch";
-import type { AwStreamEvent as WireEvent, AwStreamTransport } from "./awStreamTypes";
+import type {
+  AwStreamTransport,
+  ConnectionMetrics,
+  AwStreamEvent as WireEvent,
+} from "./awStreamTypes";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
 export type { CurrentApp } from "./activitywatch";
-export type { AwStreamTransport } from "./awStreamTypes";
+export type { AwStreamTransport, ConnectionMetrics } from "./awStreamTypes";
 
 export type AdapterMode = "localhost" | "stream";
 
@@ -52,17 +56,35 @@ export interface ActiveMeeting {
 }
 
 let _currentMeeting: ActiveMeeting | null = null;
-const _meetingHandlers: Array<(meeting: ActiveMeeting | null) => void> = [];
+const _meetingHandlers: ((meeting: ActiveMeeting | null) => void)[] = [];
+
+// ─── Connection metrics ────────────────────────────────────────────────────────
+
+let _connectedSince: number | null = null;
+let _lastMessageAt: number | null = null;
+let _messagesReceived = 0;
+let _serverHostname: string | null = null;
 
 export function getMeetingState(): ActiveMeeting | null {
   return _currentMeeting;
 }
 
-export function onMeetingChange(handler: (meeting: ActiveMeeting | null) => void): () => void {
+export function onMeetingChange(
+  handler: (meeting: ActiveMeeting | null) => void,
+): () => void {
   _meetingHandlers.push(handler);
   return () => {
     const i = _meetingHandlers.indexOf(handler);
     if (i !== -1) _meetingHandlers.splice(i, 1);
+  };
+}
+
+export function getConnectionMetrics(): ConnectionMetrics {
+  return {
+    connectedSince: _connectedSince,
+    lastMessageAt: _lastMessageAt,
+    messagesReceived: _messagesReceived,
+    serverHostname: _serverHostname,
   };
 }
 
@@ -92,7 +114,20 @@ function _pruneBuffer(): void {
 
 // Receives raw wire messages from the transport.
 function _handleWireEvent(msg: WireEvent): void {
+  if (msg.type === "hello") {
+    _connectedSince = Date.now();
+    _serverHostname = msg.payload.hostname;
+    return;
+  }
+
+  if (msg.type === "status") {
+    _lastMessageAt = Date.now();
+    return;
+  }
+
   if (msg.type === "events") {
+    _lastMessageAt = Date.now();
+    _messagesReceived++;
     _pruneBuffer();
     for (const record of msg.payload.records) {
       _eventBuffer.push({
@@ -101,6 +136,10 @@ function _handleWireEvent(msg: WireEvent): void {
         app: record.app,
         title: record.title ?? null,
       });
+    }
+    // Cap buffer size at 5,000 events
+    if (_eventBuffer.length > 5_000) {
+      _eventBuffer.splice(0, _eventBuffer.length - 5_000);
     }
     return;
   }
@@ -111,14 +150,16 @@ function _handleWireEvent(msg: WireEvent): void {
       : null;
     _currentMeeting = next;
     for (const handler of _meetingHandlers) {
-      try { handler(next); } catch { /* ignore */ }
+      try {
+        handler(next);
+      } catch {
+        /* ignore */
+      }
     }
   }
 }
 
 // ─── Stream-mode aggregation helpers ─────────────────────────────────────────
-// Kept here (rather than sharing with activitywatch.ts) so that module stays
-// self-contained and its unit tests remain independent of the adapter.
 
 const _SYSTEM_APP_DENYLIST = new Set([
   "loginwindow",
@@ -180,27 +221,22 @@ function _aggregateEvents(events: BufferedEvent[]): AppUsage[] {
  *
  * Call once at app startup before any AW queries are made.
  * Safe to call again to hot-switch modes (e.g. after pairing completes).
- *
- * @example
- * // Development (default — no call needed):
- * await configureAdapter({ mode: "localhost" });
- *
- * @example
- * // Production / Step 3:
- * await configureAdapter({ mode: "stream", transport: myP2PTransport });
  */
 export async function configureAdapter(config: AdapterConfig): Promise<void> {
   if (_transport && config.mode !== "stream") {
     _transport.disconnect();
     _transport = null;
     _streamConnected = false;
+    _connectedSince = null;
+    _lastMessageAt = null;
+    _messagesReceived = 0;
+    _serverHostname = null;
   }
 
   _mode = config.mode;
 
   if (config.mode === "stream") {
     if (!config.transport) {
-      // Dormant stream mode — data functions return empty until a transport connects
       return;
     }
     _transport = config.transport;
@@ -263,7 +299,10 @@ export async function getAppUsage(
  * Returns the most recently active non-system app within the last 60 seconds.
  * In stream mode, reads from the in-memory buffer.
  */
-export async function getCurrentApp(): Promise<{ app: string; title: string | null } | null> {
+export async function getCurrentApp(): Promise<{
+  app: string;
+  title: string | null;
+} | null> {
   if (_mode === "stream") {
     if (!_streamConnected || _eventBuffer.length === 0) return null;
     const cutoff = Date.now() - 60_000;

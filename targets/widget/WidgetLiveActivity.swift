@@ -58,8 +58,8 @@ private struct ChronaLockScreenView: View {
 
 // MARK: - Dynamic Island: Expanded
 
-private struct FocusDILeading: View {
-    let context: ActivityViewContext<FocusActivityAttributes>
+private struct ChronaDILeading: View {
+    let context: ActivityViewContext<ChronaActivityAttributes>
 
     private var color: Color { Color(hex: context.state.projectColor) ?? .green }
 
@@ -91,8 +91,8 @@ private struct FocusDILeading: View {
     }
 }
 
-private struct FocusDITrailing: View {
-    let context: ActivityViewContext<FocusActivityAttributes>
+private struct ChronaDITrailing: View {
+    let context: ActivityViewContext<ChronaActivityAttributes>
 
     var body: some View {
         Text(context.state.startDate, style: .timer)
@@ -106,8 +106,8 @@ private struct FocusDITrailing: View {
 
 // MARK: - Dynamic Island: Compact & Minimal
 
-private struct FocusDICompactLeading: View {
-    let context: ActivityViewContext<FocusActivityAttributes>
+private struct ChronaDICompactLeading: View {
+    let context: ActivityViewContext<ChronaActivityAttributes>
 
     var body: some View {
         Image(systemName: context.state.projectIcon.isEmpty ? "timer" : context.state.projectIcon)
@@ -118,8 +118,8 @@ private struct FocusDICompactLeading: View {
     }
 }
 
-private struct FocusDICompactTrailing: View {
-    let context: ActivityViewContext<FocusActivityAttributes>
+private struct ChronaDICompactTrailing: View {
+    let context: ActivityViewContext<ChronaActivityAttributes>
 
     var body: some View {
         Text(context.state.startDate, style: .timer)
@@ -129,8 +129,8 @@ private struct FocusDICompactTrailing: View {
     }
 }
 
-private struct FocusDIMinimal: View {
-    let context: ActivityViewContext<FocusActivityAttributes>
+private struct ChronaDIMinimal: View {
+    let context: ActivityViewContext<ChronaActivityAttributes>
 
     var body: some View {
         Image(systemName: context.state.projectIcon.isEmpty ? "timer" : context.state.projectIcon)
@@ -145,22 +145,22 @@ private struct FocusDIMinimal: View {
 
 struct WidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: FocusActivityAttributes.self) { context in
-            FocusLockScreenView(context: context)
+        ActivityConfiguration(for: ChronaActivityAttributes.self) { context in
+            ChronaLockScreenView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    FocusDILeading(context: context)
+                    ChronaDILeading(context: context)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    FocusDITrailing(context: context)
+                    ChronaDITrailing(context: context)
                 }
             } compactLeading: {
-                FocusDICompactLeading(context: context)
+                ChronaDICompactLeading(context: context)
             } compactTrailing: {
-                FocusDICompactTrailing(context: context)
+                ChronaDICompactTrailing(context: context)
             } minimal: {
-                FocusDIMinimal(context: context)
+                ChronaDIMinimal(context: context)
             }
             .widgetURL(URL(string: "focus://timer"))
             .keylineTint(Color(hex: context.state.projectColor) ?? .green)
@@ -170,9 +170,9 @@ struct WidgetLiveActivity: Widget {
 
 // MARK: - Preview
 
-extension FocusActivityAttributes.ContentState {
-    fileprivate static var active: FocusActivityAttributes.ContentState {
-        FocusActivityAttributes.ContentState(
+extension ChronaActivityAttributes.ContentState {
+    fileprivate static var active: ChronaActivityAttributes.ContentState {
+        ChronaActivityAttributes.ContentState(
             startDate: Date().addingTimeInterval(-2520),
             title: "Deep Work",
             projectName: "Work",
@@ -182,8 +182,8 @@ extension FocusActivityAttributes.ContentState {
     }
 }
 
-#Preview("Notification", as: .content, using: FocusActivityAttributes()) {
+#Preview("Notification", as: .content, using: ChronaActivityAttributes()) {
     WidgetLiveActivity()
 } contentStates: {
-    FocusActivityAttributes.ContentState.active
+    ChronaActivityAttributes.ContentState.active
 }

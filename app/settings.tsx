@@ -2,7 +2,8 @@ import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-vi
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { DevBadge, SoonBadge } from "@/components/wip-badge";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
-import { checkAwAvailability, getCurrentApp } from "@/features/activity-watch/aw-adapter";
+import { checkAwAvailability, getCurrentApp, getConnectionMetrics, configureAdapter } from "@/features/activity-watch/aw-adapter";
+import { useAwStream } from "@/features/activity-watch/use-aw-stream";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useSettingsStore, type TimerStartMode } from "@/features/settings/settings-store";
@@ -126,14 +127,22 @@ export default function SettingsScreen() {
     c: "Project First",
   };
   const { rules } = useTrackingRulesStore();
+  const { addRecentHost, recentHosts } = useSettingsStore();
+  const reconnectState = useAwStream();
   const [devTapCount, setDevTapCount] = useState(0);
   const [awAvailable, setAwAvailable] = useState<boolean | null>(null);
   const [activeApp, setActiveApp] = useState<{ app: string; title: string | null } | null>(null);
+  const [metrics, setMetrics] = useState(getConnectionMetrics());
 
   useEffect(() => {
     setAwAvailable(null);
-    checkAwAvailability().then(setAwAvailable);
-  }, [awAdapterMode]);
+    checkAwAvailability().then((result) => {
+      setAwAvailable(result);
+      if (result === true && awAdapterMode === "stream" && awStreamHost && awStreamHost !== "localhost") {
+        addRecentHost(awStreamHost);
+      }
+    });
+  }, [awAdapterMode, awStreamHost, addRecentHost]);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,9 +152,39 @@ export default function SettingsScreen() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const pollMetrics = () => {
+      if (!cancelled) setMetrics(getConnectionMetrics());
+    };
+    const id = setInterval(pollMetrics, 5000);
+    pollMetrics();
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  const handleManualReconnect = async () => {
+    if (awAdapterMode === "stream") {
+      setAwAvailable(null);
+      await configureAdapter({ mode: "stream" });
+      const result = await checkAwAvailability();
+      setAwAvailable(result);
+    }
+  };
+
   function handleAwModeToggle(streamEnabled: boolean) {
     setAwAdapterMode(streamEnabled ? "stream" : "localhost");
   }
+
+  const getUptimeLabel = () => {
+    if (!metrics.connectedSince) return "—";
+    const uptime = Date.now() - metrics.connectedSince;
+    const seconds = Math.floor(uptime / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h`;
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -205,18 +244,28 @@ export default function SettingsScreen() {
             <SettingsDivider />
             <SettingsRow
               label="ChronaHelper"
+              onPress={awAdapterMode === "stream" ? handleManualReconnect : undefined}
               suffix={
                 <Text className="text-neutral-500 text-sm">
-                  {awAvailable === null
-                    ? "Checking..."
-                    : awAvailable
-                      ? "Connected"
-                      : awAdapterMode === "stream"
-                        ? "Waiting for stream"
-                        : "Not Available"}
+                  {reconnectState.isReconnecting
+                    ? `Reconnecting... (${reconnectState.attempt})`
+                    : awAvailable === null
+                      ? "Checking..."
+                      : awAvailable
+                        ? "Connected"
+                        : awAdapterMode === "stream"
+                          ? "Waiting for stream"
+                          : "Not Available"}
                 </Text>
               }
             />
+            {awAvailable === true && metrics.serverHostname && (
+              <View className="py-2 px-5">
+                <Text className="text-neutral-600 text-xs">
+                  {metrics.serverHostname} · {metrics.messagesReceived} batches · {getUptimeLabel()} uptime
+                </Text>
+              </View>
+            )}
             <SettingsDivider />
             <View className="flex-row items-center justify-between py-4 px-5">
               <View className="flex-row items-center gap-2 flex-1">
@@ -307,6 +356,42 @@ export default function SettingsScreen() {
                       }}
                     />
                   </View>
+                  {recentHosts.length > 0 && (
+                    <>
+                      <SettingsDivider />
+                      <View className="py-3 px-5">
+                        <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-2">
+                          Recent Hosts
+                        </Text>
+                        <View className="flex-row flex-wrap gap-2">
+                          {recentHosts.map((h) => (
+                            <Pressable
+                              key={h.host}
+                              onPress={() => {
+                                setAwStreamHost(h.host);
+                                setAwAvailable(null);
+                              }}
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 6,
+                                backgroundColor: awStreamHost === h.host ? "#3b82f6" : "#52525b",
+                              }}
+                            >
+                              <Text
+                                className="text-xs font-medium"
+                                style={{
+                                  color: awStreamHost === h.host ? "#ffffff" : "#d4d4d8",
+                                }}
+                              >
+                                {h.host}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </View>
+                    </>
+                  )}
                 </>
               )}
               <SettingsDivider />
