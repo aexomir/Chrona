@@ -214,7 +214,7 @@ export function TimerBar() {
       const current = await getCurrentApp();
       if (!current) {
         incrementOfflineCount();
-        if (consecutiveOfflineCountRef.current >= 2 && isAutoTrackingRef.current) {
+        if (consecutiveOfflineCountRef.current >= 5 && isAutoTrackingRef.current) {
           saveAutoSession();
         }
         return;

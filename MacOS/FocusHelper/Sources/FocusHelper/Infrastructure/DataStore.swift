@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import os
 
 enum DataStoreError: Error, LocalizedError {
     case cannotOpenSegment(URL)
@@ -106,7 +107,11 @@ final class DataStore {
     func write(batch events: [NormalizedEvent]) throws -> [StoredRecord] {
         // Filter duplicates before any I/O
         let novel = events.filter { !seen.contains(bucket: $0.bucket, srcId: $0.sourceEventId) }
-        guard !novel.isEmpty else { return [] }
+        if novel.isEmpty {
+            
+            Logger.store.warning("All \(events.count) event(s) dropped by SeenIndex — possible counter collision")
+            return []
+        }
 
         // Group by local calendar day — most batches will be a single day
         let byDay = Dictionary(grouping: novel) { localDayKey(from: $0.timestamp) }

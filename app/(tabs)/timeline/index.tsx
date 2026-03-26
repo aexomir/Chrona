@@ -1,4 +1,3 @@
-import { TimelineEmptyState } from "@/features/timeline/components/timeline-empty-state";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import type { CalendarEvent } from "@/features/calendar/calendar";
@@ -13,6 +12,7 @@ import { DatePill } from "@/features/timeline/components/date-pill";
 import { GapSeparator } from "@/features/timeline/components/gap-separator";
 import { LiveSessionRow } from "@/features/timeline/components/live-session-row";
 import { SessionRow } from "@/features/timeline/components/session-row";
+import { TimelineEmptyState } from "@/features/timeline/components/timeline-empty-state";
 import {
   CIRCLE_DURATION,
   CIRCLE_EASING,
@@ -70,26 +70,29 @@ export default function TimelineScreen() {
     );
   }
 
-  const daySessions = useMemo(() =>
-    sessions
-      .filter((s) => {
-        if (!isSameDay(new Date(s.startTime), selectedDate)) return false;
-        if (filtersActive) return selectedProjectIds.includes(s.projectId ?? "");
-        return true;
-      })
-      .sort(
-        (a, b) =>
-          new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-      ),
+  const daySessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => {
+          if (!isSameDay(new Date(s.startTime), selectedDate)) return false;
+          if (filtersActive)
+            return selectedProjectIds.includes(s.projectId ?? "");
+          return true;
+        })
+        .sort(
+          (a, b) =>
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        ),
     [sessions, selectedDate, filtersActive, selectedProjectIds],
   );
 
-  const dayCalendarEvents = useMemo(() =>
-    calendarEnabled && permissionStatus === "granted"
-      ? calendarEvents.filter((e) =>
-          isSameDay(new Date(e.startDate), selectedDate),
-        )
-      : [],
+  const dayCalendarEvents = useMemo(
+    () =>
+      calendarEnabled && permissionStatus === "granted"
+        ? calendarEvents.filter((e) =>
+            isSameDay(new Date(e.startDate), selectedDate),
+          )
+        : [],
     [calendarEnabled, permissionStatus, calendarEvents, selectedDate],
   );
 
@@ -343,7 +346,7 @@ export default function TimelineScreen() {
         }}
         ListHeaderComponent={
           <View
-            className="relative border-b border-zinc-800/60 overflow-hidden pb-3"
+            className="relative border-b border-zinc-800/60 overflow-hidden mb-3"
             onLayout={(e) => onStripLayout(e.nativeEvent.layout.width)}
           >
             <Animated.View style={animatedWeek}>
@@ -399,9 +402,7 @@ export default function TimelineScreen() {
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
         contentInsetAdjustmentBehavior="automatic"
-        ListEmptyComponent={
-          <TimelineEmptyState selectedDate={selectedDate} />
-        }
+        ListEmptyComponent={<TimelineEmptyState selectedDate={selectedDate} />}
       />
 
       {/* Date Picker Modal */}

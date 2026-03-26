@@ -49,3 +49,17 @@ struct MeetingPayload: Encodable {
     let appId: String?
     let appDisplayName: String?
 }
+
+// MARK: - Inbound message types (iOS → macOS)
+
+/// Generic inbound envelope — switch on `type` before further decoding.
+struct InboundEnvelope: Decodable {
+    let type: String
+}
+
+/// Sent by iOS immediately after receiving hello.
+/// Mac should respond with all records since `since` for the requesting client.
+struct CatchupRequest: Decodable {
+    let type: String
+    let since: String // ISO8601 UTC
+}

@@ -41,6 +41,8 @@ final class EventBroadcaster: ObservableObject {
     @Published private(set) var isServerRunning  = false
 
     var onNewClientConnected: (() -> Void)?
+    /// Set by ActivityCoordinator after DataStore is ready — used for catchup responses.
+    var dataStore: DataStore?
 
     private let maxBatchSize       = 20
     private let flushInterval:     TimeInterval = 5
@@ -75,7 +77,11 @@ final class EventBroadcaster: ObservableObject {
         }
         server.onClientConnected = { [weak self] (clientId: UUID) in
             self?.sendHelloToClient(clientId)
+            self?.flush() // immediately drain any buffered events rather than waiting for the 5s timer
             self?.onNewClientConnected?()
+        }
+        server.onMessage = { [weak self] clientId, data in
+            self?.handleIncomingMessage(data, from: clientId)
         }
     }
 
@@ -177,6 +183,69 @@ final class EventBroadcaster: ObservableObject {
     var hostnameAddress: String {
         guard isServerRunning else { return "offline" }
         return "\(localHostname):\(StreamServer.port)"
+    }
+
+    // MARK: - Inbound message handling
+
+    private func handleIncomingMessage(_ data: Data, from clientId: UUID) {
+        guard
+            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let type = obj["type"] as? String
+        else { return }
+
+        if type == "catchup", let since = obj["since"] as? String {
+            sendCatchup(since: since, toClient: clientId)
+        }
+    }
+
+    private func sendCatchup(since sinceISO: String, toClient clientId: UUID) {
+        guard let store = dataStore else { return }
+        guard let sinceDate = ISO8601Formatter.shared.date(from: sinceISO) else { return }
+
+        // Cap lookback at 8 hours so we never flood a fresh client
+        let eightHoursAgo = Date().addingTimeInterval(-8 * 3600)
+        let effectiveSince = sinceDate > eightHoursAgo ? sinceDate : eightHoursAgo
+
+        // Read today and yesterday — covers any 8-hour window crossing midnight
+        let today     = localDayKey(Date())
+        let yesterday = localDayKey(Date().addingTimeInterval(-86_400))
+
+        var records: [StoredRecord] = []
+        for day in [today, yesterday] {
+            let (dayRecords, _) = store.readSegment(date: day)
+            records.append(contentsOf: dayRecords.filter { record in
+                guard let ts = ISO8601Formatter.shared.date(from: record.ts) else { return false }
+                return ts > effectiveSince
+            })
+        }
+
+        guard !records.isEmpty else { return }
+
+        // Send in chunks of 100 to avoid overwhelming the client
+        stride(from: 0, to: records.count, by: 100).forEach { offset in
+            let chunk = Array(records[offset..<min(offset + 100, records.count)])
+            let broadcastRecords = chunk.map { record -> BroadcastRecord in
+                let shouldRedact = privacySensitiveApps.contains(
+                    where: { record.app.lowercased().contains($0.lowercased()) }
+                )
+                return BroadcastRecord(record: record, redactTitle: shouldRedact)
+            }
+            let payload = EventsPayloadForBroadcast(
+                records: broadcastRecords,
+                batchId: UUID().uuidString,
+                sentAt:  ISO8601Formatter.shared.string(from: Date()),
+                count:   chunk.count
+            )
+            guard let data = try? encoder.encode(StreamEnvelope(type: "events", payload: payload)) else { return }
+            server.send(data: data, toClient: clientId)
+        }
+    }
+
+    private func localDayKey(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = .current
+        return f.string(from: date)
     }
 
     private func localWiFiIP() -> String? {

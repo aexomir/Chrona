@@ -64,8 +64,8 @@ export default function RecoverScreen() {
     return "";
   });
   const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>(() => {
-    if (!period?.suggestion.projectId) return undefined;
-    const proj = projects.find((p) => p.id === period.suggestion.projectId);
+    if (!period?.suggestion?.projectId) return undefined;
+    const proj = projects.find((p) => p.id === period.suggestion!.projectId);
     return proj ? { value: proj.id, label: proj.name } : undefined;
   });
   const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
@@ -76,10 +76,10 @@ export default function RecoverScreen() {
 
   useEffect(() => {
     if (!period) return;
-    const defaults = getSmartDefaultApps(period.apps, period.suggestion.projectId, associations);
+    const defaults = getSmartDefaultApps(period.apps, period.suggestion?.projectId ?? null, associations);
     setSelectedApps(defaults);
     setTitle(period.source === "calendar" && period.eventTitle ? period.eventTitle : "");
-    const proj = projects.find((p) => p.id === period.suggestion.projectId);
+    const proj = period.suggestion ? projects.find((p) => p.id === period.suggestion!.projectId) : undefined;
     setSelectedProject(proj ? { value: proj.id, label: proj.name } : undefined);
   }, [period, associations, projects]);
 

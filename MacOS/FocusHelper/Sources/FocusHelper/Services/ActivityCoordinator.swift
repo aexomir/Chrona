@@ -45,7 +45,6 @@ final class ActivityCoordinator: ObservableObject {
     private let broadcaster = EventBroadcaster()
     private var source:  any ActivitySource
     private var store:   DataStore?
-    private var eventCounter = 0
     private var infraCancellables  = Set<AnyCancellable>()
     private var sourceCancellables = Set<AnyCancellable>()
 
@@ -53,6 +52,13 @@ final class ActivityCoordinator: ObservableObject {
     private var restartTask: Task<Void, Never>?
     private let resetAfter: TimeInterval = 120
     private var resetTask: Task<Void, Never>?
+
+    // Counter seeded from current Unix time so it never collides with seen.json entries
+    // from a previous run (which reset from 0 and hit the same dedup keys).
+    private var eventCounter = Int(Date().timeIntervalSince1970)
+
+    // Background activity token — prevents App Nap from throttling flush timers.
+    private var backgroundActivity: NSObjectProtocol?
 
     init() {
         source        = ActivitySourceFactory.make()
@@ -78,6 +84,13 @@ final class ActivityCoordinator: ObservableObject {
         isRunning = true
         source.start()
         healthMonitor.start()
+        // Prevent App Nap from throttling flush timers (5s broadcaster, 30s watcher).
+        if backgroundActivity == nil {
+            backgroundActivity = ProcessInfo.processInfo.beginActivity(
+                options: [.background, .userInitiated],
+                reason: "Continuous activity tracking"
+            )
+        }
         Logger.poller.info("Activity collection started")
     }
 
@@ -87,6 +100,10 @@ final class ActivityCoordinator: ObservableObject {
         source.stop()
         isRunning     = false
         statusMessage = "Stopped"
+        if let token = backgroundActivity {
+            ProcessInfo.processInfo.endActivity(token)
+            backgroundActivity = nil
+        }
         Logger.poller.info("Activity collection stopped")
     }
 
@@ -145,6 +162,7 @@ final class ActivityCoordinator: ObservableObject {
         do {
             let s = try DataStore()
             store = s
+            broadcaster.dataStore = s
             syncStats(from: s)
             Logger.poller.info("DataStore ready — \(s.totalCount) total events on disk")
         } catch {

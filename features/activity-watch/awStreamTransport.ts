@@ -110,6 +110,15 @@ export class MacBridgeTransport implements AwStreamTransport {
     });
   }
 
+  send(message: object): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    try {
+      this.ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.warn("[ChronaHelper] send() failed:", err);
+    }
+  }
+
   disconnect(): void {
     this.intentionalDisconnect = true;
     this.cancelReconnect();

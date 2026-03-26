@@ -16,6 +16,7 @@ final class StreamServer {
 
     var onClientConnected:    ((UUID) -> Void)?
     var onClientCountChanged: ((Int) -> Void)?
+    var onMessage: ((UUID, Data) -> Void)?
 
     private(set) var isListening = false
     private var listener: NWListener?
@@ -122,12 +123,15 @@ final class StreamServer {
         client.connection.receive(
             minimumIncompleteLength: 1,
             maximumLength: 65_536
-        ) { [weak self, id = client.id] _, _, _, error in
+        ) { [weak self, id = client.id] content, _, _, error in
             DispatchQueue.main.async {
                 guard let self else { return }
                 if error != nil {
                     self.removeClient(id: id)
                     return
+                }
+                if let content, !content.isEmpty {
+                    self.onMessage?(id, content)
                 }
                 if let c = self.clients[id] { self.receiveNext(from: c) }
             }

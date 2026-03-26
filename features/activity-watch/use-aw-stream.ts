@@ -10,10 +10,16 @@
  * Returns the current reconnect state for UI display.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { configureAdapter } from "@/features/activity-watch/aw-adapter";
-import { createMacBridgeTransport, MacBridgeTransport } from "@/features/activity-watch/awStreamTransport";
+import {
+  configureAdapter,
+  onHello,
+} from "@/features/activity-watch/aw-adapter";
+import {
+  createMacBridgeTransport,
+  MacBridgeTransport,
+} from "@/features/activity-watch/awStreamTransport";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { useEffect, useRef, useState } from "react";
 
 export interface ReconnectState {
   isReconnecting: boolean;
@@ -24,6 +30,7 @@ export interface ReconnectState {
 export function useAwStream(): ReconnectState {
   const awAdapterMode = useSettingsStore((s) => s.awAdapterMode);
   const awStreamHost = useSettingsStore((s) => s.awStreamHost);
+  const addRecentHost = useSettingsStore((s) => s.addRecentHost);
 
   const [reconnectState, setReconnectState] = useState<ReconnectState>({
     isReconnecting: false,
@@ -53,9 +60,14 @@ export function useAwStream(): ReconnectState {
 
       // Subscribe to reconnect state changes
       transport.onReconnectStateChange((state) => {
-        setReconnectState(state
-          ? { isReconnecting: true, attempt: state.attempt, delayMs: state.delayMs }
-          : { isReconnecting: false, attempt: 0, delayMs: null }
+        setReconnectState(
+          state
+            ? {
+                isReconnecting: true,
+                attempt: state.attempt,
+                delayMs: state.delayMs,
+              }
+            : { isReconnecting: false, attempt: 0, delayMs: null },
         );
       });
 
@@ -71,6 +83,13 @@ export function useAwStream(): ReconnectState {
       transportRef.current = null;
     };
   }, [awAdapterMode, debouncedHost]);
+
+  useEffect(() => {
+    if (awAdapterMode !== "stream") return;
+    return onHello((hostname) => {
+      addRecentHost(hostname);
+    });
+  }, [awAdapterMode, addRecentHost]);
 
   return reconnectState;
 }

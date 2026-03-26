@@ -48,6 +48,16 @@ let _mode: AdapterMode = "localhost";
 let _transport: AwStreamTransport | null = null;
 let _streamConnected = false;
 
+const _helloHandlers: ((hostname: string) => void)[] = [];
+
+export function onHello(handler: (hostname: string) => void): () => void {
+  _helloHandlers.push(handler);
+  return () => {
+    const i = _helloHandlers.indexOf(handler);
+    if (i !== -1) _helloHandlers.splice(i, 1);
+  };
+}
+
 // ─── Meeting state ────────────────────────────────────────────────────────────
 
 export interface ActiveMeeting {
@@ -99,6 +109,7 @@ interface BufferedEvent {
 // Rolling 24-hour buffer of records received from the stream transport
 const EVENT_BUFFER_TTL_MS = 24 * 60 * 60 * 1000;
 const _eventBuffer: BufferedEvent[] = [];
+const _seenRecordIds = new Set<string>();
 
 function _pruneBuffer(): void {
   const cutoff = Date.now() - EVENT_BUFFER_TTL_MS;
@@ -117,6 +128,12 @@ function _handleWireEvent(msg: WireEvent): void {
   if (msg.type === "hello") {
     _connectedSince = Date.now();
     _serverHostname = msg.payload.hostname;
+    for (const handler of _helloHandlers) {
+      try {
+        handler(msg.payload.hostname);
+      } catch {}
+    }
+    _sendCatchupRequest();
     return;
   }
 
@@ -130,6 +147,8 @@ function _handleWireEvent(msg: WireEvent): void {
     _messagesReceived++;
     _pruneBuffer();
     for (const record of msg.payload.records) {
+      if (_seenRecordIds.has(record.id)) continue;
+      _seenRecordIds.add(record.id);
       _eventBuffer.push({
         timestamp: record.ts,
         duration: record.dur,
@@ -141,6 +160,8 @@ function _handleWireEvent(msg: WireEvent): void {
     if (_eventBuffer.length > 5_000) {
       _eventBuffer.splice(0, _eventBuffer.length - 5_000);
     }
+
+    if (_seenRecordIds.size > 10_000) _seenRecordIds.clear();
     return;
   }
 
@@ -212,6 +233,21 @@ function _aggregateEvents(events: BufferedEvent[]): AppUsage[] {
   }))
     .filter((e) => e.duration >= _MIN_APP_DURATION_S)
     .sort((a, b) => b.duration - a.duration);
+}
+
+// ─── Catchup request ──────────────────────────────────────────────────────────
+
+const LOOK_BACK_MS = 8 * 60 * 60 * 1000;
+
+function _sendCatchupRequest(): void {
+  if (!_transport) return;
+  const since =
+    _eventBuffer.length > 0
+      ? _eventBuffer[_eventBuffer.length - 1].timestamp
+      : new Date(Date.now() - LOOK_BACK_MS).toISOString();
+  try {
+    _transport.send({ type: "catchup", since });
+  } catch {}
 }
 
 // ─── Adapter configuration ────────────────────────────────────────────────────

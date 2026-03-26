@@ -68,11 +68,20 @@ export type AwStreamEvent =
   | StatusEvent
   | MeetingEvent;
 
+// MARK: - Outbound message types (iOS → macOS)
+
+/** Request historical records since a given timestamp. Sent immediately after hello. */
+export interface CatchupRequest {
+  type: "catchup";
+  since: string; // ISO8601 UTC — request records after this timestamp
+}
+
 // MARK: - Transport interface (what the macOS P2P bridge must implement)
 
 export interface AwStreamTransport {
   connect(): Promise<void>;
   disconnect(): void;
+  send(message: object): void;
   onEvent(handler: (event: AwStreamEvent) => void): void;
   onStatusChange(handler: (connected: boolean) => void): void;
   isConnected(): boolean;
