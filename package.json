@@ -66,6 +66,7 @@
     "@types/react": "~19.2.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.0",
+    "husky": "^9.1.7",
     "jest-expo": "~55.0.0",
     "ts-node": "^10.9.2",
     "typescript": "~5.9.2"
@@ -73,5 +74,10 @@
   "private": true,
   "resolutions": {
     "react-native-worklets": "0.7.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "node ./scripts/bump-version.js"
+    }
   }
 }
