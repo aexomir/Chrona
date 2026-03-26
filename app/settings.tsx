@@ -1,18 +1,14 @@
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
-import { DevBadge, SoonBadge } from "@/components/wip-badge";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
-import { checkAwAvailability, getCurrentApp, getConnectionMetrics, configureAdapter } from "@/features/activity-watch/aw-adapter";
-import { useAwStream } from "@/features/activity-watch/use-aw-stream";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useSettingsStore, type TimerStartMode } from "@/features/settings/settings-store";
-import { useTrackingRulesStore } from "@/features/tracking-rules/tracking-rules-store";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
 import { Switch } from "heroui-native";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, Keyboard } from "react-native";
+
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -112,12 +108,6 @@ export default function SettingsScreen() {
     setAuroraEnabled,
     constellationEnabled,
     setConstellationEnabled,
-    developerMode,
-    setDeveloperMode,
-    awAdapterMode,
-    setAwAdapterMode,
-    awStreamHost,
-    setAwStreamHost,
     timerStartMode,
   } = useSettingsStore();
 
@@ -125,65 +115,6 @@ export default function SettingsScreen() {
     a: "Conversational",
     b: "Hold to Start",
     c: "Project First",
-  };
-  const { rules } = useTrackingRulesStore();
-  const { addRecentHost, recentHosts } = useSettingsStore();
-  const reconnectState = useAwStream();
-  const [devTapCount, setDevTapCount] = useState(0);
-  const [awAvailable, setAwAvailable] = useState<boolean | null>(null);
-  const [activeApp, setActiveApp] = useState<{ app: string; title: string | null } | null>(null);
-  const [metrics, setMetrics] = useState(getConnectionMetrics());
-
-  useEffect(() => {
-    setAwAvailable(null);
-    checkAwAvailability().then((result) => {
-      setAwAvailable(result);
-      if (result === true && awAdapterMode === "stream" && awStreamHost && awStreamHost !== "localhost") {
-        addRecentHost(awStreamHost);
-      }
-    });
-  }, [awAdapterMode, awStreamHost, addRecentHost]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const poll = () => getCurrentApp().then((r) => { if (!cancelled) setActiveApp(r); });
-    poll();
-    const id = setInterval(poll, 3000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const pollMetrics = () => {
-      if (!cancelled) setMetrics(getConnectionMetrics());
-    };
-    const id = setInterval(pollMetrics, 5000);
-    pollMetrics();
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
-  const handleManualReconnect = async () => {
-    if (awAdapterMode === "stream") {
-      setAwAvailable(null);
-      await configureAdapter({ mode: "stream" });
-      const result = await checkAwAvailability();
-      setAwAvailable(result);
-    }
-  };
-
-  function handleAwModeToggle(streamEnabled: boolean) {
-    setAwAdapterMode(streamEnabled ? "stream" : "localhost");
-  }
-
-  const getUptimeLabel = () => {
-    if (!metrics.connectedSince) return "—";
-    const uptime = Date.now() - metrics.connectedSince;
-    const seconds = Math.floor(uptime / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h`;
   };
 
   return (
@@ -241,61 +172,6 @@ export default function SettingsScreen() {
                 />
               }
             />
-            <SettingsDivider />
-            <SettingsRow
-              label="ChronaHelper"
-              onPress={awAdapterMode === "stream" ? handleManualReconnect : undefined}
-              suffix={
-                <Text className="text-neutral-500 text-sm">
-                  {reconnectState.isReconnecting
-                    ? `Reconnecting... (${reconnectState.attempt})`
-                    : awAvailable === null
-                      ? "Checking..."
-                      : awAvailable
-                        ? "Connected"
-                        : awAdapterMode === "stream"
-                          ? "Waiting for stream"
-                          : "Not Available"}
-                </Text>
-              }
-            />
-            {awAvailable === true && metrics.serverHostname && (
-              <View className="py-2 px-5">
-                <Text className="text-neutral-600 text-xs">
-                  {metrics.serverHostname} · {metrics.messagesReceived} batches · {getUptimeLabel()} uptime
-                </Text>
-              </View>
-            )}
-            <SettingsDivider />
-            <View className="flex-row items-center justify-between py-4 px-5">
-              <View className="flex-row items-center gap-2 flex-1">
-                <View
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: 4,
-                    backgroundColor: activeApp ? "#4ade80" : "#3f3f46",
-                  }}
-                />
-                <Text className="text-white text-base font-medium">Active App</Text>
-              </View>
-              <View className="items-end" style={{ maxWidth: "55%" }}>
-                {activeApp ? (
-                  <>
-                    <Text className="text-white text-sm font-medium" numberOfLines={1}>
-                      {activeApp.app}
-                    </Text>
-                    {activeApp.title ? (
-                      <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
-                        {activeApp.title}
-                      </Text>
-                    ) : null}
-                  </>
-                ) : (
-                  <Text className="text-neutral-600 text-sm">—</Text>
-                )}
-              </View>
-            </View>
           </SettingsCard>
         </View>
 
@@ -311,122 +187,10 @@ export default function SettingsScreen() {
           </SettingsCard>
         </View>
 
-        {/* DEVELOPER */}
-        {developerMode && (
-          <View className="mt-10">
-            <SectionLabel>Developer</SectionLabel>
-            <SettingsCard>
-              <SettingsRow
-                label="Stream Mode"
-                suffix={
-                  <View className="flex-row items-center gap-3">
-                    <DevBadge />
-                    <Text className="text-xs text-neutral-500">
-                      {awAdapterMode === "stream" ? "P2P · collector" : "localhost:5600"}
-                    </Text>
-                    <Switch
-                      isSelected={awAdapterMode === "stream"}
-                      onSelectedChange={handleAwModeToggle}
-                    />
-                  </View>
-                }
-              />
-              {awAdapterMode === "stream" && (
-                <>
-                  <SettingsDivider />
-                  <View className="flex-row items-center justify-between py-4 px-5">
-                    <Text className="text-white text-base font-medium flex-1">
-                      Collector Host
-                    </Text>
-                    <TextInput
-                      value={awStreamHost}
-                      onChangeText={setAwStreamHost}
-                      placeholder="localhost"
-                      placeholderTextColor="#52525b"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      keyboardType="url"
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
-                      style={{
-                        color: "#a1a1aa",
-                        fontSize: 14,
-                        textAlign: "right",
-                        minWidth: 140,
-                      }}
-                    />
-                  </View>
-                  {recentHosts.length > 0 && (
-                    <>
-                      <SettingsDivider />
-                      <View className="py-3 px-5">
-                        <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-2">
-                          Recent Hosts
-                        </Text>
-                        <View className="flex-row flex-wrap gap-2">
-                          {recentHosts.map((h) => (
-                            <Pressable
-                              key={h.host}
-                              onPress={() => {
-                                setAwStreamHost(h.host);
-                                setAwAvailable(null);
-                              }}
-                              style={{
-                                paddingHorizontal: 10,
-                                paddingVertical: 6,
-                                borderRadius: 6,
-                                backgroundColor: awStreamHost === h.host ? "#3b82f6" : "#52525b",
-                              }}
-                            >
-                              <Text
-                                className="text-xs font-medium"
-                                style={{
-                                  color: awStreamHost === h.host ? "#ffffff" : "#d4d4d8",
-                                }}
-                              >
-                                {h.host}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      </View>
-                    </>
-                  )}
-                </>
-              )}
-              <SettingsDivider />
-              <SettingsRow
-                label="Tracking Rules"
-                onPress={() => router.push("/tracking-rules")}
-                suffix={
-                  <View className="flex-row items-center gap-2">
-                    <SoonBadge />
-                    <ValueSuffix
-                      value={`${rules.length} rule${rules.length !== 1 ? "s" : ""}`}
-                    />
-                  </View>
-                }
-              />
-            </SettingsCard>
-          </View>
-        )}
-
-        {/* VERSION FOOTER — tap 5× to unlock developer mode */}
-        <Pressable
-          className="mt-10 mb-8 items-center"
-          onPress={() => {
-            setDevTapCount((prev) => {
-              const next = prev + 1;
-              if (next === 5) {
-                setDeveloperMode(!developerMode);
-                return 0;
-              }
-              return next % 6;
-            });
-          }}
-        >
+        {/* VERSION FOOTER */}
+        <View className="mt-10 mb-8 items-center">
           <Text className="text-neutral-600 text-xs">Chrona</Text>
-        </Pressable>
+        </View>
       </AnimatedHeaderScrollView>
     </View>
   );

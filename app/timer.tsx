@@ -1,17 +1,8 @@
 import type { Project } from "@/constants/projects";
-import { getAppUsage } from "@/features/activity-watch/aw-adapter";
-import {
-  getSmartDefaultApps,
-  useSuggestionsStore,
-  type AssociationMap,
-} from "@/features/activity-watch/suggestions-store";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useProjects } from "@/features/projects/projects-store";
-import {
-  useSessionsStore,
-  type AppUsage,
-} from "@/features/sessions/sessions-store";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -21,7 +12,6 @@ import { Button, Input, PortalHost, Select } from "heroui-native";
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -68,20 +58,6 @@ const styles = StyleSheet.create({
   },
 });
 
-type PendingSession = {
-  title: string;
-  projectId: string | null;
-  startTime: string;
-  endTime: string;
-  duration: number;
-};
-
-type AutoConfirmState = {
-  session: PendingSession;
-  apps: AppUsage[];
-  selectedApps: AppUsage[];
-};
-
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -113,8 +89,6 @@ export default function TimerScreen() {
     updateProjectId,
   } = useTimerStore();
   const { addSession } = useSessionsStore();
-  const { learnFromSession, suggestProject, associations } =
-    useSuggestionsStore();
   const toast = useAppToast();
   const insets = useSafeAreaInsets();
   const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
@@ -136,32 +110,7 @@ export default function TimerScreen() {
     return proj ? { value: proj.id, label: proj.name } : undefined;
   });
   const [elapsed, setElapsed] = useState(0);
-
-  const [reviewData, setReviewData] = useState<{
-    session: PendingSession;
-    apps: AppUsage[];
-    loading: boolean;
-  } | null>(null);
-
-  const [autoConfirm, setAutoConfirm] = useState<AutoConfirmState | null>(null);
-  const autoConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  const [suggestion, setSuggestion] = useState<{
-    projectId: string;
-    matchedApps: string[];
-  } | null>(null);
-  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const { timerStartMode } = useSettingsStore();
-
-  // Cleanup auto-confirm timer on unmount
-  useEffect(() => {
-    return () => {
-      if (autoConfirmTimerRef.current)
-        clearTimeout(autoConfirmTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
@@ -179,119 +128,23 @@ export default function TimerScreen() {
     return () => clearInterval(id);
   }, [isTracking, startTimestamp, projectId, title, projects]);
 
-  // AW query for suggestions when entering non-tracking mode
-  useEffect(() => {
-    if (isTracking) {
-      setSuggestion(null);
-      setSuggestionDismissed(false);
-      return;
-    }
-    const now = new Date();
-    const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
-    getAppUsage(thirtyMinAgo.toISOString(), now.toISOString()).then((apps) => {
-      if (apps.length === 0) return;
-      const result = suggestProject(apps);
-      setSuggestion(result);
-    });
-  }, [isTracking, suggestProject]);
-
   const handleStart = () => {
     if (!taskTitle.trim()) return;
     startTimer(taskTitle.trim(), selectedProject?.value ?? null);
     router.back();
   };
 
-  const handleSaveReview = (
-    selectedApps: AppUsage[],
-    pendingSession?: PendingSession,
-  ) => {
-    const session = pendingSession ?? reviewData?.session;
-    if (!session) return;
-    addSession({
-      id: Date.now().toString(),
-      ...session,
-      apps: selectedApps.length > 0 ? selectedApps : undefined,
-    });
-    if (session.projectId !== null && selectedApps.length > 0) {
-      learnFromSession(selectedApps, session.projectId);
-    }
-    toast.show({ label: "Session logged", variant: "success" });
-    setReviewData(null);
-    router.back();
-  };
-
-  const handleStop = async () => {
+  const handleStop = () => {
     const session = stopTimer();
     if (!session) {
       router.back();
       return;
     }
-
-    // Enter review state with loading
-    setReviewData({ session, apps: [], loading: true });
-
-    const apps = await getAppUsage(session.startTime, session.endTime);
-    const totalDuration = apps.reduce((sum, a) => sum + a.duration, 0);
-
-    // Auto-confirm eligibility: project must match suggestion with high confidence + coverage
-    if (session.projectId && apps.length > 0 && totalDuration > 0) {
-      const result = suggestProject(apps);
-      const coverageRatio = result
-        ? result.totalCoveredDuration / totalDuration
-        : 0;
-
-      const isHighConfidence =
-        result !== null &&
-        result.projectId === session.projectId &&
-        result.score >= 5 &&
-        coverageRatio >= 0.6;
-
-      if (isHighConfidence) {
-        const defaultAppSet = getSmartDefaultApps(
-          apps,
-          session.projectId,
-          associations,
-        );
-        const selected = apps.filter((a) => defaultAppSet.has(a.app));
-
-        setReviewData(null);
-        setAutoConfirm({ session, apps, selectedApps: selected });
-
-        autoConfirmTimerRef.current = setTimeout(() => {
-          handleSaveReview(selected, session);
-          setAutoConfirm(null);
-        }, 2500);
-
-        return;
-      }
-    }
-
-    setReviewData((prev) => (prev ? { ...prev, apps, loading: false } : null));
-  };
-
-  const handleCancelAutoConfirm = () => {
-    if (autoConfirmTimerRef.current) {
-      clearTimeout(autoConfirmTimerRef.current);
-      autoConfirmTimerRef.current = null;
-    }
-    if (autoConfirm) {
-      setReviewData({
-        session: autoConfirm.session,
-        apps: autoConfirm.apps,
-        loading: false,
-      });
-      setAutoConfirm(null);
-    }
-  };
-
-  const handleDiscardReview = () => {
-    if (!reviewData) return;
     addSession({
       id: Date.now().toString(),
-      ...reviewData.session,
+      ...session,
     });
     toast.show({ label: "Session logged", variant: "success" });
-    setReviewData(null);
     router.back();
   };
 
@@ -301,30 +154,10 @@ export default function TimerScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
   };
 
-  const handleAcceptSuggestion = () => {
-    if (!suggestion) return;
-    const proj = projects.find((p) => p.id === suggestion.projectId);
-    if (!proj) return;
-    handleProjectChange({ value: proj.id, label: proj.name });
-    setSuggestionDismissed(true);
-  };
-
-  const showSuggestionBanner =
-    !isTracking &&
-    suggestion !== null &&
-    !suggestionDismissed &&
-    selectedProject === undefined;
-
   const selProj = projects.find((p) => p.id === selectedProject?.value);
   const theme = useAuroraTheme();
 
-  const navTitle = autoConfirm
-    ? "Saving..."
-    : reviewData
-      ? "Review"
-      : isTracking
-        ? "Tracking"
-        : "New Timer";
+  const navTitle = isTracking ? "Tracking" : "New Timer";
 
   return (
     <KeyboardAvoidingView
@@ -344,19 +177,7 @@ export default function TimerScreen() {
         <View className="flex-1" />
       </View>
 
-      {autoConfirm ? (
-        <AutoConfirmView
-          autoConfirm={autoConfirm}
-          onCancel={handleCancelAutoConfirm}
-        />
-      ) : reviewData ? (
-        <ReviewView
-          reviewData={reviewData}
-          associations={associations}
-          onSave={handleSaveReview}
-          onDiscard={handleDiscardReview}
-        />
-      ) : isTracking ? (
+      {isTracking ? (
         <View className="flex-1 justify-center px-8 gap-6">
           {/* Project accent line */}
           {selProj && (
@@ -459,357 +280,10 @@ export default function TimerScreen() {
           setSelectedProject={setSelectedProject}
           projects={projects}
           onStart={handleStart}
-          showSuggestionBanner={showSuggestionBanner}
-          suggestion={suggestion}
-          onAcceptSuggestion={handleAcceptSuggestion}
-          onDismissSuggestion={() => setSuggestionDismissed(true)}
         />
       )}
       <PortalHost name="timer-modal" />
     </KeyboardAvoidingView>
-  );
-}
-
-type AutoConfirmViewProps = {
-  autoConfirm: AutoConfirmState;
-  onCancel: () => void;
-};
-
-function AutoConfirmView({ autoConfirm, onCancel }: AutoConfirmViewProps) {
-  const theme = useAuroraTheme();
-  const { projects } = useProjects();
-  const { session, selectedApps } = autoConfirm;
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = withTiming(1, { duration: 2500, easing: Easing.linear });
-  }, []);
-
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%` as unknown as number,
-  }));
-
-  const appNames = selectedApps.map((a) => a.app).join(", ");
-
-  return (
-    <Animated.View
-      className="flex-1 justify-center px-6 gap-5"
-      entering={FadeInDown.duration(200)}
-    >
-      <View
-        className="rounded-3xl p-5 border gap-3"
-        style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}
-      >
-        <View className="flex-row items-center gap-2">
-          <Image
-            source="sf:checkmark.circle.fill"
-            style={{ width: 20, height: 20, tintColor: "#10b981" }}
-          />
-          <Text className="text-emerald-500 text-sm font-semibold">
-            Auto-saving
-          </Text>
-        </View>
-
-        <Text className="text-white text-lg font-semibold">
-          {session.title}
-        </Text>
-        <Text className="text-zinc-400 text-sm">
-          {formatTime(session.duration)}
-        </Text>
-
-        {session.projectId &&
-          (() => {
-            const proj = projects.find((p) => p.id === session.projectId);
-            return proj ? (
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: proj.color }}
-                />
-                <Text className="text-zinc-400 text-xs">{proj.name}</Text>
-              </View>
-            ) : null;
-          })()}
-
-        {appNames.length > 0 && (
-          <Text className="text-zinc-500 text-xs" numberOfLines={1}>
-            {appNames}
-          </Text>
-        )}
-
-        {/* Progress bar */}
-        <View
-          className="h-0.5 rounded-full overflow-hidden mt-1"
-          style={{ backgroundColor: theme.cardBorder }}
-        >
-          <Animated.View
-            className="h-full rounded-full bg-emerald-500"
-            style={progressStyle}
-          />
-        </View>
-      </View>
-
-      <Button variant="ghost" onPress={onCancel}>
-        <Button.Label>Cancel</Button.Label>
-      </Button>
-    </Animated.View>
-  );
-}
-
-type ReviewViewProps = {
-  reviewData: {
-    session: PendingSession;
-    apps: AppUsage[];
-    loading: boolean;
-  };
-  associations: AssociationMap;
-  onSave: (selectedApps: AppUsage[]) => void;
-  onDiscard: () => void;
-};
-
-function ReviewView({
-  reviewData,
-  associations,
-  onSave,
-  onDiscard,
-}: ReviewViewProps) {
-  const theme = useAuroraTheme();
-  const [selectedApps, setSelectedApps] = useState<Set<string>>(new Set());
-  const hasInitialized = useRef(false);
-
-  useEffect(() => {
-    if (hasInitialized.current) return;
-    if (reviewData.loading) return;
-    hasInitialized.current = true;
-    if (reviewData.apps.length > 0) {
-      setSelectedApps(
-        getSmartDefaultApps(
-          reviewData.apps,
-          reviewData.session.projectId,
-          associations,
-        ),
-      );
-    }
-  }, [
-    reviewData.loading,
-    reviewData.apps,
-    reviewData.session.projectId,
-    associations,
-  ]);
-
-  const handleToggleApp = (app: string) => {
-    const newSelected = new Set(selectedApps);
-    if (newSelected.has(app)) {
-      newSelected.delete(app);
-    } else {
-      newSelected.add(app);
-    }
-    setSelectedApps(newSelected);
-  };
-
-  const handleSave = () => {
-    const selected = reviewData.apps.filter((a) => selectedApps.has(a.app));
-    onSave(selected);
-  };
-
-  const isEmpty = reviewData.apps.length === 0;
-  const { session, apps, loading } = reviewData;
-
-  return (
-    <Animated.View className="flex-1" entering={FadeInDown.duration(300)}>
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 px-6"
-      >
-        {/* Session summary card */}
-        <View
-          className="mb-6 rounded-3xl p-5 border"
-          style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}
-        >
-          <View className="flex-row items-center gap-2 mb-3">
-            <Image
-              source="sf:checkmark.circle.fill"
-              style={{ width: 20, height: 20, tintColor: "#10b981" }}
-            />
-            <Text className="text-emerald-500 text-sm font-semibold">
-              Session Complete
-            </Text>
-          </View>
-          <Text className="text-white text-lg font-semibold mb-2">
-            {session.title}
-          </Text>
-          <Text className="text-zinc-400 text-sm">
-            {formatTime(session.duration)}
-          </Text>
-        </View>
-
-        {/* Apps detected section */}
-        <View className="mb-6">
-          <Text className="text-white text-base font-semibold mb-3">
-            Activity
-          </Text>
-
-          {loading ? (
-            <View className="items-center justify-center py-8">
-              <ActivityIndicator size="large" color="#71717a" />
-            </View>
-          ) : isEmpty ? (
-            <View
-              className="items-center justify-center py-8 rounded-2xl border"
-              style={{
-                backgroundColor: theme.card,
-                borderColor: theme.cardBorder,
-              }}
-            >
-              <Text className="text-zinc-400 text-base">
-                No activity detected
-              </Text>
-            </View>
-          ) : (
-            <View
-              className="rounded-2xl border overflow-hidden"
-              style={{
-                backgroundColor: theme.card,
-                borderColor: theme.cardBorder,
-              }}
-            >
-              {apps.map((app, i) => {
-                const isSelected = selectedApps.has(app.app);
-                const titles = app.titles ?? [];
-                return (
-                  <Pressable
-                    key={app.app}
-                    onPress={() => handleToggleApp(app.app)}
-                    className="flex-row items-start gap-3 px-4 py-3"
-                    style={
-                      i < apps.length - 1
-                        ? {
-                            borderBottomWidth: 1,
-                            borderBottomColor: theme.cardBorder,
-                          }
-                        : undefined
-                    }
-                  >
-                    <View className="pt-0.5">
-                      <Image
-                        source={
-                          isSelected ? "sf:checkmark.square.fill" : "sf:square"
-                        }
-                        style={{
-                          width: 22,
-                          height: 22,
-                          tintColor: isSelected ? "#3b82f6" : "#52525b",
-                        }}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-baseline gap-2 mb-1">
-                        <Text className="text-white text-base font-medium">
-                          {app.app}
-                        </Text>
-                        <Text className="text-zinc-500 text-sm">
-                          {formatDuration(app.duration)}
-                        </Text>
-                      </View>
-                      {titles.length > 0 && (
-                        <View className="gap-0.5">
-                          {titles.slice(0, 2).map((title, idx) => (
-                            <Text
-                              key={idx}
-                              className="text-zinc-400 text-xs"
-                              numberOfLines={1}
-                            >
-                              · {title}
-                            </Text>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Action buttons */}
-      <View className="px-6 gap-2 py-4">
-        <Button variant="primary" onPress={handleSave}>
-          <Button.Label>Save Session</Button.Label>
-        </Button>
-        <Button variant="ghost" onPress={onDiscard}>
-          <Button.Label>Save without apps</Button.Label>
-        </Button>
-      </View>
-    </Animated.View>
-  );
-}
-
-type SuggestionBannerProps = {
-  suggestion: { projectId: string; matchedApps: string[] };
-  projects: Project[];
-  onAccept: () => void;
-  onDismiss: () => void;
-};
-
-function SuggestionBanner({
-  suggestion,
-  projects,
-  onAccept,
-  onDismiss,
-}: SuggestionBannerProps) {
-  const theme = useAuroraTheme();
-  const proj = projects.find((p) => p.id === suggestion.projectId);
-  if (!proj) return null;
-
-  return (
-    <View
-      className="px-4 py-4 rounded-2xl border gap-3"
-      style={{ backgroundColor: theme.card, borderColor: theme.cardBorder }}
-    >
-      {/* Header with project color and name */}
-      <View className="flex-row items-center gap-3">
-        <View
-          className="w-3 h-3 rounded-full shrink-0"
-          style={{ backgroundColor: proj.color }}
-        />
-        <Text className="text-white text-sm font-semibold flex-1">
-          {proj.name}
-        </Text>
-        <Pressable onPress={onDismiss} hitSlop={8}>
-          <Text className="text-zinc-500 text-lg leading-none">×</Text>
-        </Pressable>
-      </View>
-
-      {/* App list */}
-      <View className="gap-1.5">
-        <Text className="text-zinc-400 text-xs uppercase tracking-wide">
-          Detected Apps
-        </Text>
-        {suggestion.matchedApps.length > 2 ? (
-          <Text className="text-zinc-300 text-xs font-medium">
-            {suggestion.matchedApps.length} apps matched
-          </Text>
-        ) : (
-          <View className="flex-row flex-wrap gap-2">
-            {suggestion.matchedApps.map((app, i) => (
-              <View
-                key={i}
-                className="bg-zinc-700/50 px-3 py-1.5 rounded-lg border border-zinc-600"
-              >
-                <Text className="text-zinc-200 text-xs font-medium">{app}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* Action button */}
-      <Button variant="secondary" onPress={onAccept} size="sm">
-        <Button.Label>Track as {proj.name}</Button.Label>
-      </Button>
-    </View>
   );
 }
 
@@ -828,10 +302,6 @@ type ModeViewProps = {
 
 type NewTimerViewProps = ModeViewProps & {
   mode: StartMode;
-  showSuggestionBanner: boolean;
-  suggestion: { projectId: string; matchedApps: string[] } | null;
-  onAcceptSuggestion: () => void;
-  onDismissSuggestion: () => void;
 };
 
 function NewTimerView({
@@ -842,10 +312,6 @@ function NewTimerView({
   setSelectedProject,
   projects,
   onStart,
-  showSuggestionBanner,
-  suggestion,
-  onAcceptSuggestion,
-  onDismissSuggestion,
 }: NewTimerViewProps) {
   const modeProps: ModeViewProps = {
     taskTitle,
@@ -859,15 +325,7 @@ function NewTimerView({
   return (
     <View className="flex-1">
       <View className="flex-1 justify-center px-6">
-        {mode === "a" && (
-          <ConversationalView
-            {...modeProps}
-            showSuggestionBanner={showSuggestionBanner}
-            suggestion={suggestion}
-            onAcceptSuggestion={onAcceptSuggestion}
-            onDismissSuggestion={onDismissSuggestion}
-          />
-        )}
+        {mode === "a" && <ConversationalView {...modeProps} />}
         {mode === "b" && <HoldView {...modeProps} />}
         {mode === "c" && <ProjectFirstView {...modeProps} />}
       </View>
@@ -887,16 +345,7 @@ function ConversationalView({
   setSelectedProject,
   projects,
   onStart,
-  showSuggestionBanner,
-  suggestion,
-  onAcceptSuggestion,
-  onDismissSuggestion,
-}: ModeViewProps & {
-  showSuggestionBanner: boolean;
-  suggestion: { projectId: string; matchedApps: string[] } | null;
-  onAcceptSuggestion: () => void;
-  onDismissSuggestion: () => void;
-}) {
+}: ModeViewProps) {
   const titleFilled = useSharedValue(0);
   const beginScale = useSharedValue(1);
 
@@ -995,15 +444,6 @@ function ConversationalView({
           );
         })}
       </ScrollView>
-
-      {showSuggestionBanner && suggestion && (
-        <SuggestionBanner
-          suggestion={suggestion}
-          projects={projects}
-          onAccept={onAcceptSuggestion}
-          onDismiss={onDismissSuggestion}
-        />
-      )}
 
       {/* Begin button — fades in and breathes once title is filled */}
       <Animated.View style={beginStyle}>

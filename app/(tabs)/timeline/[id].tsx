@@ -1,10 +1,6 @@
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
-import {
-  getSmartDefaultApps,
-  useSuggestionsStore,
-} from "@/features/activity-watch/suggestions-store";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
@@ -64,7 +60,6 @@ export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { sessions, updateSession, removeSession } = useSessionsStore();
   const { projects } = useProjects();
-  const { associations } = useSuggestionsStore();
 
   const session = sessions.find((s) => s.id === id);
 
@@ -85,7 +80,7 @@ export default function SessionDetailScreen() {
   const [draftNotes, setDraftNotes] = useState(session?.notes ?? "");
   const [draftApps, setDraftApps] = useState<Set<string>>(() => {
     if (!session?.apps) return new Set();
-    return getSmartDefaultApps(session.apps, session.projectId, associations);
+    return new Set(session.apps.map((a) => a.app));
   });
 
   const [showTimePicker, setShowTimePicker] = useState(false);

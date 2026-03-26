@@ -1,14 +1,12 @@
 import { PROJECTS, type Project } from "@/constants/projects";
-import { checkAwAvailability } from "@/features/activity-watch/aw-adapter";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { markOnboardingComplete } from "@/features/onboarding/onboarding-storage";
 import { useProjects } from "@/features/projects/projects-store";
-import { useSettingsStore } from "@/features/settings/settings-store";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -269,170 +267,6 @@ function ProjectsSlide({
           </Text>
         )}
       </View>
-    </View>
-  );
-}
-
-type AwStatus = null | "checking" | boolean;
-
-function MacSlide({
-  host,
-  onHostChange,
-  status,
-  onCheck,
-  onContinue,
-}: {
-  host: string;
-  onHostChange: (v: string) => void;
-  status: AwStatus;
-  onCheck: () => void;
-  onContinue: () => void;
-}) {
-  const dotColor =
-    status === true
-      ? "#22c55e"
-      : status === false
-        ? "#ef4444"
-        : status === "checking"
-          ? "#f59e0b"
-          : "rgba(255,255,255,0.15)";
-
-  const statusLabel =
-    status === "checking"
-      ? "Checking..."
-      : status === true
-        ? "Connected"
-        : status === false
-          ? "Not reachable — is ChronaHelper running?"
-          : "";
-
-  return (
-    <View className="flex-1 justify-center px-6">
-      <Animated.View
-        entering={FadeIn.duration(350)}
-        className="mb-9"
-      >
-        <Text
-          style={{
-            fontSize: 32,
-            fontWeight: "600",
-            color: "white",
-            letterSpacing: -1,
-            lineHeight: 38,
-            marginBottom: 8,
-          }}
-        >
-          {"ChronaHelper\nrunning?"}
-        </Text>
-        <Text
-          style={{
-            color: "rgba(255,255,255,0.28)",
-            fontSize: 14,
-            lineHeight: 20,
-          }}
-        >
-          Install ChronaHelper on your Mac for automatic app tracking.
-        </Text>
-      </Animated.View>
-
-      <Animated.View entering={FadeIn.delay(200).duration(350)}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: "rgba(255,255,255,0.04)",
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.07)",
-            paddingHorizontal: 14,
-            paddingVertical: 13,
-            gap: 10,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: "Courier New",
-              color: "rgba(255,255,255,0.2)",
-              fontSize: 14,
-            }}
-          >
-            {">"}
-          </Text>
-          <TextInput
-            value={host}
-            onChangeText={onHostChange}
-            onBlur={onCheck}
-            onSubmitEditing={onCheck}
-            placeholder="localhost"
-            placeholderTextColor="rgba(255,255,255,0.15)"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            returnKeyType="done"
-            style={{
-              flex: 1,
-              fontFamily: "Courier New",
-              fontSize: 15,
-              color: "rgba(255,255,255,0.8)",
-            }}
-          />
-          <View
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: 3.5,
-              backgroundColor: dotColor,
-            }}
-          />
-        </View>
-
-        {statusLabel.length > 0 && (
-          <Animated.Text
-            entering={FadeIn.duration(300)}
-            style={{
-              marginTop: 8,
-              marginLeft: 2,
-              fontSize: 12,
-              color: dotColor,
-            }}
-          >
-            {statusLabel}
-          </Animated.Text>
-        )}
-      </Animated.View>
-
-      <Animated.View
-        entering={FadeIn.delay(450).duration(350)}
-        className="mt-9 flex-row justify-between items-center"
-      >
-        <Pressable onPress={onContinue} hitSlop={10}>
-          <Text style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>
-            Set up later
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onContinue}
-          className="flex-row items-center gap-1.5"
-        >
-          <Text
-            style={{
-              color: "rgba(255,255,255,0.55)",
-              fontSize: 14,
-              letterSpacing: 0.2,
-            }}
-          >
-            Continue
-          </Text>
-          <Image
-            source="sf:arrow.right"
-            style={{
-              width: 12,
-              height: 12,
-              tintColor: "rgba(255,255,255,0.4)",
-            }}
-          />
-        </Pressable>
-      </Animated.View>
     </View>
   );
 }
@@ -727,7 +561,7 @@ function ProgressDots({ total, current }: { total: number; current: number }) {
   );
 }
 
-const TOTAL_SLIDES = 5;
+const TOTAL_SLIDES = 4;
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
@@ -745,24 +579,6 @@ export default function OnboardingScreen() {
       else next.add(id);
       return next;
     });
-  };
-
-  const { awStreamHost, setAwStreamHost, setAwAdapterMode, addRecentHost } =
-    useSettingsStore();
-  const [localHost, setLocalHost] = useState(awStreamHost);
-  const [awStatus, setAwStatus] = useState<AwStatus>(null);
-
-  const checkConnection = async () => {
-    const trimmed = localHost.trim() || "localhost";
-    setLocalHost(trimmed);
-    setAwStreamHost(trimmed);
-    if (trimmed !== "localhost") setAwAdapterMode("stream");
-    setAwStatus("checking");
-    const result = await checkAwAvailability();
-    setAwStatus(result);
-    if (result === true && trimmed !== "localhost") {
-      addRecentHost(trimmed);
-    }
   };
 
   const { permissionStatus, requestPermission } = useCalendarStore();
@@ -809,22 +625,13 @@ export default function OnboardingScreen() {
             />
           )}
           {currentSlide === 2 && (
-            <MacSlide
-              host={localHost}
-              onHostChange={setLocalHost}
-              status={awStatus}
-              onCheck={checkConnection}
-              onContinue={goNext}
-            />
-          )}
-          {currentSlide === 3 && (
             <CalendarSlide
               granted={calGranted}
               onGrant={handleGrantCalendar}
               onContinue={goNext}
             />
           )}
-          {currentSlide === 4 && <ReadySlide onFinish={handleFinish} />}
+          {currentSlide === 3 && <ReadySlide onFinish={handleFinish} />}
         </Animated.View>
 
         {showDots && (

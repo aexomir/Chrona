@@ -1,5 +1,4 @@
 import { ChronaSplash } from "@/components/chrona-splash";
-import { useAwStream } from "@/features/activity-watch/use-aw-stream";
 import { hasCompletedOnboarding } from "@/features/onboarding/onboarding-storage";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
@@ -28,7 +27,6 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Pacifico_400Regular });
 
   useWidgetSync();
-  useAwStream();
   useWatchMessages(
     () => {
       const { isTracking, startTimer } = useTimerStore.getState();
@@ -161,23 +159,11 @@ export default function RootLayout() {
                 options={{ presentation: "modal", headerShown: false }}
               />
               <Stack.Screen
-                name="recover"
-                options={{ presentation: "modal", headerShown: false }}
-              />
-              <Stack.Screen
                 name="calendar-settings"
                 options={{ presentation: "modal", headerShown: false }}
               />
               <Stack.Screen
                 name="projects"
-                options={{ presentation: "modal", headerShown: false }}
-              />
-              <Stack.Screen
-                name="untracked"
-                options={{ presentation: "modal", headerShown: false }}
-              />
-              <Stack.Screen
-                name="tracking-rules"
                 options={{ presentation: "modal", headerShown: false }}
               />
               <Stack.Screen
