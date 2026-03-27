@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>ChronaHelper</string>
+	<key>CFBundleDisplayName</key>
+	<string>Chrona Helper</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.chrona.helper</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+
+	<!-- Run as a menu bar app with no Dock icon. -->
+	<key>LSUIElement</key>
+	<true/>
+
+	<!-- Minimum macOS version: Ventura (13.0) for NWListener.Service API. -->
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+
+	<!-- Required: explains Accessibility access to the user in System Settings. -->
+	<key>NSAccessibilityUsageDescription</key>
+	<string>Chrona Helper reads active window titles so you can track time across applications.</string>
+
+	<!-- Required for Bonjour local network discovery on macOS 14+. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Chrona Helper streams active-app data to the Chrona iOS app over your local Wi-Fi network.</string>
+
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_chrona._tcp</string>
+	</array>
+
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>
