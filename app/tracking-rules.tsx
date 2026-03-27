@@ -1,30 +1,127 @@
-import { useTrackingRulesStore } from "@/features/auto-track/tracking-rules-store";
+import { useTrackingRulesStore, type TrackingRule } from "@/features/auto-track/tracking-rules-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
 import { ListGroup, PortalHost, Select, Separator } from "heroui-native";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
+  KeyboardAvoidingView,
   Modal,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
+import Animated, {
+  Easing,
+  FadeInDown,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 type SelectOption = { value: string; label: string };
 
-function SectionLabel({ children }: { children: string }) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-2 ml-1">
+    <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
       {children}
     </Text>
+  );
+}
+
+function EmptyState() {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(0.7, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true
+    );
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <View className="items-center justify-center pt-20 px-8">
+      <Animated.View style={animStyle} className="mb-4">
+        <Image
+          source="sf:sparkle"
+          style={{ width: 28, height: 28 }}
+          tintColor="#52525b"
+        />
+      </Animated.View>
+      <Text className="text-zinc-400 text-sm font-medium mb-2">No rules yet</Text>
+      <Text className="text-zinc-600 text-xs text-center leading-relaxed">
+        Rules start a timer automatically when a matched app becomes active.
+      </Text>
+    </View>
+  );
+}
+
+function DeleteRow({ onDelete }: { onDelete: () => void }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bgProgress = useSharedValue(0);
+
+  const rowStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      bgProgress.value,
+      [0, 1],
+      ["rgba(255,255,255,0)", "rgba(239,68,68,0.1)"]
+    ),
+    borderColor: interpolateColor(
+      bgProgress.value,
+      [0, 1],
+      ["rgba(255,255,255,0.07)", "rgba(239,68,68,0.25)"]
+    ),
+  }));
+
+  function handleTap() {
+    if (!confirmed) {
+      setConfirmed(true);
+      bgProgress.value = withTiming(1, { duration: 220 });
+      timerRef.current = setTimeout(reset, 3000);
+    } else {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      onDelete();
+    }
+  }
+
+  function reset() {
+    setConfirmed(false);
+    bgProgress.value = withTiming(0, { duration: 200 });
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  return (
+    <Animated.View style={[rowStyle, { borderWidth: 1, borderRadius: 12 }]}>
+      <Pressable onPress={handleTap} className="flex-row items-center px-4 py-3.5">
+        <Image
+          source="sf:trash"
+          style={{ width: 15, height: 15, marginRight: 10 }}
+          tintColor={confirmed ? "#ef4444" : "#52525b"}
+        />
+        <Text className="flex-1 text-sm" style={{ color: confirmed ? "#ef4444" : "#52525b" }}>
+          {confirmed ? "Tap again to confirm removal" : "Remove Rule"}
+        </Text>
+        {confirmed && (
+          <Pressable onPress={reset} hitSlop={12}>
+            <Text className="text-zinc-500 text-sm">Cancel</Text>
+          </Pressable>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -33,20 +130,38 @@ export default function TrackingRulesScreen() {
   const theme = useAuroraTheme();
   const toast = useAppToast();
   const { projects } = useProjects();
-  const { rules, addRule, removeRule } = useTrackingRulesStore();
+  const { rules, addRule, updateRule, removeRule } = useTrackingRulesStore();
 
-  const [modalVisible, setModalVisible] = useState(false);
+  const [sheetMode, setSheetMode] = useState<"hidden" | "add" | "edit">("hidden");
+  const [editingRuleId, setEditingRuleId] = useState<string | undefined>();
   const [ruleName, setRuleName] = useState("");
   const [appName, setAppName] = useState("");
   const [titleKeywords, setTitleKeywords] = useState("");
   const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>();
 
-  function openAddModal() {
+  function openAddSheet() {
     setRuleName("");
     setAppName("");
     setTitleKeywords("");
     setSelectedProject(undefined);
-    setModalVisible(true);
+    setEditingRuleId(undefined);
+    setSheetMode("add");
+  }
+
+  function openEditSheet(rule: TrackingRule) {
+    const project = projects.find((p) => p.id === rule.projectId);
+    setRuleName(rule.defaultTitle ?? "");
+    setAppName(rule.appName);
+    setTitleKeywords(rule.titleKeywords.join(", "));
+    setSelectedProject(
+      project ? { value: project.id, label: project.name } : undefined
+    );
+    setEditingRuleId(rule.id);
+    setSheetMode("edit");
+  }
+
+  function closeSheet() {
+    setSheetMode("hidden");
   }
 
   function saveRule() {
@@ -57,41 +172,45 @@ export default function TrackingRulesScreen() {
       .map((k) => k.trim())
       .filter((k) => k.length > 0);
 
-    addRule({
-      appName: appName.trim(),
-      titleKeywords: keywords,
-      projectId: selectedProject.value,
-      defaultTitle: ruleName.trim() || undefined,
-    });
+    if (sheetMode === "add") {
+      addRule({
+        appName: appName.trim(),
+        titleKeywords: keywords,
+        projectId: selectedProject.value,
+        defaultTitle: ruleName.trim() || undefined,
+      });
+      toast.show({ label: "Rule added", variant: "success" });
+    } else if (sheetMode === "edit" && editingRuleId) {
+      updateRule(editingRuleId, {
+        appName: appName.trim(),
+        titleKeywords: keywords,
+        projectId: selectedProject.value,
+        defaultTitle: ruleName.trim() || undefined,
+      });
+      toast.show({ label: "Rule updated", variant: "success" });
+    }
 
-    setModalVisible(false);
-    toast.show({ label: "Rule added", variant: "success" });
+    closeSheet();
   }
 
-  function confirmDelete(id: string) {
-    Alert.alert("Delete Rule", "This action cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          removeRule(id);
-          toast.show({ label: "Rule removed" });
-        },
-      },
-    ]);
+  function handleDelete() {
+    if (!editingRuleId) return;
+    removeRule(editingRuleId);
+    closeSheet();
+    toast.show({ label: "Rule removed" });
   }
 
   const canSave = !!selectedProject && appName.trim().length > 0;
+  const sheetVisible = sheetMode !== "hidden";
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StaticAuraBackground />
       <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button
-          icon="chevron.left"
-          onPress={() => router.back()}
-        />
+        <Stack.Toolbar.Button icon="chevron.left" onPress={() => router.back()} />
+      </Stack.Toolbar>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button icon="plus" onPress={openAddSheet} />
       </Stack.Toolbar>
       <AnimatedHeaderScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
@@ -100,9 +219,13 @@ export default function TrackingRulesScreen() {
           Auto-tracking rules start a timer automatically when a matched app is active. Rules with title keywords are more specific and take priority.
         </Text>
 
-        {rules.length > 0 && (
+        {rules.length === 0 ? (
+          <EmptyState />
+        ) : (
           <>
-            <SectionLabel>Rules</SectionLabel>
+            <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-2 ml-1">
+              Rules
+            </Text>
             <ListGroup className={`mb-6 ${theme.listGroupClassName}`}>
               {rules.map((rule, index) => {
                 const project = projects.find((p) => p.id === rule.projectId);
@@ -110,9 +233,17 @@ export default function TrackingRulesScreen() {
                 const isInactive = rule.active === false;
 
                 return (
-                  <View key={rule.id}>
+                  <Animated.View
+                    key={rule.id}
+                    entering={FadeInDown.delay(index * 60)
+                      .duration(400)
+                      .easing(Easing.out(Easing.cubic))}
+                  >
                     {index > 0 && <Separator className="mx-4" />}
-                    <ListGroup.Item style={isInactive ? { opacity: 0.5 } : undefined}>
+                    <ListGroup.Item
+                      onPress={() => openEditSheet(rule)}
+                      style={isInactive ? { opacity: 0.45 } : undefined}
+                    >
                       <ListGroup.ItemPrefix>
                         <View
                           style={{
@@ -153,78 +284,56 @@ export default function TrackingRulesScreen() {
                           </View>
                         )}
                         {isInactive && (
-                          <Text className="text-neutral-600 text-xs mt-1">
-                            Inactive
-                          </Text>
+                          <Text className="text-neutral-600 text-xs mt-1">Inactive</Text>
                         )}
                       </ListGroup.ItemContent>
                       <ListGroup.ItemSuffix>
-                        <TouchableOpacity
-                          onPress={() => confirmDelete(rule.id)}
-                          className="p-2"
-                        >
-                          <Image
-                            source="sf:trash"
-                            style={{ width: 16, height: 16 }}
-                            tintColor="#ef4444"
-                          />
-                        </TouchableOpacity>
+                        <Image
+                          source="sf:chevron.right"
+                          style={{ width: 12, height: 12 }}
+                          tintColor="rgba(255,255,255,0.2)"
+                        />
                       </ListGroup.ItemSuffix>
                     </ListGroup.Item>
-                  </View>
+                  </Animated.View>
                 );
               })}
             </ListGroup>
           </>
         )}
-
-        {rules.length === 0 && (
-          <Text className="text-neutral-500 text-center text-sm mb-6">
-            No rules yet. Add one to start auto-tracking apps.
-          </Text>
-        )}
-
-        <ListGroup className={theme.listGroupClassName}>
-          <ListGroup.Item onPress={openAddModal}>
-            <ListGroup.ItemPrefix>
-              <Image
-                source="sf:plus.circle.fill"
-                style={{ width: 20, height: 20 }}
-                tintColor="#3b82f6"
-              />
-            </ListGroup.ItemPrefix>
-            <ListGroup.ItemContent>
-              <ListGroup.ItemTitle className="text-blue-500">
-                Add Rule
-              </ListGroup.ItemTitle>
-            </ListGroup.ItemContent>
-          </ListGroup.Item>
-        </ListGroup>
       </AnimatedHeaderScrollView>
 
       <Modal
-        visible={modalVisible}
+        visible={sheetVisible}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={closeSheet}
       >
-        <View className="flex-1 px-5 pt-6" style={{ backgroundColor: theme.modalSheet }}>
+        <KeyboardAvoidingView
+          behavior="padding"
+          className="flex-1 px-5 pt-6"
+          style={{ backgroundColor: theme.modalSheet }}
+        >
           <View className="flex-row items-center justify-between mb-8">
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <Pressable onPress={closeSheet} hitSlop={10}>
               <Text className="text-neutral-400 text-base">Cancel</Text>
-            </TouchableOpacity>
-            <Text className="text-white text-base font-semibold">Add Rule</Text>
-            <TouchableOpacity onPress={saveRule} disabled={!canSave}>
+            </Pressable>
+            <Text className="text-white text-base font-semibold">
+              {sheetMode === "add" ? "Add Rule" : "Edit Rule"}
+            </Text>
+            <Pressable onPress={saveRule} disabled={!canSave} hitSlop={10}>
               <Text className={`text-base font-semibold ${canSave ? "text-blue-500" : "text-neutral-600"}`}>
                 Save
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
-          <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
-            <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
-              App Name
-            </Text>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <FieldLabel>App Name</FieldLabel>
             <TextInput
               value={appName}
               onChangeText={setAppName}
@@ -236,10 +345,12 @@ export default function TrackingRulesScreen() {
               autoCorrect={false}
             />
 
-            <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
-              Title Keywords
-              <Text className="text-neutral-600 normal-case tracking-normal"> (optional, comma-separated)</Text>
-            </Text>
+            <FieldLabel>
+              Title Keywords{" "}
+              <Text className="text-neutral-600 normal-case tracking-normal">
+                (optional, comma-separated)
+              </Text>
+            </FieldLabel>
             <TextInput
               value={titleKeywords}
               onChangeText={setTitleKeywords}
@@ -251,10 +362,12 @@ export default function TrackingRulesScreen() {
               autoCorrect={false}
             />
 
-            <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
-              Session Name
-              <Text className="text-neutral-600 normal-case tracking-normal"> (optional)</Text>
-            </Text>
+            <FieldLabel>
+              Session Name{" "}
+              <Text className="text-neutral-600 normal-case tracking-normal">
+                (optional)
+              </Text>
+            </FieldLabel>
             <TextInput
               value={ruleName}
               onChangeText={setRuleName}
@@ -265,10 +378,8 @@ export default function TrackingRulesScreen() {
               autoCapitalize="words"
             />
 
-            <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-1">
-              Project
-            </Text>
-            <View className="mb-6">
+            <FieldLabel>Project</FieldLabel>
+            <View className="mb-8">
               <Select
                 value={selectedProject}
                 onValueChange={(v) =>
@@ -318,10 +429,18 @@ export default function TrackingRulesScreen() {
                 </Select.Portal>
               </Select>
             </View>
+
+            {sheetMode === "edit" && (
+              <>
+                <Separator className="mb-6 opacity-20" />
+                <DeleteRow onDelete={handleDelete} />
+                <View className="h-8" />
+              </>
+            )}
           </ScrollView>
 
           <PortalHost name="tracking-rules" />
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
