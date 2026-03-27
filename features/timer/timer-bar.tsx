@@ -3,6 +3,8 @@ import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
+import { useTrackingRulesStore } from "@/features/auto-track/tracking-rules-store";
+import { usePatternStore, computeRuleSuggestion, computeCompanionBundleIds } from "@/features/intelligence/pattern-store";
 import { Neutral } from "@/constants/theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -34,12 +36,42 @@ export function TimerBar() {
   const projects = useProjects(s => s.projects);
   const pendingHint = useUntrackedStore(s => s.pendingHint);
   const dismissHint = useUntrackedStore(s => s.dismissHint);
+  const patternCounts = usePatternStore(s => s.counts);
+  const patternNames = usePatternStore(s => s.nameIndex);
+  const patternDismissed = usePatternStore(s => s.dismissed);
+  const dismissSuggestion = usePatternStore(s => s.dismiss);
+  const rules = useTrackingRulesStore(s => s.rules);
+  const addRule = useTrackingRulesStore(s => s.addRule);
   const [elapsed, setElapsed] = useState(0);
   const [calendarSuggestion, setCalendarSuggestion] = useState<{
     eventTitle: string;
     projectId: string;
   } | null>(null);
   const hasCheckCalendarRef = useRef(false);
+
+  const projectIdSet = new Set(projects.map((p) => p.id));
+  const ruleSuggestion = computeRuleSuggestion(
+    patternCounts,
+    patternNames,
+    patternDismissed,
+    rules,
+    projectIdSet,
+  );
+  const suggestionProject = ruleSuggestion
+    ? projects.find((p) => p.id === ruleSuggestion.projectId) ?? null
+    : null;
+
+  function handleCreateRule() {
+    if (!ruleSuggestion) return;
+    const companions = computeCompanionBundleIds(ruleSuggestion.bundleId, ruleSuggestion.projectId);
+    addRule({
+      appName: ruleSuggestion.appName,
+      titleKeywords: [],
+      projectId: ruleSuggestion.projectId,
+      primaryBundleId: ruleSuggestion.bundleId,
+      companionBundleIds: companions.length > 0 ? companions : undefined,
+    });
+  }
 
   // Elapsed timer
   useEffect(() => {
@@ -207,6 +239,41 @@ export function TimerBar() {
             hitSlop={8}
           >
             <Text className="text-amber-400/50 text-sm font-semibold">×</Text>
+          </Pressable>
+        </View>
+      ) : ruleSuggestion ? (
+        // Rule suggestion state
+        <View className="flex-row items-center justify-center gap-1.5">
+          <Text className="text-white/50 text-sm shrink-0">Auto-track</Text>
+          <View
+            className="w-1 h-1 rounded-full shrink-0"
+            style={{ backgroundColor: suggestionProject?.color ?? Neutral.z600 }}
+          />
+          <Text className="text-white text-sm shrink" numberOfLines={1}>
+            {ruleSuggestion.appName}
+          </Text>
+          <Text className="text-white/50 text-sm shrink-0">
+            for {suggestionProject?.name}?
+          </Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              handleCreateRule();
+            }}
+            hitSlop={8}
+          >
+            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+              <Text className="text-white/70 text-xs font-medium">Create</Text>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              dismissSuggestion(ruleSuggestion.bundleId);
+            }}
+            hitSlop={8}
+          >
+            <Text className="text-white/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
       ) : (

@@ -7,6 +7,8 @@ import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
 import { useWidgetSync } from "@/features/watch/use-widget-sync";
 import { useStreamStore } from "@/features/stream/stream-store";
 import { startAutoTracker, stopAutoTracker } from "@/features/auto-track/auto-tracker";
+import { startJournalTracker, stopJournalTracker } from "@/features/intelligence/journal-store";
+import { startPatternTracker, stopPatternTracker } from "@/features/intelligence/pattern-store";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
 import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
@@ -68,9 +70,13 @@ export default function RootLayout() {
     const { _startWatching, _stopWatching } = useUntrackedStore.getState();
     start();
     startAutoTracker();
+    startJournalTracker();
+    startPatternTracker();
     _startWatching();
     return () => {
       stopAutoTracker();
+      stopJournalTracker();
+      stopPatternTracker();
       _stopWatching();
       stop();
     };
@@ -195,6 +201,18 @@ export default function RootLayout() {
                 name="settings"
                 options={{
                   title: "Settings",
+                  headerTransparent: true,
+                  headerTitleStyle: {
+                    color: "white",
+                    fontSize: 17,
+                    fontWeight: "600",
+                  },
+                }}
+              />
+              <Stack.Screen
+                name="tracking-rules"
+                options={{
+                  title: "Tracking Rules",
                   headerTransparent: true,
                   headerTitleStyle: {
                     color: "white",

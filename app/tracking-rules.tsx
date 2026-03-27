@@ -4,19 +4,17 @@ import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
-import { PortalHost, Select } from "heroui-native";
+import { ListGroup, PortalHost, Select, Separator } from "heroui-native";
 import { useState } from "react";
 import {
   Alert,
   Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 
@@ -27,22 +25,6 @@ function SectionLabel({ children }: { children: string }) {
     <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-2 ml-1">
       {children}
     </Text>
-  );
-}
-
-function DeleteAction({ onPress }: { onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      className="justify-center items-center px-6 rounded-r-2xl"
-      style={{ backgroundColor: "#ef4444" }}
-    >
-      <Image
-        source="sf:trash"
-        style={styles.trashIcon}
-        tintColor="#fff"
-      />
-    </TouchableOpacity>
   );
 }
 
@@ -112,7 +94,6 @@ export default function TrackingRulesScreen() {
         />
       </Stack.Toolbar>
       <AnimatedHeaderScrollView
-        title="Tracking Rules"
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
       >
         <Text className="text-neutral-500 text-sm mb-8 leading-relaxed">
@@ -122,51 +103,78 @@ export default function TrackingRulesScreen() {
         {rules.length > 0 && (
           <>
             <SectionLabel>Rules</SectionLabel>
-            <View className="mb-6 rounded-2xl overflow-hidden" style={{ borderWidth: 1, borderColor: theme.cardBorder, backgroundColor: theme.card }}>
+            <ListGroup className={`mb-6 ${theme.listGroupClassName}`}>
               {rules.map((rule, index) => {
                 const project = projects.find((p) => p.id === rule.projectId);
                 if (!project) return null;
+                const isInactive = rule.active === false;
 
                 return (
                   <View key={rule.id}>
-                    {index > 0 && (
-                      <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.cardBorder, marginLeft: 56 }} />
-                    )}
-                    <Swipeable
-                      renderRightActions={() => (
-                        <DeleteAction onPress={() => confirmDelete(rule.id)} />
-                      )}
-                      overshootRight={false}
-                    >
-                      <View className="flex-row items-center px-4 py-3.5" style={{ backgroundColor: theme.card }}>
+                    {index > 0 && <Separator className="mx-4" />}
+                    <ListGroup.Item style={isInactive ? { opacity: 0.5 } : undefined}>
+                      <ListGroup.ItemPrefix>
                         <View
-                          className="w-8 h-8 rounded-lg items-center justify-center mr-3 shrink-0"
-                          style={{ backgroundColor: project.color }}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 8,
+                            backgroundColor: project.color,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
                         >
                           <Image
                             source={`sf:${project.icon}`}
-                            style={styles.projectIcon}
+                            style={{ width: 16, height: 16 }}
                             tintColor="#fff"
                           />
                         </View>
-                        <View className="flex-1 min-w-0">
-                          <Text className="text-white text-sm font-medium" numberOfLines={1}>
-                            {rule.defaultTitle ?? rule.appName}
-                          </Text>
-                          <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
+                      </ListGroup.ItemPrefix>
+                      <ListGroup.ItemContent>
+                        <ListGroup.ItemTitle>
+                          {rule.defaultTitle ?? rule.appName}
+                        </ListGroup.ItemTitle>
+                        {rule.defaultTitle && (
+                          <Text className="text-zinc-500 text-xs mt-0.5">
                             {rule.appName}
-                            {rule.titleKeywords.length > 0 && ` · ${rule.titleKeywords.join(", ")}`}
                           </Text>
-                        </View>
-                        <Text className="text-neutral-600 text-xs shrink-0 ml-2">
-                          {project.name}
-                        </Text>
-                      </View>
-                    </Swipeable>
+                        )}
+                        {rule.titleKeywords.length > 0 && (
+                          <View className="flex-row flex-wrap gap-1 mt-1.5">
+                            {rule.titleKeywords.map((kw) => (
+                              <View
+                                key={kw}
+                                className="rounded-full px-2 py-0.5 bg-white/8"
+                              >
+                                <Text className="text-white/50 text-xs">{kw}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        {isInactive && (
+                          <Text className="text-neutral-600 text-xs mt-1">
+                            Inactive
+                          </Text>
+                        )}
+                      </ListGroup.ItemContent>
+                      <ListGroup.ItemSuffix>
+                        <TouchableOpacity
+                          onPress={() => confirmDelete(rule.id)}
+                          className="p-2"
+                        >
+                          <Image
+                            source="sf:trash"
+                            style={{ width: 16, height: 16 }}
+                            tintColor="#ef4444"
+                          />
+                        </TouchableOpacity>
+                      </ListGroup.ItemSuffix>
+                    </ListGroup.Item>
                   </View>
                 );
               })}
-            </View>
+            </ListGroup>
           </>
         )}
 
@@ -176,25 +184,22 @@ export default function TrackingRulesScreen() {
           </Text>
         )}
 
-        <SectionLabel>Add</SectionLabel>
-        <View
-          className="rounded-2xl overflow-hidden"
-          style={{ borderWidth: 1, borderColor: theme.cardBorder, backgroundColor: theme.card }}
-        >
-          <TouchableOpacity
-            onPress={openAddModal}
-            className="flex-row items-center px-4 py-4"
-          >
-            <Image
-              source="sf:plus.circle.fill"
-              style={styles.addIcon}
-              tintColor="#3b82f6"
-            />
-            <Text className="text-blue-500 text-base ml-3 font-medium">
-              Add Rule
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <ListGroup className={theme.listGroupClassName}>
+          <ListGroup.Item onPress={openAddModal}>
+            <ListGroup.ItemPrefix>
+              <Image
+                source="sf:plus.circle.fill"
+                style={{ width: 20, height: 20 }}
+                tintColor="#3b82f6"
+              />
+            </ListGroup.ItemPrefix>
+            <ListGroup.ItemContent>
+              <ListGroup.ItemTitle className="text-blue-500">
+                Add Rule
+              </ListGroup.ItemTitle>
+            </ListGroup.ItemContent>
+          </ListGroup.Item>
+        </ListGroup>
       </AnimatedHeaderScrollView>
 
       <Modal
@@ -321,18 +326,3 @@ export default function TrackingRulesScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  projectIcon: {
-    width: 16,
-    height: 16,
-  },
-  addIcon: {
-    width: 20,
-    height: 20,
-  },
-  trashIcon: {
-    width: 16,
-    height: 16,
-  },
-});

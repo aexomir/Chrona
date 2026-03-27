@@ -25,7 +25,10 @@ public class ChronaStreamModule: Module {
     private var connection: NWConnection?
     private var buffer = Data()
     private var reconnectItem: DispatchWorkItem?
+    private var watchdogItem: DispatchWorkItem?
     private var isStarted = false
+
+    private let watchdogInterval: TimeInterval = 90
 
     // MARK: - Definition
 
@@ -115,6 +118,7 @@ public class ChronaStreamModule: Module {
             switch state {
             case .ready:
                 self.emitStatus("connected")
+                self.resetWatchdog()
                 self.receive()
             case .failed, .cancelled:
                 self.handleDisconnect()
@@ -130,6 +134,18 @@ public class ChronaStreamModule: Module {
         connection?.cancel()
         connection = nil
         buffer = Data()
+        watchdogItem?.cancel()
+        watchdogItem = nil
+    }
+
+    private func resetWatchdog() {
+        watchdogItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, self.connection != nil else { return }
+            self.handleDisconnect()
+        }
+        watchdogItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + watchdogInterval, execute: item)
     }
 
     private func handleDisconnect() {
@@ -148,6 +164,7 @@ public class ChronaStreamModule: Module {
             guard let self else { return }
 
             if let data, !data.isEmpty {
+                self.resetWatchdog()
                 self.buffer.append(data)
                 self.flush()
             }

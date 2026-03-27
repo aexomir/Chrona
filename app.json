@@ -2,7 +2,7 @@
   "expo": {
     "name": "Chrona",
     "slug": "Chrona",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chrona",
@@ -14,16 +14,12 @@
       "infoPlist": {
         "NSCalendarsUsageDescription": "Chrona uses your calendar to suggest projects for upcoming events.",
         "NSLocalNetworkUsageDescription": "Chrona connects to Chrona Helper on your Mac to show which app you're currently using.",
-        "NSBonjourServices": [
-          "_chrona._tcp"
-        ],
+        "NSBonjourServices": ["_chrona._tcp"],
         "AppGroupIdentifier": "group.com.aexomir.Chrona",
         "NSSupportsLiveActivities": true
       },
       "entitlements": {
-        "com.apple.security.application-groups": [
-          "group.com.aexomir.Chrona"
-        ]
+        "com.apple.security.application-groups": ["group.com.aexomir.Chrona"]
       }
     },
     "android": {

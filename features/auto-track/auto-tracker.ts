@@ -30,6 +30,14 @@ let eventSub: Sub | null = null;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 /** The id of the rule that auto-started the current timer. Null if manual. */
 let autoStartedRuleId: string | null = null;
+/**
+ * True when the most recent app_change event matched the tracked app (or a
+ * companion). Heartbeats may only reset the idle timer when this is true —
+ * i.e. only while the user is still on the tracked app. Once they switch to
+ * an untracked app this becomes false and heartbeats are ignored, letting the
+ * idle countdown run to completion.
+ */
+let lastEventWasTracked = false;
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -70,31 +78,62 @@ function startAutoTimer(rule: TrackingRule, event: ActivityEvent) {
   autoStartedRuleId = rule.id;
 }
 
+function isCompanionApp(ruleId: string, bundleId: string): boolean {
+  const { rules } = useTrackingRulesStore.getState();
+  const rule = rules.find((r) => r.id === ruleId);
+  return rule?.companionBundleIds?.includes(bundleId) ?? false;
+}
+
 function handleEvent(event: ActivityEvent) {
-  // Heartbeats carry no app data — only reset the idle timer
+  // Heartbeats carry no app data. Only reset the idle timer if the last known
+  // app was the tracked one — i.e. the user is still on it, just not switching.
+  // If they already moved to an untracked app, let the countdown run.
   if (event.type === 'heartbeat') {
-    scheduleIdleTimer();
+    if (lastEventWasTracked) {
+      scheduleIdleTimer();
+    }
     return;
   }
 
   const { isTracking } = useTimerStore.getState();
   const { rules } = useTrackingRulesStore.getState();
   const match = matchRule(event, rules);
+  let onTrackedApp = false;
 
   if (isTracking && autoStartedRuleId !== null) {
-    // A timer was auto-started. Stop it if the activity no longer matches.
-    if (!match || match.id !== autoStartedRuleId) {
+    if (match && match.id === autoStartedRuleId) {
+      // Same rule still matches — reset idle timer and keep running
+      clearIdleTimer();
+      onTrackedApp = true;
+    } else if (isCompanionApp(autoStartedRuleId, event.bundleId)) {
+      // Switched to a companion app — session continues, treat as tracked
+      onTrackedApp = true;
+    } else if (match) {
+      // Switched to a different tracked app — start a new session immediately
       stopAndSave();
-      // If the new activity matches a different rule, begin a new auto-session
-      if (match) startAutoTimer(match, event);
+      startAutoTimer(match, event);
+      clearIdleTimer();
+      onTrackedApp = true;
     }
-    // Else: same rule still matches — let the timer keep running
+    // Else: switched to an untracked app — idle timer will stop the session
+    // after IDLE_TIMEOUT_MS if the user doesn't return to the tracked app
   } else if (!isTracking) {
-    if (match) startAutoTimer(match, event);
+    if (match) {
+      startAutoTimer(match, event);
+      clearIdleTimer();
+      onTrackedApp = true;
+    }
   }
   // isTracking && autoStartedRuleId === null → manual session, leave it alone
 
-  scheduleIdleTimer();
+  lastEventWasTracked = onTrackedApp;
+
+  // Schedule (or keep) the idle countdown. When on the tracked app this acts
+  // as a safety net in case no further events arrive; it will be reset by the
+  // next heartbeat. When on an untracked app it starts the 2-min countdown.
+  if (onTrackedApp || autoStartedRuleId !== null) {
+    scheduleIdleTimer();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +155,7 @@ export function stopAutoTracker() {
   eventSub = null;
 
   clearIdleTimer();
+  lastEventWasTracked = false;
 
   // If an auto-tracked session is in progress, save it before stopping
   if (autoStartedRuleId !== null) {
