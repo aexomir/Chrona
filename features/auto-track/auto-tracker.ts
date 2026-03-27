@@ -67,6 +67,7 @@ function stopAndSave() {
 function startAutoTimer(rule: TrackingRule, event: ActivityEvent) {
   const title = rule.defaultTitle ?? event.appName;
   useTimerStore.getState().startTimer(title, rule.projectId);
+  useTimerStore.getState().setAutoTracked(true);
   autoStartedRuleId = rule.id;
 }
 

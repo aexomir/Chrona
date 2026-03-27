@@ -172,6 +172,12 @@ export default function SettingsScreen() {
                 />
               }
             />
+            <SettingsDivider />
+            <SettingsRow
+              label="Tracking Rules"
+              onPress={() => router.push("/tracking-rules")}
+              suffix={<ChevronSuffix />}
+            />
           </SettingsCard>
         </View>
 

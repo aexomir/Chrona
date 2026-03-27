@@ -4,10 +4,12 @@ import { persist } from "zustand/middleware";
 
 type TimerState = {
   isTracking: boolean;
+  isAutoTracked: boolean;
   startTimestamp: string | null;
   title: string;
   projectId: string | null;
   startTimer: (title: string, projectId?: string | null) => void;
+  setAutoTracked: (value: boolean) => void;
   stopTimer: () => {
     startTime: string;
     endTime: string;
@@ -23,6 +25,7 @@ export const useTimerStore = create<TimerState>()(
   persist(
     (set, get) => ({
       isTracking: false,
+      isAutoTracked: false,
       startTimestamp: null,
       title: "",
       projectId: null,
@@ -33,6 +36,7 @@ export const useTimerStore = create<TimerState>()(
           title,
           projectId: projectId ?? null,
         }),
+      setAutoTracked: (value) => set({ isAutoTracked: value }),
       stopTimer: () => {
         const { isTracking, startTimestamp, title, projectId } = get();
         if (!isTracking || !startTimestamp) return null;
@@ -41,7 +45,7 @@ export const useTimerStore = create<TimerState>()(
           (new Date(endTime).getTime() - new Date(startTimestamp).getTime()) /
             1000
         );
-        set({ isTracking: false, startTimestamp: null, title: "", projectId: null });
+        set({ isTracking: false, isAutoTracked: false, startTimestamp: null, title: "", projectId: null });
         return { startTime: startTimestamp, endTime, duration, title, projectId };
       },
       updateTitle: (title) => set({ title }),
