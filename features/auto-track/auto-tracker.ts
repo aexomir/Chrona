@@ -22,8 +22,7 @@ import { useTimerStore } from '@/features/timer/timer-store';
 import { matchRule } from './matcher';
 import { useTrackingRulesStore } from './tracking-rules-store';
 import type { TrackingRule } from './tracking-rules-store';
-
-const IDLE_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+import { IDLE_TIMEOUT_MS } from './timing-config';
 
 // Module-level state — survives re-renders, cleaned up in stopAutoTracker()
 type Sub = ReturnType<typeof emitter.addListener>;

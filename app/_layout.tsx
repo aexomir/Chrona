@@ -5,6 +5,9 @@ import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
 import { useWidgetSync } from "@/features/watch/use-widget-sync";
+import { useStreamStore } from "@/features/stream/stream-store";
+import { startAutoTracker, stopAutoTracker } from "@/features/auto-track/auto-tracker";
+import { useUntrackedStore } from "@/features/auto-track/untracked-store";
 import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
@@ -58,6 +61,20 @@ export default function RootLayout() {
   );
 
   const syncWatch = useSyncWatch();
+
+  useEffect(() => {
+    if (process.env.EXPO_OS !== "ios") return;
+    const { start, stop } = useStreamStore.getState();
+    const { _startWatching, _stopWatching } = useUntrackedStore.getState();
+    start();
+    startAutoTracker();
+    _startWatching();
+    return () => {
+      stopAutoTracker();
+      _stopWatching();
+      stop();
+    };
+  }, []);
 
   useEffect(() => {
     if (process.env.EXPO_OS !== "ios") return;

@@ -4,6 +4,8 @@ import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useSettingsStore, type TimerStartMode } from "@/features/settings/settings-store";
+import { useStreamStore } from "@/features/stream/stream-store";
+import type { ConnectionStatus } from "@/modules/chrona-stream";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
 import { Switch } from "heroui-native";
@@ -86,6 +88,24 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+const MAC_STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string }> = {
+  idle: { label: "Off", color: "#52525b" },
+  scanning: { label: "Searching…", color: "#d97706" },
+  connecting: { label: "Connecting…", color: "#d97706" },
+  connected: { label: "Connected", color: "#22c55e" },
+  disconnected: { label: "Not Found", color: "#52525b" },
+};
+
+function MacHelperStatus({ status }: { status: ConnectionStatus }) {
+  const { label, color } = MAC_STATUS_CONFIG[status];
+  return (
+    <View className="flex-row items-center gap-2">
+      <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
+      <Text style={{ color, fontSize: 14 }}>{label}</Text>
+    </View>
+  );
+}
+
 function SettingsDivider() {
   const theme = useAuroraTheme();
   return (
@@ -103,6 +123,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const theme = useAuroraTheme();
   const { permissionStatus, isEnabled } = useCalendarStore();
+  const streamStatus = useStreamStore((s) => s.status);
   const {
     auroraEnabled,
     setAuroraEnabled,
@@ -163,6 +184,11 @@ export default function SettingsScreen() {
         <View className="mt-10">
           <SectionLabel>Integrations</SectionLabel>
           <SettingsCard>
+            <SettingsRow
+              label="Mac Helper"
+              suffix={<MacHelperStatus status={streamStatus} />}
+            />
+            <SettingsDivider />
             <SettingsRow
               label="Calendar"
               onPress={() => router.push("/calendar-settings")}

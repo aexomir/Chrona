@@ -18,8 +18,7 @@ import { create } from 'zustand';
 
 import { matchRule } from './matcher';
 import { useTrackingRulesStore } from './tracking-rules-store';
-
-const UNTRACKED_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+import { UNTRACKED_THRESHOLD_MS } from './timing-config';
 
 type UntrackedHint = {
   appName: string;
