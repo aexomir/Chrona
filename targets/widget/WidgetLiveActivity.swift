@@ -21,38 +21,52 @@ private struct ChronaLockScreenView: View {
     private var icon: String { context.state.projectIcon.isEmpty ? "timer" : context.state.projectIcon }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                Image(systemName: icon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 20, height: 20)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(color)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.state.title.isEmpty ? "Chrona Session" : context.state.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text(context.state.projectName.isEmpty ? "Chrona" : context.state.projectName)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(color)
+                        .lineLimit(1)
+                }
+                .layoutPriority(1)
+
+                Spacer(minLength: 8)
+
+                Text(context.state.startDate, style: .timer)
+                    .font(.system(size: 22, weight: .bold, design: .monospaced))
                     .foregroundStyle(color)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .frame(minWidth: 72, alignment: .trailing)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(context.state.title.isEmpty ? "Chrona Session" : context.state.title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text(context.state.projectName.isEmpty ? "Chrona" : context.state.projectName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(color)
-                    .lineLimit(1)
+            Link(destination: URL(string: "chrona://stop")!) {
+                Label("Stop", systemImage: "stop.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.08)))
             }
-
-            Spacer(minLength: 100)
-
-            Text(context.state.startDate, style: .timer)
-                .font(.system(size: 26, weight: .bold, design: .monospaced))
-                .foregroundStyle(color)
-                .monospacedDigit()
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.vertical, 14)
     }
 }
 
@@ -154,6 +168,18 @@ struct WidgetLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     ChronaDITrailing(context: context)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Link(destination: URL(string: "chrona://stop")!) {
+                        Label("Stop", systemImage: "stop.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.08)))
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 4)
                 }
             } compactLeading: {
                 ChronaDICompactLeading(context: context)

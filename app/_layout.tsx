@@ -181,6 +181,7 @@ export default function RootLayout() {
           <ThemeProvider value={DarkTheme}>
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="stop" options={{ headerShown: false }} />
               <Stack.Screen
                 name="timer"
                 options={{ presentation: "modal", headerShown: false }}
