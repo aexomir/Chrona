@@ -13,6 +13,8 @@ type SettingsState = {
   setDeveloperMode: (enabled: boolean) => void;
   timerStartMode: TimerStartMode;
   setTimerStartMode: (mode: TimerStartMode) => void;
+  autoTrackMinDurationSec: number;
+  setAutoTrackMinDurationSec: (seconds: number) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -27,6 +29,9 @@ export const useSettingsStore = create<SettingsState>()(
       setDeveloperMode: (enabled) => set({ developerMode: enabled }),
       timerStartMode: "a",
       setTimerStartMode: (mode) => set({ timerStartMode: mode }),
+      autoTrackMinDurationSec: 60,
+      setAutoTrackMinDurationSec: (seconds) =>
+        set({ autoTrackMinDurationSec: seconds }),
     }),
     {
       name: "settings",

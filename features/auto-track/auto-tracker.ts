@@ -13,31 +13,28 @@
  * started manually. The auto-tracker never touches a manually-started timer.
  */
 
-import { emitter } from '@/modules/chrona-stream';
-import type { ActivityEvent } from '@/modules/chrona-stream';
+import type { ActivityEvent } from "@/modules/chrona-stream";
+import { emitter } from "@/modules/chrona-stream";
 
-import { useSessionsStore } from '@/features/sessions/sessions-store';
-import { useTimerStore } from '@/features/timer/timer-store';
+import { useSessionsStore } from "@/features/sessions/sessions-store";
+import { useSettingsStore } from "@/features/settings/settings-store";
+import { useTimerStore } from "@/features/timer/timer-store";
 
-import { matchRule } from './matcher';
-import { useTrackingRulesStore } from './tracking-rules-store';
-import type { TrackingRule } from './tracking-rules-store';
-import { IDLE_TIMEOUT_MS } from './timing-config';
+import { matchRule } from "./matcher";
+import { IDLE_TIMEOUT_MS, SWITCH_GRACE_MS } from "./timing-config";
+import type { TrackingRule } from "./tracking-rules-store";
+import { useTrackingRulesStore } from "./tracking-rules-store";
 
 // Module-level state — survives re-renders, cleaned up in stopAutoTracker()
 type Sub = ReturnType<typeof emitter.addListener>;
 let eventSub: Sub | null = null;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
-/** The id of the rule that auto-started the current timer. Null if manual. */
 let autoStartedRuleId: string | null = null;
-/**
- * True when the most recent app_change event matched the tracked app (or a
- * companion). Heartbeats may only reset the idle timer when this is true —
- * i.e. only while the user is still on the tracked app. Once they switch to
- * an untracked app this becomes false and heartbeats are ignored, letting the
- * idle countdown run to completion.
- */
 let lastEventWasTracked = false;
+let appLeftAt: number | null = null;
+let pendingRule: TrackingRule | null = null;
+let pendingEvent: ActivityEvent | null = null;
+let switchGraceTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -50,24 +47,59 @@ function clearIdleTimer() {
   }
 }
 
+function clearSwitchGraceTimer() {
+  if (switchGraceTimer !== null) {
+    clearTimeout(switchGraceTimer);
+    switchGraceTimer = null;
+  }
+  pendingRule = null;
+  pendingEvent = null;
+}
+
 function scheduleIdleTimer() {
   clearIdleTimer();
+
+  let timeoutMs = IDLE_TIMEOUT_MS;
+
+  if (appLeftAt !== null) {
+    const { startTimestamp } = useTimerStore.getState();
+    const minDurationMs =
+      useSettingsStore.getState().autoTrackMinDurationSec * 1000;
+    if (startTimestamp) {
+      const effectiveDurationMs =
+        appLeftAt - new Date(startTimestamp).getTime();
+      if (effectiveDurationMs < minDurationMs) {
+        timeoutMs = minDurationMs - effectiveDurationMs;
+      }
+    }
+  }
+
   idleTimer = setTimeout(() => {
     if (autoStartedRuleId !== null) {
       stopAndSave();
     }
-  }, IDLE_TIMEOUT_MS);
+  }, timeoutMs);
 }
 
 function stopAndSave() {
   const sessionData = useTimerStore.getState().stopTimer();
   if (sessionData) {
-    useSessionsStore.getState().addSession({
-      ...sessionData,
-      id: Date.now().toString(),
-      auto: true,
-    });
+    const effectiveEndMs = appLeftAt ?? new Date(sessionData.endTime).getTime();
+    const effectiveDuration = Math.floor(
+      (effectiveEndMs - new Date(sessionData.startTime).getTime()) / 1000,
+    );
+    const minDuration = useSettingsStore.getState().autoTrackMinDurationSec;
+    if (effectiveDuration >= minDuration) {
+      useSessionsStore.getState().addSession({
+        ...sessionData,
+        endTime: new Date(effectiveEndMs).toISOString(),
+        duration: effectiveDuration,
+        id: Date.now().toString(),
+        auto: true,
+      });
+    }
   }
+  appLeftAt = null;
   autoStartedRuleId = null;
 }
 
@@ -88,7 +120,7 @@ function handleEvent(event: ActivityEvent) {
   // Heartbeats carry no app data. Only reset the idle timer if the last known
   // app was the tracked one — i.e. the user is still on it, just not switching.
   // If they already moved to an untracked app, let the countdown run.
-  if (event.type === 'heartbeat') {
+  if (event.type === "heartbeat") {
     if (lastEventWasTracked) {
       scheduleIdleTimer();
     }
@@ -102,18 +134,58 @@ function handleEvent(event: ActivityEvent) {
 
   if (isTracking && autoStartedRuleId !== null) {
     if (match && match.id === autoStartedRuleId) {
-      // Same rule still matches — reset idle timer and keep running
+      // Same rule still matches — user may be returning within the grace period.
+      // Cancel any pending switch and keep the session running.
+      clearSwitchGraceTimer();
       clearIdleTimer();
       onTrackedApp = true;
     } else if (isCompanionApp(autoStartedRuleId, event.bundleId)) {
-      // Switched to a companion app — session continues, treat as tracked
+      // Switched to a companion app — session continues, treat as tracked.
+      // Cancel any pending switch (companion visit = still in the same session).
+      clearSwitchGraceTimer();
       onTrackedApp = true;
     } else if (match) {
-      // Switched to a different tracked app — start a new session immediately
-      stopAndSave();
-      startAutoTimer(match, event);
-      clearIdleTimer();
-      onTrackedApp = true;
+      // Switched to a different tracked app.
+      //
+      // If A hasn't reached minDuration yet, immediately discard it and start B.
+      // The grace period would only delay B's tracking for no benefit — A gets
+      // discarded by stopAndSave() either way.
+      //
+      // If A already has a valid session (≥ minDuration), apply a grace period:
+      // if the user returns within SWITCH_GRACE_MS the session continues
+      // uninterrupted. A→B→C: cancel the existing timer and restart for C.
+      const now = Date.now();
+      const { startTimestamp } = useTimerStore.getState();
+      const minDurationMs =
+        useSettingsStore.getState().autoTrackMinDurationSec * 1000;
+      const elapsed = startTimestamp
+        ? now - new Date(startTimestamp).getTime()
+        : 0;
+
+      clearSwitchGraceTimer();
+
+      if (elapsed < minDurationMs) {
+        stopAndSave();
+        startAutoTimer(match, event);
+        clearIdleTimer();
+        onTrackedApp = true;
+      } else {
+        pendingRule = match;
+        pendingEvent = event;
+        switchGraceTimer = setTimeout(() => {
+          const rule = pendingRule!;
+          const evt = pendingEvent!;
+          pendingRule = null;
+          pendingEvent = null;
+          switchGraceTimer = null;
+          stopAndSave();
+          startAutoTimer(rule, evt);
+          clearIdleTimer();
+        }, SWITCH_GRACE_MS);
+        // onTrackedApp stays false — user is not on app-A right now.
+        // appLeftAt records the real departure time; heartbeats won't reset
+        // the idle timer during the pending state.
+      }
     }
     // Else: switched to an untracked app — idle timer will stop the session
     // after IDLE_TIMEOUT_MS if the user doesn't return to the tracked app
@@ -128,6 +200,14 @@ function handleEvent(event: ActivityEvent) {
 
   lastEventWasTracked = onTrackedApp;
 
+  // Track the moment the user leaves the tracked app so stopAndSave can use
+  // the real session end time rather than the inflated idle-timer fire time.
+  if (autoStartedRuleId !== null && !onTrackedApp && appLeftAt === null) {
+    appLeftAt = Date.now();
+  } else if (onTrackedApp) {
+    appLeftAt = null;
+  }
+
   // Schedule (or keep) the idle countdown. When on the tracked app this acts
   // as a safety net in case no further events arrive; it will be reset by the
   // next heartbeat. When on an untracked app it starts the 2-min countdown.
@@ -141,24 +221,28 @@ function handleEvent(event: ActivityEvent) {
 // ---------------------------------------------------------------------------
 
 export function startAutoTracker() {
-  if (process.env.EXPO_OS !== 'ios') return;
+  if (process.env.EXPO_OS !== "ios") return;
 
   // Idempotent — tear down any existing subscription before re-attaching
   eventSub?.remove();
-  eventSub = emitter.addListener('onEvent', handleEvent);
+  eventSub = emitter.addListener("onEvent", handleEvent);
 }
 
 export function stopAutoTracker() {
-  if (process.env.EXPO_OS !== 'ios') return;
+  if (process.env.EXPO_OS !== "ios") return;
 
   eventSub?.remove();
   eventSub = null;
 
   clearIdleTimer();
+  clearSwitchGraceTimer();
   lastEventWasTracked = false;
 
-  // If an auto-tracked session is in progress, save it before stopping
+  // If an auto-tracked session is in progress, save it before stopping.
+  // appLeftAt is reset inside stopAndSave; clear it here for the no-session case.
   if (autoStartedRuleId !== null) {
     stopAndSave();
+  } else {
+    appLeftAt = null;
   }
 }
