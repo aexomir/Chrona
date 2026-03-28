@@ -1,4 +1,5 @@
 import { useTrackingRulesStore, type TrackingRule } from "@/features/auto-track/tracking-rules-store";
+import { useJournalStore } from "@/features/intelligence/journal-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -131,6 +132,7 @@ export default function TrackingRulesScreen() {
   const toast = useAppToast();
   const { projects } = useProjects();
   const { rules, addRule, updateRule, removeRule } = useTrackingRulesStore();
+  const { nameIndex } = useJournalStore();
 
   const [sheetMode, setSheetMode] = useState<"hidden" | "add" | "edit">("hidden");
   const [editingRuleId, setEditingRuleId] = useState<string | undefined>();
@@ -138,6 +140,7 @@ export default function TrackingRulesScreen() {
   const [appName, setAppName] = useState("");
   const [titleKeywords, setTitleKeywords] = useState("");
   const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>();
+  const [editingCompanions, setEditingCompanions] = useState<string[]>([]);
 
   function openAddSheet() {
     setRuleName("");
@@ -156,6 +159,7 @@ export default function TrackingRulesScreen() {
     setSelectedProject(
       project ? { value: project.id, label: project.name } : undefined
     );
+    setEditingCompanions(rule.companionBundleIds ?? []);
     setEditingRuleId(rule.id);
     setSheetMode("edit");
   }
@@ -186,6 +190,7 @@ export default function TrackingRulesScreen() {
         titleKeywords: keywords,
         projectId: selectedProject.value,
         defaultTitle: ruleName.trim() || undefined,
+        companionBundleIds: editingCompanions,
       });
       toast.show({ label: "Rule updated", variant: "success" });
     }
@@ -285,6 +290,18 @@ export default function TrackingRulesScreen() {
                         )}
                         {isInactive && (
                           <Text className="text-neutral-600 text-xs mt-1">Inactive</Text>
+                        )}
+                        {(rule.companionBundleIds?.length ?? 0) > 0 && (
+                          <View className="flex-row items-center gap-1 mt-1.5">
+                            <Image
+                              source="sf:link"
+                              style={{ width: 10, height: 10 }}
+                              tintColor="#3f3f46"
+                            />
+                            <Text className="text-zinc-600 text-xs">
+                              {rule.companionBundleIds!.length} companion{rule.companionBundleIds!.length > 1 ? 's' : ''}
+                            </Text>
+                          </View>
                         )}
                       </ListGroup.ItemContent>
                       <ListGroup.ItemSuffix>
@@ -430,13 +447,96 @@ export default function TrackingRulesScreen() {
               </Select>
             </View>
 
-            {sheetMode === "edit" && (
-              <>
-                <Separator className="mb-6 opacity-20" />
-                <DeleteRow onDelete={handleDelete} />
-                <View className="h-8" />
-              </>
-            )}
+            {sheetMode === "edit" && (() => {
+              const editingRule = rules.find((r) => r.id === editingRuleId);
+              const candidates = Object.entries(nameIndex).filter(
+                ([bundleId]) =>
+                  bundleId !== editingRule?.primaryBundleId &&
+                  !editingCompanions.includes(bundleId)
+              );
+              return (
+                <>
+                  <FieldLabel>Companion Apps</FieldLabel>
+                  <Text className="text-zinc-600 text-xs mb-4 leading-relaxed">
+                    The session keeps running when you switch to these apps.
+                  </Text>
+
+                  {editingCompanions.length > 0 && (
+                    <View className="mb-3 gap-1">
+                      {editingCompanions.map((bundleId) => (
+                        <View
+                          key={bundleId}
+                          className="flex-row items-center px-4 py-3 rounded-xl border border-white/8"
+                        >
+                          <Text className="flex-1 text-white text-sm">
+                            {nameIndex[bundleId] ?? bundleId}
+                          </Text>
+                          <Pressable
+                            onPress={() =>
+                              setEditingCompanions((prev) =>
+                                prev.filter((id) => id !== bundleId)
+                              )
+                            }
+                            hitSlop={10}
+                          >
+                            <Image
+                              source="sf:xmark"
+                              style={{ width: 12, height: 12 }}
+                              tintColor="#52525b"
+                            />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {candidates.length > 0 && (
+                    <View className="mb-8">
+                      <Select
+                        value={undefined}
+                        onValueChange={(v) => {
+                          if (v)
+                            setEditingCompanions((prev) => [
+                              ...prev,
+                              (v as SelectOption).value,
+                            ]);
+                        }}
+                      >
+                        <Select.Trigger className="bg-transparent shadow-none border border-white/10">
+                          <Text className="text-zinc-500 flex-1">Add companion app…</Text>
+                          <Select.TriggerIndicator />
+                        </Select.Trigger>
+                        <Select.Portal hostName="tracking-rules">
+                          <Select.Overlay />
+                          <Select.Content
+                            presentation="popover"
+                            width="trigger"
+                            className="border border-white/10 shadow-none"
+                            style={{ backgroundColor: "#18181b" }}
+                          >
+                            <Select.ListLabel>Known apps</Select.ListLabel>
+                            {candidates.map(([bundleId, appName]) => (
+                              <Select.Item
+                                key={bundleId}
+                                value={bundleId}
+                                label={appName}
+                              >
+                                <Select.ItemLabel />
+                                <Select.ItemIndicator />
+                              </Select.Item>
+                            ))}
+                          </Select.Content>
+                        </Select.Portal>
+                      </Select>
+                    </View>
+                  )}
+
+                  <Separator className="mb-6 opacity-20" />
+                  <DeleteRow onDelete={handleDelete} />
+                  <View className="h-8" />
+                </>
+              );
+            })()}
           </ScrollView>
 
           <PortalHost name="tracking-rules" />

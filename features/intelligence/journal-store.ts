@@ -14,11 +14,11 @@
  *   stopJournalTracker()  — call alongside stopAutoTracker()
  */
 
-import { mmkvStorage } from '@/storage';
-import { emitter } from '@/modules/chrona-stream';
-import type { ActivityEvent } from '@/modules/chrona-stream';
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import type { ActivityEvent } from "@/modules/chrona-stream";
+import { emitter } from "@/modules/chrona-stream";
+import { mmkvStorage } from "@/storage";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 const GAP_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_ENTRIES = 500;
@@ -75,7 +75,7 @@ export const useJournalStore = create<JournalState>()(
         })),
     }),
     {
-      name: 'activity-journal',
+      name: "activity-journal",
       storage: mmkvStorage,
       partialize: (state) => ({
         sessions: state.sessions,
@@ -123,15 +123,17 @@ function closeSession(endedAt: number) {
 }
 
 function handleJournalEvent(event: ActivityEvent) {
+  const now = event.timestamp * 1000;
+
   // Heartbeats carry no app data — update the gap clock and return
-  if (event.type === 'heartbeat') {
-    lastEventMs = event.timestamp;
+  if (event.type === "heartbeat") {
+    lastEventMs = now;
     return;
   }
 
   // Guard: app_change / hello must have a bundleId
   if (!event.bundleId) {
-    lastEventMs = event.timestamp;
+    lastEventMs = now;
     return;
   }
 
@@ -139,8 +141,6 @@ function handleJournalEvent(event: ActivityEvent) {
   if (event.appName && !useJournalStore.getState().nameIndex[event.bundleId]) {
     useJournalStore.getState()._updateNameIndex(event.bundleId, event.appName);
   }
-
-  const now = event.timestamp;
   const gap = lastEventMs !== null ? now - lastEventMs : 0;
 
   // Gap exceeds threshold → close whatever session is open
@@ -210,7 +210,10 @@ export function markTimerStart() {
   }
 }
 
-export function getAppsForWindow(_startMs: number, _endMs: number): import('@/features/sessions/sessions-store').AppUsage[] {
+export function getAppsForWindow(
+  _startMs: number,
+  _endMs: number,
+): import("@/features/sessions/sessions-store").AppUsage[] {
   const { sessions, nameIndex } = useJournalStore.getState();
   const agg: Record<string, number> = {};
 
@@ -263,14 +266,14 @@ export function getAppsForWindow(_startMs: number, _endMs: number): import('@/fe
 }
 
 export function startJournalTracker() {
-  if (process.env.EXPO_OS !== 'ios') return;
+  if (process.env.EXPO_OS !== "ios") return;
   // Idempotent
   journalSub?.remove();
-  journalSub = emitter.addListener('onEvent', handleJournalEvent);
+  journalSub = emitter.addListener("onEvent", handleJournalEvent);
 }
 
 export function stopJournalTracker() {
-  if (process.env.EXPO_OS !== 'ios') return;
+  if (process.env.EXPO_OS !== "ios") return;
   journalSub?.remove();
   journalSub = null;
   // Flush whatever session is in progress

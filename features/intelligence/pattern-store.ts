@@ -4,13 +4,14 @@ import {
 } from "@/features/intelligence/journal-store";
 import type { Session } from "@/features/sessions/sessions-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
+import { useTrackingRulesStore } from "@/features/auto-track/tracking-rules-store";
 import { mmkvStorage } from "@/storage";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 const MIN_DWELL_SECONDS = 120;
 const MIN_DWELL_FRACTION = 0.5;
-const SUGGESTION_THRESHOLD = 3;
+const SUGGESTION_THRESHOLD = 1;
 export const DISMISS_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 type PatternState = {
@@ -113,6 +114,25 @@ function analyzeSession(session: Session) {
     ._recordObservation(dominantId, appName, session.projectId);
 }
 
+function updateRuleCompanions(session: Session) {
+  if (!session.projectId) return;
+  const { rules, updateRule } = useTrackingRulesStore.getState();
+  const projectRules = rules.filter(
+    (r) => r.projectId === session.projectId && !!r.primaryBundleId
+  );
+  for (const rule of projectRules) {
+    const computed = computeCompanionBundleIds(rule.primaryBundleId!, rule.projectId);
+    if (computed.length === 0) continue;
+    const existing = new Set(rule.companionBundleIds ?? []);
+    const added = computed.filter((id) => !existing.has(id));
+    if (added.length > 0) {
+      updateRule(rule.id, {
+        companionBundleIds: [...Array.from(existing), ...added],
+      });
+    }
+  }
+}
+
 export function startPatternTracker() {
   if (process.env.EXPO_OS !== "ios") return;
   patternUnsub?.();
@@ -124,8 +144,9 @@ export function startPatternTracker() {
     }
     prevLength = state.sessions.length;
     const newest = state.sessions[0];
-    if (newest && !newest.auto && newest.projectId) {
-      analyzeSession(newest);
+    if (newest && newest.projectId) {
+      if (!newest.auto) analyzeSession(newest);
+      updateRuleCompanions(newest);
     }
   });
 }
