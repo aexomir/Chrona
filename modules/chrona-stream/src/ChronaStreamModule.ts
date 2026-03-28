@@ -7,6 +7,8 @@ declare class ChronaStreamNativeModule {
   start(): void;
   /** Cancel discovery and disconnect. */
   stop(): void;
+  /** Remove the cached host/port from UserDefaults so the next connect uses Bonjour discovery. */
+  clearCachedEndpoint(): void;
   // Required by EventEmitter
   addListener(eventName: string, listener: (...args: unknown[]) => void): void;
   removeListeners(count: number): void;

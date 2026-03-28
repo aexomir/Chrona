@@ -60,6 +60,9 @@ struct ChronaEvent: Codable {
         /// First event sent after a client connects.
         /// Carries the current frontmost app snapshot — treat it identically to `app_change`.
         case hello = "hello"
+
+        /// Response to a ping from the iOS client, confirming the connection is alive.
+        case pong = "pong"
     }
 
     // MARK: - Factory

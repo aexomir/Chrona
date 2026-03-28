@@ -1,31 +1,10 @@
-// BonjourServer.swift — Chrona Helper
-//
-// Advertises a TCP service over Bonjour and streams ChronaEvents to exactly one
-// connected iOS client at a time.
-//
-// Discovery (iOS side):
-//   let browser = NWBrowser(for: .bonjour(type: "_chrona._tcp", domain: nil), using: .tcp)
-//   // Resolve the endpoint and connect with NWConnection.
-//
-// Connection model:
-//   - The listener accepts the first incoming connection.
-//   - If a second client connects while one is already active, the old one is cancelled
-//     and replaced (single-client design keeps the protocol simple).
-//   - If the connection drops, the listener keeps running — the iOS client should
-//     re-browse and reconnect.
-//
-// Framing: each event is written as UTF-8 JSON followed by a single `\n` byte.
-//
-// Heartbeats: a 30-second timer sends a `heartbeat` event when the app is idle,
-// keeping the TCP connection alive through NAT/firewall inactivity timeouts.
-
 import Foundation
 import Network
 import os.log
 
 private let kServiceType        = "_chrona._tcp"
 private let kServiceName        = "Chrona Helper"
-private let kHeartbeatInterval  : TimeInterval = 30
+private let kHeartbeatInterval  : TimeInterval = 10
 private let kRestartDelay       : TimeInterval = 3
 
 final class BonjourServer {
@@ -40,7 +19,9 @@ final class BonjourServer {
     private var listener:       NWListener?
     private var connection:     NWConnection?
     private var heartbeatTimer: Timer?
+    private var clientBuffer    = Data()
     private let encoder         = JSONEncoder()
+    private let decoder         = JSONDecoder()
     private let log             = Logger(subsystem: "com.chrona.helper", category: "BonjourServer")
 
     // MARK: - Init / deinit
@@ -57,13 +38,11 @@ final class BonjourServer {
 
     // MARK: - Public: send an event
 
-    /// Encodes `event` as JSON and writes it followed by `\n` to the active connection.
-    /// Silently drops the write if no client is connected.
     func send(_ event: ChronaEvent) {
         guard let conn = connection else { return }
         do {
             var data = try encoder.encode(event)
-            data.append(0x0A) // '\n'
+            data.append(0x0A)
             conn.send(content: data, completion: .contentProcessed { [weak self] error in
                 if let error {
                     self?.log.warning("send failed: \(error.localizedDescription, privacy: .public)")
@@ -85,7 +64,6 @@ final class BonjourServer {
             return
         }
 
-        // Advertise on Bonjour so the iOS app can discover without a hard-coded IP.
         listener?.service = NWListener.Service(name: kServiceName, type: kServiceType)
 
         listener?.stateUpdateHandler = { [weak self] state in
@@ -120,13 +98,13 @@ final class BonjourServer {
     // MARK: - Connection lifecycle
 
     private func accept(_ newConn: NWConnection) {
-        // Drop any existing connection — single-client model.
         if let old = connection {
             old.cancel()
             heartbeatTimer?.invalidate()
             heartbeatTimer = nil
         }
 
+        clientBuffer = Data()
         connection = newConn
         log.info("New connection from \(newConn.endpoint.debugDescription, privacy: .public)")
 
@@ -136,6 +114,7 @@ final class BonjourServer {
             case .ready:
                 self.log.info("Client connected")
                 self.startHeartbeat()
+                self.receiveFromClient()
                 self.onClientConnected?()
             case .failed(let error):
                 self.log.warning("Connection error: \(error.localizedDescription, privacy: .public)")
@@ -154,6 +133,7 @@ final class BonjourServer {
         guard connection != nil else { return }
         heartbeatTimer?.invalidate()
         heartbeatTimer = nil
+        clientBuffer = Data()
         connection = nil
         log.info("Client disconnected — waiting for reconnect")
         onClientDisconnected?()
@@ -165,6 +145,42 @@ final class BonjourServer {
         heartbeatTimer?.invalidate()
         heartbeatTimer = Timer.scheduledTimer(withTimeInterval: kHeartbeatInterval, repeats: true) { [weak self] _ in
             self?.send(.make(type: .heartbeat))
+        }
+    }
+
+    // MARK: - Read from client (ping/pong)
+
+    private func receiveFromClient() {
+        guard let conn = connection else { return }
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            if let data, !data.isEmpty {
+                self.clientBuffer.append(data)
+                self.flushClientBuffer()
+            }
+            if error != nil || isComplete { return }
+            self.receiveFromClient()
+        }
+    }
+
+    private func flushClientBuffer() {
+        while let idx = clientBuffer.firstIndex(of: 0x0A) {
+            let line = Data(clientBuffer[clientBuffer.startIndex..<idx])
+            clientBuffer.removeSubrange(clientBuffer.startIndex...idx)
+            if !line.isEmpty {
+                handleClientMessage(line)
+            }
+        }
+    }
+
+    private struct ClientMessage: Decodable {
+        let type: String
+    }
+
+    private func handleClientMessage(_ data: Data) {
+        guard let msg = try? decoder.decode(ClientMessage.self, from: data) else { return }
+        if msg.type == "ping" {
+            send(.make(type: .pong))
         }
     }
 }

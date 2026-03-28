@@ -2,50 +2,54 @@ import ExpoModulesCore
 import Network
 import Foundation
 
-// MARK: - Wire type
-
-/// Mirrors the ChronaEvent struct defined in the macOS helper's EventProtocol.swift.
-/// Only used for decoding — never sent back to the helper.
 private struct ChronaWireEvent: Decodable {
     let version: Int
-    let type: String        // "app_change" | "heartbeat" | "hello"
+    let type: String
     let appName: String
     let windowTitle: String
     let bundleId: String
     let timestamp: Double
 }
 
-// MARK: - Module
-
 public class ChronaStreamModule: Module {
 
     private let serviceType = "_chrona._tcp"
+    private let kCachedHostKey = "chrona.lastHost"
+    private let kCachedPortKey = "chrona.lastPort"
 
     private var browser: NWBrowser?
     private var connection: NWConnection?
     private var buffer = Data()
     private var reconnectItem: DispatchWorkItem?
     private var watchdogItem: DispatchWorkItem?
+    private var directAttemptTimeoutItem: DispatchWorkItem?
+    private var pingItem: DispatchWorkItem?
+    private var pongTimeoutItem: DispatchWorkItem?
+    private var pathMonitor: NWPathMonitor?
     private var isStarted = false
+    private var currentPathSatisfied = false
+    private var reconnectAttempt = 0
 
-    private let watchdogInterval: TimeInterval = 90
-
-    // MARK: - Definition
+    private let watchdogInterval: TimeInterval = 45
+    private let pingInterval: TimeInterval = 15
+    private let pongTimeout: TimeInterval = 5
+    private let reconnectDelays: [TimeInterval] = [1, 2, 4, 8, 16, 30]
 
     public func definition() -> ModuleDefinition {
         Name("ChronaStream")
 
         Events("onStatusChanged", "onEvent")
 
-        /// Start Bonjour discovery and connect to the first helper found.
-        /// Idempotent — calling while already started is a no-op.
         Function("start") { [weak self] in
             self?.startStream()
         }
 
-        /// Tear everything down and emit status "idle".
         Function("stop") { [weak self] in
             self?.stopStream()
+        }
+
+        Function("clearCachedEndpoint") { [weak self] in
+            self?.clearCachedEndpoint()
         }
 
         OnDestroy {
@@ -58,6 +62,8 @@ public class ChronaStreamModule: Module {
     private func startStream() {
         guard !isStarted else { return }
         isStarted = true
+        reconnectAttempt = 0
+        startPathMonitor()
         browse()
     }
 
@@ -65,10 +71,39 @@ public class ChronaStreamModule: Module {
         isStarted = false
         reconnectItem?.cancel()
         reconnectItem = nil
+        directAttemptTimeoutItem?.cancel()
+        directAttemptTimeoutItem = nil
+        pathMonitor?.cancel()
+        pathMonitor = nil
         browser?.cancel()
         browser = nil
         dropConnection()
         emitStatus("idle")
+    }
+
+    // MARK: - Path monitor
+
+    private func startPathMonitor() {
+        let monitor = NWPathMonitor()
+        pathMonitor = monitor
+        monitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                guard let self, self.isStarted else { return }
+                let satisfied = path.status == .satisfied
+                let prev = self.currentPathSatisfied
+                self.currentPathSatisfied = satisfied
+
+                if !satisfied && prev {
+                    self.handleDisconnect()
+                } else if satisfied && !prev {
+                    self.reconnectItem?.cancel()
+                    self.reconnectItem = nil
+                    self.reconnectAttempt = 0
+                    self.attemptReconnect()
+                }
+            }
+        }
+        monitor.start(queue: DispatchQueue.global(qos: .utility))
     }
 
     // MARK: - Bonjour browsing
@@ -91,11 +126,7 @@ public class ChronaStreamModule: Module {
         }
 
         browser?.browseResultsChangedHandler = { [weak self] results, _ in
-            // Only connect when we have no active connection and a result is available.
             guard let self, self.connection == nil, let result = results.first else { return }
-            // Cancel the browser — we found our target; reconnect will re-browse if needed.
-            self.browser?.cancel()
-            self.browser = nil
             self.connect(to: result.endpoint)
         }
 
@@ -104,7 +135,7 @@ public class ChronaStreamModule: Module {
 
     // MARK: - TCP connection
 
-    private func connect(to endpoint: NWEndpoint) {
+    private func connect(to endpoint: NWEndpoint, directAttempt: Bool = false) {
         emitStatus("connecting")
 
         let params = NWParameters.tcp
@@ -113,12 +144,27 @@ public class ChronaStreamModule: Module {
         let conn = NWConnection(to: endpoint, using: params)
         connection = conn
 
+        if directAttempt {
+            let timeout = DispatchWorkItem { [weak self] in
+                guard let self, self.connection === conn else { return }
+                self.dropConnection()
+                self.browse()
+            }
+            directAttemptTimeoutItem = timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: timeout)
+        }
+
         conn.stateUpdateHandler = { [weak self] state in
             guard let self else { return }
             switch state {
             case .ready:
+                self.directAttemptTimeoutItem?.cancel()
+                self.directAttemptTimeoutItem = nil
+                self.reconnectAttempt = 0
+                self.cacheEndpoint(conn.endpoint)
                 self.emitStatus("connected")
                 self.resetWatchdog()
+                self.startPingCycle()
                 self.receive()
             case .failed, .cancelled:
                 self.handleDisconnect()
@@ -131,6 +177,12 @@ public class ChronaStreamModule: Module {
     }
 
     private func dropConnection() {
+        directAttemptTimeoutItem?.cancel()
+        directAttemptTimeoutItem = nil
+        pingItem?.cancel()
+        pingItem = nil
+        pongTimeoutItem?.cancel()
+        pongTimeoutItem = nil
         connection?.cancel()
         connection = nil
         buffer = Data()
@@ -155,6 +207,45 @@ public class ChronaStreamModule: Module {
         scheduleReconnect()
     }
 
+    // MARK: - Ping / pong liveness
+
+    private func startPingCycle() {
+        schedulePing()
+    }
+
+    private func schedulePing() {
+        pingItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, self.connection != nil else { return }
+            self.sendPing()
+        }
+        pingItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + pingInterval, execute: item)
+    }
+
+    private func sendPing() {
+        guard let conn = connection else { return }
+        let ts = Date().timeIntervalSince1970
+        let pingJSON = "{\"version\":1,\"type\":\"ping\",\"appName\":\"\",\"windowTitle\":\"\",\"bundleId\":\"\",\"timestamp\":\(ts)}"
+        guard let data = (pingJSON + "\n").data(using: .utf8) else { return }
+        conn.send(content: data, completion: .contentProcessed { _ in })
+
+        pongTimeoutItem?.cancel()
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, self.connection != nil else { return }
+            self.handleDisconnect()
+        }
+        pongTimeoutItem = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + pongTimeout, execute: timeout)
+
+        schedulePing()
+    }
+
+    private func cancelPongTimeout() {
+        pongTimeoutItem?.cancel()
+        pongTimeoutItem = nil
+    }
+
     // MARK: - Receive loop
 
     private func receive() {
@@ -165,6 +256,7 @@ public class ChronaStreamModule: Module {
 
             if let data, !data.isEmpty {
                 self.resetWatchdog()
+                self.cancelPongTimeout()
                 self.buffer.append(data)
                 self.flush()
             }
@@ -180,7 +272,6 @@ public class ChronaStreamModule: Module {
 
     // MARK: - Newline-delimited JSON parsing
 
-    /// Split the receive buffer on `\n` and decode each complete line.
     private func flush() {
         while let idx = buffer.firstIndex(of: 0x0A) {
             let line = Data(buffer[buffer.startIndex..<idx])
@@ -207,22 +298,59 @@ public class ChronaStreamModule: Module {
 
     // MARK: - Reconnection
 
-    /// Re-browses after a 3-second delay. Cancels any pending reconnect first.
     private func scheduleReconnect() {
         guard isStarted else { return }
+        guard currentPathSatisfied else { return }
 
         reconnectItem?.cancel()
+        let delay = reconnectDelays[min(reconnectAttempt, reconnectDelays.count - 1)]
+        reconnectAttempt += 1
         let item = DispatchWorkItem { [weak self] in
             guard let self, self.isStarted else { return }
-            self.browse()
+            self.attemptReconnect()
         }
         reconnectItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
+    private func attemptReconnect() {
+        guard isStarted else { return }
+
+        if let cached = cachedEndpoint() {
+            connect(to: cached, directAttempt: true)
+        } else {
+            browse()
+        }
+    }
+
+    // MARK: - Endpoint cache
+
+    private func cacheEndpoint(_ endpoint: NWEndpoint) {
+        if case .hostPort(let host, let port) = endpoint {
+            UserDefaults.standard.set("\(host)", forKey: kCachedHostKey)
+            UserDefaults.standard.set(Int(port.rawValue), forKey: kCachedPortKey)
+        }
+    }
+
+    private func cachedEndpoint() -> NWEndpoint? {
+        guard let host = UserDefaults.standard.string(forKey: kCachedHostKey),
+              let portInt = UserDefaults.standard.object(forKey: kCachedPortKey) as? Int,
+              portInt >= 0, portInt <= 65535,
+              let port = NWEndpoint.Port(rawValue: UInt16(portInt)) else { return nil }
+        return .hostPort(host: NWEndpoint.Host(host), port: port)
+    }
+
+    private func clearCachedEndpoint() {
+        UserDefaults.standard.removeObject(forKey: kCachedHostKey)
+        UserDefaults.standard.removeObject(forKey: kCachedPortKey)
     }
 
     // MARK: - Helpers
 
     private func emitStatus(_ status: String) {
-        sendEvent("onStatusChanged", ["status": status])
+        sendEvent("onStatusChanged", [
+            "status": status,
+            "pathSatisfied": currentPathSatisfied,
+        ])
     }
 }

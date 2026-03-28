@@ -5,7 +5,7 @@ export type ConnectionStatus =
   | 'connected'
   | 'disconnected';
 
-export type ActivityEventType = 'app_change' | 'heartbeat' | 'hello';
+export type ActivityEventType = 'app_change' | 'heartbeat' | 'hello' | 'pong';
 
 export type ActivityEvent = {
   /** Protocol version — currently always 1. */
@@ -24,4 +24,5 @@ export type ActivityEvent = {
 
 export type StatusChangedPayload = {
   status: ConnectionStatus;
+  pathSatisfied: boolean;
 };

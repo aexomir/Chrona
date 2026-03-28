@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
@@ -46,11 +47,13 @@ function ChevronSuffix() {
 function SettingsRow({
   label,
   onPress,
+  onLongPress,
   suffix,
   children,
 }: {
   label: string;
   onPress?: () => void;
+  onLongPress?: () => void;
   suffix?: React.ReactNode;
   children?: React.ReactNode;
 }) {
@@ -65,8 +68,8 @@ function SettingsRow({
     </View>
   );
 
-  if (onPress) {
-    return <Pressable onPress={onPress}>{content}</Pressable>;
+  if (onPress || onLongPress) {
+    return <Pressable onPress={onPress} onLongPress={onLongPress}>{content}</Pressable>;
   }
   return content;
 }
@@ -112,6 +115,7 @@ function MacHelperStatus({ status }: { status: ConnectionStatus }) {
     <View className="flex-row items-center gap-2">
       <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
       <Text style={{ color, fontSize: 14 }}>{label}</Text>
+      <Image source="sf:arrow.clockwise" style={styles.chevron} tintColor="#636366" />
     </View>
   );
 }
@@ -129,11 +133,26 @@ function SettingsDivider() {
   );
 }
 
+function formatTimestamp(ts: number | null): string {
+  if (ts === null) return "—";
+  return new Date(ts).toLocaleTimeString();
+}
+
+function formatEventTime(ts: number): string {
+  return new Date(ts * 1000).toLocaleTimeString();
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const theme = useAuroraTheme();
   const { permissionStatus, isEnabled } = useCalendarStore();
   const streamStatus = useStreamStore((s) => s.status);
+  const pathSatisfied = useStreamStore((s) => s.pathSatisfied);
+  const currentEvent = useStreamStore((s) => s.currentEvent);
+  const lastEventTime = useStreamStore((s) => s.lastEventTime);
+  const lastHeartbeat = useStreamStore((s) => s.lastHeartbeat);
+  const reconnect = useStreamStore((s) => s.reconnect);
+  const clearEndpointCache = useStreamStore((s) => s.clearEndpointCache);
   const {
     auroraEnabled,
     setAuroraEnabled,
@@ -142,7 +161,23 @@ export default function SettingsScreen() {
     timerStartMode,
     autoTrackMinDurationSec,
     setAutoTrackMinDurationSec,
+    developerMode,
+    setDeveloperMode,
   } = useSettingsStore();
+
+  const devTapCount = useRef(0);
+  const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleVersionTap = () => {
+    devTapCount.current += 1;
+    if (devTapTimer.current) clearTimeout(devTapTimer.current);
+    if (devTapCount.current >= 5) {
+      devTapCount.current = 0;
+      setDeveloperMode(!developerMode);
+      return;
+    }
+    devTapTimer.current = setTimeout(() => { devTapCount.current = 0; }, 2000);
+  };
 
   const currentMinDuration =
     MIN_DURATION_OPTIONS.find((o) => o.value === autoTrackMinDurationSec.toString()) ??
@@ -202,6 +237,8 @@ export default function SettingsScreen() {
           <SettingsCard>
             <SettingsRow
               label="Mac Helper"
+              onPress={reconnect}
+              onLongPress={() => { clearEndpointCache(); reconnect(); }}
               suffix={<MacHelperStatus status={streamStatus} />}
             />
             <SettingsDivider />
@@ -275,10 +312,71 @@ export default function SettingsScreen() {
           </SettingsCard>
         </View>
 
+        {/* DBG */}
+        {developerMode && (
+          <View className="mt-10">
+            <SectionLabel>DBG</SectionLabel>
+            <SettingsCard>
+              <SettingsRow
+                label="Status"
+                suffix={
+                  <Text className="text-neutral-400 text-sm font-mono">{streamStatus}</Text>
+                }
+              />
+              <SettingsDivider />
+              <SettingsRow
+                label="Network"
+                suffix={
+                  <Text className={`text-sm font-mono ${pathSatisfied ? "text-green-500" : "text-neutral-500"}`}>
+                    {pathSatisfied ? "satisfied" : "unsatisfied"}
+                  </Text>
+                }
+              />
+              <SettingsDivider />
+              <SettingsRow
+                label="Last Received"
+                suffix={
+                  <Text className="text-neutral-400 text-sm font-mono">{formatTimestamp(lastEventTime)}</Text>
+                }
+              />
+              <SettingsDivider />
+              <SettingsRow
+                label="Last Heartbeat"
+                suffix={
+                  <Text className="text-neutral-400 text-sm font-mono">{formatTimestamp(lastHeartbeat)}</Text>
+                }
+              />
+              {currentEvent && (
+                <>
+                  <SettingsDivider />
+                  <View className="py-3 px-5">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-white text-sm font-medium flex-1" numberOfLines={1}>
+                        {currentEvent.appName}
+                      </Text>
+                      <Text className="text-neutral-500 text-xs font-mono ml-3">
+                        {formatEventTime(currentEvent.timestamp)}
+                      </Text>
+                    </View>
+                    {currentEvent.windowTitle ? (
+                      <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
+                        {currentEvent.windowTitle}
+                      </Text>
+                    ) : null}
+                    <Text className="text-neutral-600 text-xs font-mono mt-1" numberOfLines={1}>
+                      {currentEvent.bundleId}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </SettingsCard>
+          </View>
+        )}
+
         {/* VERSION FOOTER */}
-        <View className="mt-10 mb-8 items-center">
+        <Pressable className="mt-10 mb-8 items-center" onPress={handleVersionTap}>
           <Text className="text-neutral-600 text-xs">Chrona</Text>
-        </View>
+        </Pressable>
       </AnimatedHeaderScrollView>
       <PortalHost name="settings" />
     </View>
