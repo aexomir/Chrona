@@ -191,6 +191,77 @@ export function snapshotActiveApps(): AppDwell {
   return result;
 }
 
+// Baseline captured at focus-timer start so getAppsForWindow can diff against it
+let baselineJournalId: string | null = null;
+let baselineApps: AppDwell = {};
+
+/**
+ * Call this the moment a focus timer starts. Records a snapshot of the current
+ * in-flight journal session so getAppsForWindow can diff against it later —
+ * otherwise pre-timer app usage bleeds into the session's app breakdown.
+ */
+export function markTimerStart() {
+  if (activeSession !== null) {
+    baselineJournalId = activeSession.id;
+    baselineApps = snapshotActiveApps();
+  } else {
+    baselineJournalId = null;
+    baselineApps = {};
+  }
+}
+
+export function getAppsForWindow(_startMs: number, _endMs: number): import('@/features/sessions/sessions-store').AppUsage[] {
+  const { sessions, nameIndex } = useJournalStore.getState();
+  const agg: Record<string, number> = {};
+
+  // Committed journal sessions that started fresh DURING the focus window
+  // (i.e. after the baseline was captured — the baseline session is handled
+  // separately via delta below)
+  for (const s of sessions) {
+    if (s.id === baselineJournalId) continue;
+    if (s.startedAt < _startMs) continue;
+    for (const [bundleId, dwell] of Object.entries(s.apps)) {
+      if (dwell > 0) agg[bundleId] = (agg[bundleId] ?? 0) + dwell;
+    }
+  }
+
+  if (activeSession !== null) {
+    const current = snapshotActiveApps();
+    if (activeSession.id === baselineJournalId) {
+      // Same journal session that was open when the timer started —
+      // subtract the baseline so we get only what accumulated during the focus
+      for (const [bundleId, currentDwell] of Object.entries(current)) {
+        const delta = currentDwell - (baselineApps[bundleId] ?? 0);
+        if (delta > 0) agg[bundleId] = (agg[bundleId] ?? 0) + delta;
+      }
+    } else {
+      // Journal session rolled over during the focus (5-min idle gap) —
+      // the current session started fresh inside the focus window
+      for (const [bundleId, dwell] of Object.entries(current)) {
+        if (dwell > 0) agg[bundleId] = (agg[bundleId] ?? 0) + dwell;
+      }
+    }
+  } else if (baselineJournalId !== null) {
+    // The baseline session was committed to the store during the focus period
+    // (journal closed due to a gap). Find it and delta against the baseline.
+    const baselineSession = sessions.find((s) => s.id === baselineJournalId);
+    if (baselineSession) {
+      for (const [bundleId, dwell] of Object.entries(baselineSession.apps)) {
+        const delta = dwell - (baselineApps[bundleId] ?? 0);
+        if (delta > 0) agg[bundleId] = (agg[bundleId] ?? 0) + delta;
+      }
+    }
+  }
+
+  return Object.entries(agg)
+    .filter(([, duration]) => duration > 0)
+    .map(([bundleId, duration]) => ({
+      app: nameIndex[bundleId] ?? bundleId,
+      duration: Math.round(duration),
+    }))
+    .sort((a, b) => b.duration - a.duration);
+}
+
 export function startJournalTracker() {
   if (process.env.EXPO_OS !== 'ios') return;
   // Idempotent

@@ -54,6 +54,17 @@ export const useTimerStore = create<TimerState>()(
     {
       name: "timer",
       storage: mmkvStorage,
+      onRehydrateStorage: () => (state) => {
+        if (!state || !state.isTracking || !state.startTimestamp) return;
+        const age = Date.now() - new Date(state.startTimestamp).getTime();
+        if (age > 12 * 60 * 60 * 1000) {
+          state.isTracking = false;
+          state.isAutoTracked = false;
+          state.startTimestamp = null;
+          state.title = "";
+          state.projectId = null;
+        }
+      },
     }
   )
 );

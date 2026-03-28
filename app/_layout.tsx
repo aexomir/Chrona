@@ -7,7 +7,7 @@ import { useSyncWatch, useWatchMessages } from "@/features/watch/use-watch";
 import { useWidgetSync } from "@/features/watch/use-widget-sync";
 import { useStreamStore } from "@/features/stream/stream-store";
 import { startAutoTracker, stopAutoTracker } from "@/features/auto-track/auto-tracker";
-import { startJournalTracker, stopJournalTracker } from "@/features/intelligence/journal-store";
+import { startJournalTracker, stopJournalTracker, getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
 import { startPatternTracker, stopPatternTracker } from "@/features/intelligence/pattern-store";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
 import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
@@ -35,13 +35,16 @@ export default function RootLayout() {
   useWatchMessages(
     () => {
       const { isTracking, startTimer } = useTimerStore.getState();
-      if (!isTracking) startTimer("Watch Session");
+      if (!isTracking) { markTimerStart(); startTimer("Watch Session"); }
     },
     () => {
       const { stopTimer } = useTimerStore.getState();
       const { addSession } = useSessionsStore.getState();
       const result = stopTimer();
       if (result) {
+        const startMs = new Date(result.startTime).getTime();
+        const endMs = new Date(result.endTime).getTime();
+        const apps = getAppsForWindow(startMs, endMs);
         addSession({
           id: Date.now().toString(),
           title: result.title || "Watch Session",
@@ -49,12 +52,13 @@ export default function RootLayout() {
           startTime: result.startTime,
           endTime: result.endTime,
           duration: result.duration,
+          ...(apps.length > 0 ? { apps } : {}),
         });
       }
     },
     (projectId) => {
       const { isTracking, startTimer } = useTimerStore.getState();
-      if (!isTracking) startTimer("", projectId);
+      if (!isTracking) { markTimerStart(); startTimer("", projectId); }
     },
     (title) => {
       const { isTracking, updateTitle } = useTimerStore.getState();

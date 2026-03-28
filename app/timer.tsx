@@ -5,6 +5,7 @@ import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
+import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
@@ -130,6 +131,7 @@ export default function TimerScreen() {
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
+    markTimerStart();
     startTimer(taskTitle.trim(), selectedProject?.value ?? null);
     router.back();
   };
@@ -140,9 +142,13 @@ export default function TimerScreen() {
       router.back();
       return;
     }
+    const startMs = new Date(session.startTime).getTime();
+    const endMs = new Date(session.endTime).getTime();
+    const apps = getAppsForWindow(startMs, endMs);
     addSession({
       id: Date.now().toString(),
       ...session,
+      ...(apps.length > 0 ? { apps } : {}),
     });
     toast.show({ label: "Session logged", variant: "success" });
     router.back();

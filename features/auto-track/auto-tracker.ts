@@ -20,6 +20,7 @@ import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 
+import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
 import { matchRule } from "./matcher";
 import { IDLE_TIMEOUT_MS, SWITCH_GRACE_MS } from "./timing-config";
 import type { TrackingRule } from "./tracking-rules-store";
@@ -90,12 +91,15 @@ function stopAndSave() {
     );
     const minDuration = useSettingsStore.getState().autoTrackMinDurationSec;
     if (effectiveDuration >= minDuration) {
+      const startMs = new Date(sessionData.startTime).getTime();
+      const apps = getAppsForWindow(startMs, effectiveEndMs);
       useSessionsStore.getState().addSession({
         ...sessionData,
         endTime: new Date(effectiveEndMs).toISOString(),
         duration: effectiveDuration,
         id: Date.now().toString(),
         auto: true,
+        ...(apps.length > 0 ? { apps } : {}),
       });
     }
   }
@@ -105,6 +109,7 @@ function stopAndSave() {
 
 function startAutoTimer(rule: TrackingRule, event: ActivityEvent) {
   const title = rule.defaultTitle ?? event.appName;
+  markTimerStart();
   useTimerStore.getState().startTimer(title, rule.projectId);
   useTimerStore.getState().setAutoTracked(true);
   autoStartedRuleId = rule.id;
@@ -117,9 +122,6 @@ function isCompanionApp(ruleId: string, bundleId: string): boolean {
 }
 
 function handleEvent(event: ActivityEvent) {
-  // Heartbeats carry no app data. Only reset the idle timer if the last known
-  // app was the tracked one — i.e. the user is still on it, just not switching.
-  // If they already moved to an untracked app, let the countdown run.
   if (event.type === "heartbeat") {
     if (lastEventWasTracked) {
       scheduleIdleTimer();
@@ -127,7 +129,15 @@ function handleEvent(event: ActivityEvent) {
     return;
   }
 
-  const { isTracking } = useTimerStore.getState();
+  const { isTracking, isAutoTracked } = useTimerStore.getState();
+
+  if (autoStartedRuleId !== null && (!isTracking || !isAutoTracked)) {
+    autoStartedRuleId = null;
+    appLeftAt = null;
+    clearIdleTimer();
+    clearSwitchGraceTimer();
+    lastEventWasTracked = false;
+  }
   const { rules } = useTrackingRulesStore.getState();
   const match = matchRule(event, rules);
   let onTrackedApp = false;

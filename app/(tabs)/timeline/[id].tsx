@@ -78,10 +78,6 @@ export default function SessionDetailScreen() {
     new Date(session?.endTime ?? new Date().toISOString()),
   );
   const [draftNotes, setDraftNotes] = useState(session?.notes ?? "");
-  const [draftApps, setDraftApps] = useState<Set<string>>(() => {
-    if (!session?.apps) return new Set();
-    return new Set(session.apps.map((a) => a.app));
-  });
 
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [editingField, setEditingField] = useState<"start" | "end" | null>(
@@ -104,17 +100,9 @@ export default function SessionDetailScreen() {
     draftProjectId?.value !== session.projectId ||
     draftStartTime.toISOString() !== session.startTime ||
     draftEndTime.toISOString() !== session.endTime ||
-    draftNotes !== (session.notes ?? "") ||
-    (session.apps && session.apps.some((a) => !draftApps.has(a.app)));
+    draftNotes !== (session.notes ?? "");
 
   const selectedProj = projects.find((p) => p.id === draftProjectId?.value);
-
-  const handleToggleApp = (app: string) => {
-    const next = new Set(draftApps);
-    if (next.has(app)) next.delete(app);
-    else next.add(app);
-    setDraftApps(next);
-  };
 
   const handleSave = () => {
     if (!draftTitle.trim()) {
@@ -129,7 +117,6 @@ export default function SessionDetailScreen() {
       endTime: draftEndTime.toISOString(),
       duration: computedDuration,
       notes: draftNotes.trim() || undefined,
-      apps: session.apps?.filter((a) => draftApps.has(a.app)),
     });
     router.back();
   };
@@ -360,62 +347,24 @@ export default function SessionDetailScreen() {
                   borderColor: theme.cardBorder,
                 }}
               >
-                {session.apps.map((app, i) => {
-                  const isSelected = draftApps.has(app.app);
-                  const titles = app.titles ?? [];
-                  return (
-                    <Pressable
-                      key={app.app}
-                      onPress={() => handleToggleApp(app.app)}
-                      className="flex-row items-start gap-3 px-4 py-3"
-                      style={
-                        i < session.apps!.length - 1
-                          ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder }
-                          : undefined
-                      }
-                    >
-                      <View className="pt-1">
-                        <View
-                          className={`w-5 h-5 rounded border-2 items-center justify-center ${
-                            isSelected
-                              ? "border-blue-500 bg-blue-500"
-                              : "border-zinc-600"
-                          }`}
-                        >
-                          {isSelected && (
-                            <Image
-                              source="sf:checkmark"
-                              style={{ width: 10, height: 10, tintColor: "white" }}
-                            />
-                          )}
-                        </View>
-                      </View>
-                      <View className="flex-1">
-                        <View className="flex-row items-baseline gap-2 mb-1">
-                          <Text className="text-white text-sm font-medium">
-                            {app.app}
-                          </Text>
-                          <Text className="text-zinc-500 text-xs">
-                            {formatDuration(app.duration)}
-                          </Text>
-                        </View>
-                        {titles.length > 0 && (
-                          <View className="gap-0.5">
-                            {titles.slice(0, 2).map((t, idx) => (
-                              <Text
-                                key={idx}
-                                className="text-zinc-500 text-xs"
-                                numberOfLines={1}
-                              >
-                                {t}
-                              </Text>
-                            ))}
-                          </View>
-                        )}
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                {session.apps.map((app, i) => (
+                  <View
+                    key={app.app}
+                    className="flex-row items-center justify-between px-4 py-3"
+                    style={
+                      i < session.apps!.length - 1
+                        ? { borderBottomWidth: 1, borderBottomColor: theme.cardBorder }
+                        : undefined
+                    }
+                  >
+                    <Text className="text-white text-sm font-medium flex-1" numberOfLines={1}>
+                      {app.app}
+                    </Text>
+                    <Text className="text-zinc-500 text-sm">
+                      {formatDuration(app.duration)}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
           )}

@@ -5,6 +5,7 @@ import { useTimerStore } from "@/features/timer/timer-store";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
 import { useTrackingRulesStore } from "@/features/auto-track/tracking-rules-store";
 import { usePatternStore, computeRuleSuggestion, computeCompanionBundleIds } from "@/features/intelligence/pattern-store";
+import { getAppsForWindow } from "@/features/intelligence/journal-store";
 import { Neutral } from "@/constants/theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -124,7 +125,15 @@ export function TimerBar() {
   function handleStopAutoSession() {
     const sessionData = stopTimer();
     if (sessionData) {
-      addSession({ ...sessionData, id: Date.now().toString(), auto: true });
+      const startMs = new Date(sessionData.startTime).getTime();
+      const endMs = new Date(sessionData.endTime).getTime();
+      const apps = getAppsForWindow(startMs, endMs);
+      addSession({
+        ...sessionData,
+        id: Date.now().toString(),
+        auto: true,
+        ...(apps.length > 0 ? { apps } : {}),
+      });
     }
   }
 
