@@ -5,7 +5,6 @@ SCHEME="ChronaHelper"
 PROJECT="ChronaHelper.xcodeproj"
 CONFIGURATION="Release"
 BUILD_DIR="$(pwd)/build"
-DMG_PATH="$BUILD_DIR/$SCHEME.dmg"
 
 cd "$(dirname "$0")/.."
 
@@ -46,16 +45,4 @@ if [[ -z "$APP_PATH" ]]; then
   exit 1
 fi
 
-echo "→ Creating DMG..."
-if [[ -f "$DMG_PATH" ]]; then
-  rm "$DMG_PATH"
-fi
-
-hdiutil create \
-  -volname "$SCHEME" \
-  -srcfolder "$APP_PATH" \
-  -ov \
-  -format UDZO \
-  "$DMG_PATH"
-
-echo "✓ Done: $DMG_PATH"
+bash "$(dirname "$0")/make_dmg.sh" "$APP_PATH"
