@@ -59,7 +59,7 @@ function TimelineContent() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const theme = useAuroraTheme();
-  const { isDragging } = useMergeContext();
+  const { isDragging, updateScrollY } = useMergeContext();
 
   const isTracking = useTimerStore((s) => s.isTracking);
   const startTimestamp = useTimerStore((s) => s.startTimestamp);
@@ -302,6 +302,8 @@ function TimelineContent() {
 
       <FlashList
         scrollEnabled={!isDragging}
+        onScroll={(e) => updateScrollY(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         data={augmentedItems}
         keyExtractor={(item, index) => {
           if (item.kind === "session") return `session-${item.session.id}`;

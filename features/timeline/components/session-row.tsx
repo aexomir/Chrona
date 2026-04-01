@@ -57,7 +57,6 @@ export const SessionRow = React.memo(function SessionRow({
   const cardOpacity = useSharedValue(1);
   const dropPulse = useSharedValue(1);
   const dropHalo = useSharedValue(0);
-  const cardPageYShared = useSharedValue(0);
   const cardRef = useRef<View>(null);
   const wasDropTarget = useRef(false);
 
@@ -99,14 +98,12 @@ export const SessionRow = React.memo(function SessionRow({
 
   function handleLayout() {
     cardRef.current?.measureInWindow((_x, pageY, _w, height) => {
-      cardPageYShared.value = pageY;
       registerLayout(session.id, { pageY, height });
     });
   }
 
   function triggerDragStart(absoluteY: number) {
     cardRef.current?.measureInWindow((_x, pageY, _w, height) => {
-      cardPageYShared.value = pageY;
       registerLayout(session.id, { pageY, height });
       startDrag(session.id, absoluteY, absoluteY - pageY);
     });
