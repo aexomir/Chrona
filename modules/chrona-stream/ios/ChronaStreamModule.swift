@@ -52,6 +52,24 @@ public class ChronaStreamModule: Module {
             self?.clearCachedEndpoint()
         }
 
+        Function("sendTimerState") { [weak self] (
+            isTracking: Bool,
+            projectId: String,
+            projectName: String,
+            projectColor: String,
+            timerTitle: String,
+            startTimestamp: String
+        ) in
+            self?.sendTimerState(
+                isTracking: isTracking,
+                projectId: projectId,
+                projectName: projectName,
+                projectColor: projectColor,
+                timerTitle: timerTitle,
+                startTimestamp: startTimestamp
+            )
+        }
+
         OnDestroy {
             self.stopStream()
         }
@@ -352,5 +370,33 @@ public class ChronaStreamModule: Module {
             "status": status,
             "pathSatisfied": currentPathSatisfied,
         ])
+    }
+
+    // MARK: - Timer state (iOS → Mac)
+
+    private func sendTimerState(
+        isTracking: Bool,
+        projectId: String,
+        projectName: String,
+        projectColor: String,
+        timerTitle: String,
+        startTimestamp: String
+    ) {
+        guard let conn = connection else { return }
+        let payload: [String: Any] = [
+            "version": 1,
+            "type": "timer_state",
+            "timestamp": Date().timeIntervalSince1970,
+            "isTracking": isTracking,
+            "projectId": projectId,
+            "projectName": projectName,
+            "projectColor": projectColor,
+            "timerTitle": timerTitle,
+            "startTimestamp": startTimestamp,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonString = String(data: data, encoding: .utf8) else { return }
+        guard let sendData = (jsonString + "\n").data(using: .utf8) else { return }
+        conn.send(content: sendData, completion: .contentProcessed { _ in })
     }
 }

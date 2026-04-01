@@ -45,6 +45,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         server.onClientDisconnected = { [weak self] in
             self?.statusBar.setConnected(false)
         }
+        server.onTimerStateReceived = { [weak self] payload in
+            self?.statusBar.setTimerState(payload)
+        }
 
         // Observer → Server
         observer.onEvent = { [weak self] event in

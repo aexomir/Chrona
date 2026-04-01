@@ -7,12 +7,22 @@ private let kServiceName        = "Chrona Helper"
 private let kHeartbeatInterval  : TimeInterval = 10
 private let kRestartDelay       : TimeInterval = 3
 
+struct TimerStatePayload {
+    let isTracking: Bool
+    let projectId: String
+    let projectName: String
+    let projectColor: String
+    let timerTitle: String
+    let startTimestamp: String
+}
+
 final class BonjourServer {
 
     // MARK: - Callbacks (called on main queue)
 
     var onClientConnected:    (() -> Void)?
     var onClientDisconnected: (() -> Void)?
+    var onTimerStateReceived: ((TimerStatePayload) -> Void)?
 
     // MARK: - Private state
 
@@ -175,12 +185,31 @@ final class BonjourServer {
 
     private struct ClientMessage: Decodable {
         let type: String
+        let isTracking: Bool?
+        let projectId: String?
+        let projectName: String?
+        let projectColor: String?
+        let timerTitle: String?
+        let startTimestamp: String?
     }
 
     private func handleClientMessage(_ data: Data) {
         guard let msg = try? decoder.decode(ClientMessage.self, from: data) else { return }
-        if msg.type == "ping" {
+        switch msg.type {
+        case "ping":
             send(.make(type: .pong))
+        case "timer_state":
+            let payload = TimerStatePayload(
+                isTracking: msg.isTracking ?? false,
+                projectId: msg.projectId ?? "",
+                projectName: msg.projectName ?? "",
+                projectColor: msg.projectColor ?? "",
+                timerTitle: msg.timerTitle ?? "",
+                startTimestamp: msg.startTimestamp ?? ""
+            )
+            onTimerStateReceived?(payload)
+        default:
+            break
         }
     }
 }

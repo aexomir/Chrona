@@ -13,6 +13,14 @@ type StreamState = {
   stop(): void;
   reconnect(): void;
   clearEndpointCache(): void;
+  sendTimerState(
+    isTracking: boolean,
+    projectId: string,
+    projectName: string,
+    projectColor: string,
+    timerTitle: string,
+    startTimestamp: string
+  ): void;
 };
 
 type Sub = ReturnType<typeof emitter.addListener>;
@@ -68,5 +76,10 @@ export const useStreamStore = create<StreamState>()((set, get) => ({
   clearEndpointCache() {
     if (process.env.EXPO_OS !== 'ios') return;
     native.clearCachedEndpoint();
+  },
+
+  sendTimerState(isTracking, projectId, projectName, projectColor, timerTitle, startTimestamp) {
+    if (process.env.EXPO_OS !== 'ios') return;
+    native.sendTimerState(isTracking, projectId, projectName, projectColor, timerTitle, startTimestamp);
   },
 }));
