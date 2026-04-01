@@ -23,6 +23,45 @@ import { persist } from "zustand/middleware";
 const GAP_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_ENTRIES = 500;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const MIN_REVIEW_DWELL_SECONDS = 5;
+
+const SYSTEM_BUNDLE_PREFIXES = [
+  "com.apple.loginwindow",
+  "com.apple.dock",
+  "com.apple.finder",
+  "com.apple.systemuiserver",
+  "com.apple.notificationcenterui",
+  "com.apple.ScreenSaverEngine",
+  "com.apple.screensaver.",
+  "com.apple.UserNotificationCenter",
+  "com.apple.SecurityAgent",
+  "com.apple.controlcenter",
+  "com.apple.Spotlight",
+  "com.apple.springboard",
+  "com.apple.PIPAgent",
+  "com.apple.WindowManager",
+] as const;
+
+const SYSTEM_APP_NAMES = new Set([
+  "Finder",
+  "Dock",
+  "loginwindow",
+  "SystemUIServer",
+  "NotificationCenter",
+  "Notification Center",
+  "ScreenSaverEngine",
+  "Control Center",
+  "Spotlight",
+  "UserNotificationCenter",
+  "SecurityAgent",
+  "WindowManager",
+  "PIPAgent",
+]);
+
+function isSystemProcess(bundleId: string, displayName: string): boolean {
+  if (SYSTEM_APP_NAMES.has(displayName)) return true;
+  return SYSTEM_BUNDLE_PREFIXES.some((p) => bundleId === p || bundleId.startsWith(p));
+}
 
 /** bundleId → total seconds spent in that app within one session */
 export type AppDwell = Record<string, number>;
@@ -257,7 +296,11 @@ export function getAppsForWindow(
   }
 
   return Object.entries(agg)
-    .filter(([, duration]) => duration > 0)
+    .filter(([bundleId, duration]) => {
+      if (duration < MIN_REVIEW_DWELL_SECONDS) return false;
+      const name = nameIndex[bundleId] ?? bundleId;
+      return !isSystemProcess(bundleId, name);
+    })
     .map(([bundleId, duration]) => ({
       app: nameIndex[bundleId] ?? bundleId,
       duration: Math.round(duration),

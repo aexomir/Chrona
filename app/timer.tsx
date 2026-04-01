@@ -2,7 +2,7 @@ import type { Project } from "@/constants/projects";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useProjects } from "@/features/projects/projects-store";
-import { useSessionsStore } from "@/features/sessions/sessions-store";
+import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
@@ -56,6 +56,14 @@ const styles = StyleSheet.create({
   },
   dotIndicator: {
     height: 6,
+  },
+  projectChipsScroll: {
+    marginHorizontal: -24,
+  },
+  projectChipsContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 4,
+    gap: 8,
   },
 });
 
@@ -111,6 +119,18 @@ export default function TimerScreen() {
     return proj ? { value: proj.id, label: proj.name } : undefined;
   });
   const [elapsed, setElapsed] = useState(0);
+
+  type PendingSession = {
+    session: {
+      startTime: string;
+      endTime: string;
+      duration: number;
+      title: string;
+      projectId: string | null;
+    };
+    apps: AppUsage[];
+  };
+  const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
   const { timerStartMode } = useSettingsStore();
 
   useEffect(() => {
@@ -145,11 +165,29 @@ export default function TimerScreen() {
     const startMs = new Date(session.startTime).getTime();
     const endMs = new Date(session.endTime).getTime();
     const apps = getAppsForWindow(startMs, endMs);
+    if (apps.length > 0) {
+      setPendingSession({ session, apps });
+    } else {
+      addSession({ id: Date.now().toString(), ...session });
+      toast.show({ label: "Session logged", variant: "success" });
+      router.back();
+    }
+  };
+
+  const handleConfirm = (selectedApps: AppUsage[]) => {
+    if (!pendingSession) return;
     addSession({
       id: Date.now().toString(),
-      ...session,
-      ...(apps.length > 0 ? { apps } : {}),
+      ...pendingSession.session,
+      ...(selectedApps.length > 0 ? { apps: selectedApps } : {}),
     });
+    toast.show({ label: "Session logged", variant: "success" });
+    router.back();
+  };
+
+  const handleSkip = () => {
+    if (!pendingSession) return;
+    addSession({ id: Date.now().toString(), ...pendingSession.session });
     toast.show({ label: "Session logged", variant: "success" });
     router.back();
   };
@@ -163,7 +201,7 @@ export default function TimerScreen() {
   const selProj = projects.find((p) => p.id === selectedProject?.value);
   const theme = useAuroraTheme();
 
-  const navTitle = isTracking ? "Tracking" : "New Timer";
+  const navTitle = pendingSession ? "Review Apps" : isTracking ? "Tracking" : "New Timer";
 
   return (
     <KeyboardAvoidingView
@@ -183,7 +221,15 @@ export default function TimerScreen() {
         <View className="flex-1" />
       </View>
 
-      {isTracking ? (
+      {pendingSession ? (
+        <AppReviewView
+          apps={pendingSession.apps}
+          sessionTitle={pendingSession.session.title}
+          sessionProjectId={pendingSession.session.projectId}
+          onConfirm={handleConfirm}
+          onSkip={handleSkip}
+        />
+      ) : isTracking ? (
         <View className="flex-1 justify-center px-8 gap-6">
           {/* Project accent line */}
           {selProj && (
@@ -399,7 +445,8 @@ function ConversationalView({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 4, gap: 8 }}
+        style={styles.projectChipsScroll}
+        contentContainerStyle={styles.projectChipsContent}
       >
         <Pressable
           onPress={() => setSelectedProject(undefined)}
@@ -822,6 +869,156 @@ function RecentTicker() {
         ))}
       </Animated.View>
     </View>
+  );
+}
+
+// ─────────────────────────────────────────────
+// App Review — post-stop selection screen
+// ─────────────────────────────────────────────
+
+type AppReviewViewProps = {
+  apps: AppUsage[];
+  sessionTitle: string;
+  sessionProjectId: string | null;
+  onConfirm: (selectedApps: AppUsage[]) => void;
+  onSkip: () => void;
+};
+
+function AppReviewView({
+  apps,
+  sessionTitle,
+  sessionProjectId,
+  onConfirm,
+  onSkip,
+}: AppReviewViewProps) {
+  const [checked, setChecked] = useState<Set<string>>(
+    () => new Set(apps.map((a) => a.app))
+  );
+  const { projects } = useProjects();
+
+  const selProj = sessionProjectId
+    ? projects.find((p) => p.id === sessionProjectId)
+    : null;
+
+  const trackedSeconds = apps
+    .filter((a) => checked.has(a.app))
+    .reduce((sum, a) => sum + a.duration, 0);
+
+  const handleToggle = (appName: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      next.has(appName) ? next.delete(appName) : next.add(appName);
+      return next;
+    });
+  };
+
+  return (
+    <View className="flex-1 px-6">
+      <View className="pt-4 pb-8 gap-2">
+        {selProj && (
+          <View className="flex-row items-center gap-2">
+            <View
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: selProj.color }}
+            />
+            <Text className="text-zinc-400 text-sm">{selProj.name}</Text>
+          </View>
+        )}
+        <Text
+          className="text-white text-2xl font-semibold tracking-tight"
+          numberOfLines={2}
+        >
+          {sessionTitle}
+        </Text>
+      </View>
+
+      <Text className="text-zinc-600 text-xs uppercase tracking-widest mb-4">
+        apps used
+      </Text>
+
+      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+        {apps.map((app, i) => (
+          <AppRow
+            key={app.app}
+            app={app}
+            checked={checked.has(app.app)}
+            onToggle={() => handleToggle(app.app)}
+            index={i}
+          />
+        ))}
+      </ScrollView>
+
+      <View className="gap-3 pb-4">
+        <Text className="text-zinc-500 text-sm text-center">
+          {trackedSeconds > 0
+            ? `${formatDuration(trackedSeconds)} tracked`
+            : "no apps selected"}
+        </Text>
+        <Button
+          variant="primary"
+          onPress={() => onConfirm(apps.filter((a) => checked.has(a.app)))}
+        >
+          <Button.Label>Confirm</Button.Label>
+        </Button>
+        <Pressable onPress={onSkip} className="items-center py-2">
+          <Text className="text-zinc-600 text-sm">Skip</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+type AppRowProps = {
+  app: AppUsage;
+  checked: boolean;
+  onToggle: () => void;
+  index: number;
+};
+
+function AppRow({ app, checked, onToggle, index }: AppRowProps) {
+  const opacity = useSharedValue(checked ? 1 : 0.28);
+
+  useEffect(() => {
+    opacity.value = withTiming(checked ? 1 : 0.28, { duration: 200 });
+  }, [checked]);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(index * 40).duration(250)}
+      style={animStyle}
+    >
+      <Pressable
+        onPress={onToggle}
+        className="flex-row items-center gap-4 py-3.5 border-b border-white/[0.06]"
+      >
+        <Image
+          source={checked ? "sf:checkmark.circle.fill" : "sf:circle"}
+          style={{ width: 22, height: 22, tintColor: checked ? "#ffffff" : "#52525b" }}
+        />
+        <View className="flex-1">
+          <Text
+            className={
+              checked
+                ? "text-white text-base"
+                : "text-white/[0.28] text-base line-through"
+            }
+          >
+            {app.app}
+          </Text>
+        </View>
+        <Text
+          className={
+            checked
+              ? "text-zinc-600 text-sm tabular-nums"
+              : "text-zinc-600 text-sm tabular-nums line-through"
+          }
+        >
+          {formatDuration(app.duration)}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
