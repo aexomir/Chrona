@@ -12,9 +12,10 @@ import ApplicationServices
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
-    private var statusBar:   StatusBarController!
-    private var server:      BonjourServer!
-    private var observer:    AppObserver!
+    private var statusBar:    StatusBarController!
+    private var server:       BonjourServer!
+    private var observer:     AppObserver!
+    private var idleDetector: IdleDetector!
 
     // MARK: - Launch
 
@@ -22,9 +23,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Remove from the Dock — this app lives exclusively in the menu bar.
         NSApp.setActivationPolicy(.accessory)
 
-        statusBar = StatusBarController()
-        server    = BonjourServer()
-        observer  = AppObserver()
+        statusBar    = StatusBarController()
+        server       = BonjourServer()
+        observer     = AppObserver()
+        idleDetector = IdleDetector()
 
         // Request Accessibility permission after the run loop is settled.
         // - takeUnretainedValue() is correct for CF constants (we don't own the +1 ref).
@@ -53,6 +55,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observer.onEvent = { [weak self] event in
             self?.server.send(event)
         }
+
+        // IdleDetector → Server
+        idleDetector.onIdleChanged = { [weak self] isIdle in
+            self?.server.send(.make(type: isIdle ? .userIdle : .userActive))
+        }
+        idleDetector.start()
     }
 
     // MARK: - Lifecycle

@@ -148,6 +148,27 @@ final class StatusBarController {
 
         menu.addItem(.separator())
 
+        let idleMenu = NSMenu()
+        let currentThreshold = IdleDetector.currentThreshold
+        for option in kIdleThresholdOptions {
+            let item = NSMenuItem(
+                title: option.label,
+                action: #selector(setIdleThreshold(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = option.seconds
+            item.state = (option.seconds == currentThreshold ||
+                          (option.seconds == kIdleThresholdDefault &&
+                           UserDefaults.standard.object(forKey: kIdleThresholdKey) == nil)) ? .on : .off
+            idleMenu.addItem(item)
+        }
+        let idleItem = NSMenuItem(title: "Idle Detection", action: nil, keyEquivalent: "")
+        idleItem.submenu = idleMenu
+        menu.addItem(idleItem)
+
+        menu.addItem(.separator())
+
         let accessItem = NSMenuItem(
             title: "Accessibility Settings…",
             action: #selector(openAccessibilitySettings),
@@ -169,6 +190,12 @@ final class StatusBarController {
     }
 
     // MARK: - Actions
+
+    @objc private func setIdleThreshold(_ sender: NSMenuItem) {
+        guard let seconds = sender.representedObject as? Double else { return }
+        IdleDetector.setThreshold(seconds)
+        rebuildMenu()
+    }
 
     @objc private func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {

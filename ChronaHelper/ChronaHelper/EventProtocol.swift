@@ -63,6 +63,14 @@ struct ChronaEvent: Codable {
 
         /// Response to a ping from the iOS client, confirming the connection is alive.
         case pong = "pong"
+
+        /// Sent when the Mac detects no keyboard or mouse input for the idle threshold.
+        /// All fields except `version`, `type`, and `timestamp` are empty strings.
+        case userIdle = "user_idle"
+
+        /// Sent when the Mac detects user input after a `userIdle` event.
+        /// All fields except `version`, `type`, and `timestamp` are empty strings.
+        case userActive = "user_active"
     }
 
     // MARK: - Factory

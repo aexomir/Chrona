@@ -5,7 +5,7 @@ export type ConnectionStatus =
   | 'connected'
   | 'disconnected';
 
-export type ActivityEventType = 'app_change' | 'heartbeat' | 'hello' | 'pong';
+export type ActivityEventType = 'app_change' | 'heartbeat' | 'hello' | 'pong' | 'user_idle' | 'user_active';
 
 export type ActivityEvent = {
   /** Protocol version — currently always 1. */

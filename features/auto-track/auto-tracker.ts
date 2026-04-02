@@ -230,6 +230,16 @@ function handleEvent(event: ActivityEvent) {
 // Public API
 // ---------------------------------------------------------------------------
 
+export function forceStopForSystemIdle() {
+  if (process.env.EXPO_OS !== "ios") return;
+  clearIdleTimer();
+  clearSwitchGraceTimer();
+  if (autoStartedRuleId !== null) {
+    stopAndSave();
+  }
+  lastEventWasTracked = false;
+}
+
 export function startAutoTracker() {
   if (process.env.EXPO_OS !== "ios") return;
 

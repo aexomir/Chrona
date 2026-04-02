@@ -13,6 +13,7 @@
 		A1000003000000000000000A /* AppObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003000000000000000A /* AppObserver.swift */; };
 		A1000004000000000000000A /* BonjourServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004000000000000000A /* BonjourServer.swift */; };
 		A1000005000000000000000A /* EventProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005000000000000000A /* EventProtocol.swift */; };
+		A1000006000000000000000A /* IdleDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009000000000000000A /* IdleDetector.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,7 @@
 		A2000006000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000007000000000000000A /* ChronaHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ChronaHelper.entitlements; sourceTree = "<group>"; };
 		A2000008000000000000000A /* ChronaHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChronaHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2000009000000000000000A /* IdleDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdleDetector.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +57,7 @@
 				A2000003000000000000000A /* AppObserver.swift */,
 				A2000004000000000000000A /* BonjourServer.swift */,
 				A2000005000000000000000A /* EventProtocol.swift */,
+				A2000009000000000000000A /* IdleDetector.swift */,
 				A2000006000000000000000A /* Info.plist */,
 				A2000007000000000000000A /* ChronaHelper.entitlements */,
 			);
@@ -143,6 +146,7 @@
 				A1000003000000000000000A /* AppObserver.swift in Sources */,
 				A1000004000000000000000A /* BonjourServer.swift in Sources */,
 				A1000005000000000000000A /* EventProtocol.swift in Sources */,
+				A1000006000000000000000A /* IdleDetector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -12,6 +12,8 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+const INTERRUPTED_SESSION_TTL_MS = 30 * 60 * 1000;
+
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -29,6 +31,9 @@ export function TimerBar() {
   const projectId = useTimerStore(s => s.projectId);
   const startTimestamp = useTimerStore(s => s.startTimestamp);
   const stopTimer = useTimerStore(s => s.stopTimer);
+  const startTimer = useTimerStore(s => s.startTimer);
+  const interruptedSession = useTimerStore(s => s.interruptedSession);
+  const setInterruptedSession = useTimerStore(s => s.setInterruptedSession);
   const addSession = useSessionsStore(s => s.addSession);
   const calendarEnabled = useCalendarStore(s => s.isEnabled);
   const getActiveEventSuggestion = useCalendarStore(s => s.getActiveEventSuggestion);
@@ -122,6 +127,22 @@ export function TimerBar() {
     ? projects.find((p) => p.id === calendarSuggestion.projectId)
     : null;
 
+  const resumableSession =
+    !isTracking &&
+    interruptedSession !== null &&
+    Date.now() - new Date(interruptedSession.interruptedAt).getTime() < INTERRUPTED_SESSION_TTL_MS
+      ? interruptedSession
+      : null;
+
+  const resumableProject = resumableSession
+    ? projects.find(p => p.id === resumableSession.projectId) ?? null
+    : null;
+
+  function handleResumeSession() {
+    if (!resumableSession) return;
+    startTimer(resumableSession.title, resumableSession.projectId, resumableSession.elapsedSeconds);
+  }
+
   function handleStopAutoSession() {
     const sessionData = stopTimer();
     if (sessionData) {
@@ -208,6 +229,38 @@ export function TimerBar() {
           <Text className="text-white text-sm font-mono font-semibold shrink-0">
             {formatTime(elapsed)}
           </Text>
+        </View>
+      ) : resumableSession ? (
+        // Interrupted session resume prompt
+        <View className="flex-row items-center justify-center gap-1.5">
+          <Text className="text-white/50 text-sm shrink-0">Resume</Text>
+          <View
+            className="w-1 h-1 rounded-full shrink-0"
+            style={{ backgroundColor: resumableProject?.color ?? Neutral.z600 }}
+          />
+          <Text className="text-white text-sm shrink" numberOfLines={1}>
+            {resumableSession.title}
+          </Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              handleResumeSession();
+            }}
+            hitSlop={8}
+          >
+            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+              <Text className="text-white/70 text-xs font-medium">Resume</Text>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              setInterruptedSession(null);
+            }}
+            hitSlop={8}
+          >
+            <Text className="text-white/50 text-sm font-semibold">×</Text>
+          </Pressable>
         </View>
       ) : calendarSuggestion ? (
         // Calendar suggestion state
