@@ -6,7 +6,8 @@
  * GAP_THRESHOLD_MS between consecutive events closes the current session and
  * starts a new one.
  *
- * For each session, records total dwell time (seconds) per bundle ID.
+ * For each session, records total dwell time (seconds) per bundle ID and the
+ * unique window titles seen per bundle ID.
  * Nothing is surfaced to the user — this is a data layer only.
  *
  * Lifecycle (mirror of auto-tracker):
@@ -24,6 +25,7 @@ const GAP_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_ENTRIES = 500;
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MIN_REVIEW_DWELL_SECONDS = 5;
+const MAX_TITLES_PER_BUNDLE = 20;
 
 const SYSTEM_BUNDLE_PREFIXES = [
   "com.apple.loginwindow",
@@ -74,6 +76,8 @@ export type JournalSession = {
   endedAt: number;
   /** Dwell times keyed by bundle ID */
   apps: AppDwell;
+  /** Unique window titles seen per bundle ID (max 20 per bundle) */
+  titles?: Record<string, string[]>;
 };
 
 type JournalState = {
@@ -137,10 +141,22 @@ let activeBundleId: string | null = null;
 let appStartMs: number | null = null;
 /** Timestamp (ms) of the most recent event of any type */
 let lastEventMs: number | null = null;
+/** Most recent window title for the current frontmost app */
+let activeWindowTitle: string | null = null;
+/** Per-bundle unique window titles accumulated in the current session */
+let activeTitles: Record<string, Set<string>> = {};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+function _recordTitle(bundleId: string, title: string | null) {
+  if (!bundleId || !title || title.trim() === "") return;
+  if (!activeTitles[bundleId]) activeTitles[bundleId] = new Set();
+  const set = activeTitles[bundleId];
+  if (set.size >= MAX_TITLES_PER_BUNDLE) return;
+  set.add(title.trim());
+}
 
 function flushApp(toMs: number) {
   if (!activeSession || !activeBundleId || appStartMs === null) return;
@@ -153,12 +169,26 @@ function flushApp(toMs: number) {
 
 function closeSession(endedAt: number) {
   if (!activeSession) return;
+  _recordTitle(activeBundleId, activeWindowTitle);
   flushApp(endedAt);
-  activeSession.endedAt = endedAt;
-  useJournalStore.getState()._addSession({ ...activeSession });
+
+  const titlesRecord: Record<string, string[]> = {};
+  for (const [id, set] of Object.entries(activeTitles)) {
+    if (set.size > 0) titlesRecord[id] = Array.from(set);
+  }
+
+  const sessionToCommit: JournalSession = {
+    ...activeSession,
+    endedAt,
+    ...(Object.keys(titlesRecord).length > 0 ? { titles: titlesRecord } : {}),
+  };
+
+  useJournalStore.getState()._addSession(sessionToCommit);
   activeSession = null;
   activeBundleId = null;
   appStartMs = null;
+  activeWindowTitle = null;
+  activeTitles = {};
 }
 
 function handleJournalEvent(event: ActivityEvent) {
@@ -197,19 +227,26 @@ function handleJournalEvent(event: ActivityEvent) {
     };
     activeBundleId = null;
     appStartMs = null;
+    activeWindowTitle = null;
+    activeTitles = {};
   }
 
   // App transition within the session
   if (activeBundleId !== null && activeBundleId !== event.bundleId) {
+    _recordTitle(activeBundleId, activeWindowTitle);
     flushApp(now);
     activeBundleId = event.bundleId;
     appStartMs = now;
+    activeWindowTitle = event.windowTitle || null;
   } else if (activeBundleId === null) {
     // First app in this session
     activeBundleId = event.bundleId;
     appStartMs = now;
+    activeWindowTitle = event.windowTitle || null;
+  } else {
+    // Same app — update the current window title
+    activeWindowTitle = event.windowTitle || null;
   }
-  // If same bundleId → no-op (hello fired again for same app, or duplicate event)
 
   lastEventMs = now;
 }
@@ -225,6 +262,20 @@ export function snapshotActiveApps(): AppDwell {
     const dwell = Math.round((Date.now() - appStartMs) / 1000);
     if (dwell > 0) {
       result[activeBundleId] = (result[activeBundleId] ?? 0) + dwell;
+    }
+  }
+  return result;
+}
+
+export function snapshotActiveTitles(): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  for (const [bundleId, set] of Object.entries(activeTitles)) {
+    if (set.size > 0) result[bundleId] = Array.from(set);
+  }
+  if (activeBundleId && activeWindowTitle) {
+    if (!result[activeBundleId]) result[activeBundleId] = [];
+    if (!result[activeBundleId].includes(activeWindowTitle)) {
+      result[activeBundleId] = [...result[activeBundleId], activeWindowTitle];
     }
   }
   return result;
@@ -255,6 +306,12 @@ export function getAppsForWindow(
 ): import("@/features/sessions/sessions-store").AppUsage[] {
   const { sessions, nameIndex } = useJournalStore.getState();
   const agg: Record<string, number> = {};
+  const aggTitles: Record<string, Set<string>> = {};
+
+  function mergeTitles(bundleId: string, titles: string[]) {
+    if (!aggTitles[bundleId]) aggTitles[bundleId] = new Set();
+    for (const t of titles) aggTitles[bundleId].add(t);
+  }
 
   // Committed journal sessions that started fresh DURING the focus window
   // (i.e. after the baseline was captured — the baseline session is handled
@@ -265,10 +322,14 @@ export function getAppsForWindow(
     for (const [bundleId, dwell] of Object.entries(s.apps)) {
       if (dwell > 0) agg[bundleId] = (agg[bundleId] ?? 0) + dwell;
     }
+    for (const [bundleId, titles] of Object.entries(s.titles ?? {})) {
+      mergeTitles(bundleId, titles);
+    }
   }
 
   if (activeSession !== null) {
     const current = snapshotActiveApps();
+    const currentTitles = snapshotActiveTitles();
     if (activeSession.id === baselineJournalId) {
       // Same journal session that was open when the timer started —
       // subtract the baseline so we get only what accumulated during the focus
@@ -276,11 +337,17 @@ export function getAppsForWindow(
         const delta = currentDwell - (baselineApps[bundleId] ?? 0);
         if (delta > 0) agg[bundleId] = (agg[bundleId] ?? 0) + delta;
       }
+      for (const [bundleId, titles] of Object.entries(currentTitles)) {
+        mergeTitles(bundleId, titles);
+      }
     } else {
       // Journal session rolled over during the focus (5-min idle gap) —
       // the current session started fresh inside the focus window
       for (const [bundleId, dwell] of Object.entries(current)) {
         if (dwell > 0) agg[bundleId] = (agg[bundleId] ?? 0) + dwell;
+      }
+      for (const [bundleId, titles] of Object.entries(currentTitles)) {
+        mergeTitles(bundleId, titles);
       }
     }
   } else if (baselineJournalId !== null) {
@@ -292,6 +359,9 @@ export function getAppsForWindow(
         const delta = dwell - (baselineApps[bundleId] ?? 0);
         if (delta > 0) agg[bundleId] = (agg[bundleId] ?? 0) + delta;
       }
+      for (const [bundleId, titles] of Object.entries(baselineSession.titles ?? {})) {
+        mergeTitles(bundleId, titles);
+      }
     }
   }
 
@@ -301,10 +371,14 @@ export function getAppsForWindow(
       const name = nameIndex[bundleId] ?? bundleId;
       return !isSystemProcess(bundleId, name);
     })
-    .map(([bundleId, duration]) => ({
-      app: nameIndex[bundleId] ?? bundleId,
-      duration: Math.round(duration),
-    }))
+    .map(([bundleId, duration]) => {
+      const titleArr = Array.from(aggTitles[bundleId] ?? []);
+      return {
+        app: nameIndex[bundleId] ?? bundleId,
+        duration: Math.round(duration),
+        ...(titleArr.length > 0 ? { titles: titleArr } : {}),
+      };
+    })
     .sort((a, b) => b.duration - a.duration);
 }
 
