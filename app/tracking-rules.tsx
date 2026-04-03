@@ -1,7 +1,12 @@
-import { useTrackingRulesStore, type TrackingRule } from "@/features/auto-track/tracking-rules-store";
+import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
+import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
+import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
+import {
+  useTrackingRulesStore,
+  type TrackingRule,
+} from "@/features/auto-track/tracking-rules-store";
 import { useJournalStore } from "@/features/intelligence/journal-store";
 import { useProjects } from "@/features/projects/projects-store";
-import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
@@ -15,9 +20,8 @@ import {
   Text,
   TextInput,
   View,
+  type TextInputProps,
 } from "react-native";
-import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
-import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import Animated, {
   Easing,
   FadeInDown,
@@ -38,6 +42,19 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RuleInput({ ...props }: TextInputProps) {
+  return (
+    <View className="h-12 rounded-xl border border-white/10 px-4 justify-center mb-8">
+      <TextInput
+        placeholderTextColor="#636366"
+        autoCorrect={false}
+        className="text-white bg-transparent"
+        {...props}
+      />
+    </View>
+  );
+}
+
 function EmptyState() {
   const opacity = useSharedValue(0.4);
 
@@ -45,7 +62,7 @@ function EmptyState() {
     opacity.value = withRepeat(
       withTiming(0.7, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
       -1,
-      true
+      true,
     );
   }, []);
 
@@ -60,7 +77,9 @@ function EmptyState() {
           tintColor="#52525b"
         />
       </Animated.View>
-      <Text className="text-zinc-400 text-sm font-medium mb-2">No rules yet</Text>
+      <Text className="text-zinc-400 text-sm font-medium mb-2">
+        No rules yet
+      </Text>
       <Text className="text-zinc-600 text-xs text-center leading-relaxed">
         Rules start a timer automatically when a matched app becomes active.
       </Text>
@@ -77,12 +96,12 @@ function DeleteRow({ onDelete }: { onDelete: () => void }) {
     backgroundColor: interpolateColor(
       bgProgress.value,
       [0, 1],
-      ["rgba(255,255,255,0)", "rgba(239,68,68,0.1)"]
+      ["rgba(255,255,255,0)", "rgba(239,68,68,0.1)"],
     ),
     borderColor: interpolateColor(
       bgProgress.value,
       [0, 1],
-      ["rgba(255,255,255,0.07)", "rgba(239,68,68,0.25)"]
+      ["rgba(255,255,255,0.07)", "rgba(239,68,68,0.25)"],
     ),
   }));
 
@@ -103,17 +122,28 @@ function DeleteRow({ onDelete }: { onDelete: () => void }) {
     if (timerRef.current) clearTimeout(timerRef.current);
   }
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   return (
     <Animated.View style={[rowStyle, { borderWidth: 1, borderRadius: 12 }]}>
-      <Pressable onPress={handleTap} className="flex-row items-center px-4 py-3.5">
+      <Pressable
+        onPress={handleTap}
+        className="flex-row items-center px-4 py-3.5"
+      >
         <Image
           source="sf:trash"
           style={{ width: 15, height: 15, marginRight: 10 }}
           tintColor={confirmed ? "#ef4444" : "#52525b"}
         />
-        <Text className="flex-1 text-sm" style={{ color: confirmed ? "#ef4444" : "#52525b" }}>
+        <Text
+          className="flex-1 text-sm"
+          style={{ color: confirmed ? "#ef4444" : "#52525b" }}
+        >
           {confirmed ? "Tap again to confirm removal" : "Remove Rule"}
         </Text>
         {confirmed && (
@@ -126,6 +156,97 @@ function DeleteRow({ onDelete }: { onDelete: () => void }) {
   );
 }
 
+function CompanionSection({
+  ruleId,
+  primaryBundleId,
+  companions,
+  nameIndex,
+  onAdd,
+  onRemove,
+  onDelete,
+}: {
+  ruleId: string;
+  primaryBundleId?: string;
+  companions: string[];
+  nameIndex: Record<string, string>;
+  onAdd: (bundleId: string) => void;
+  onRemove: (bundleId: string) => void;
+  onDelete: () => void;
+}) {
+  const candidates = Object.entries(nameIndex).filter(
+    ([bundleId]) =>
+      bundleId !== primaryBundleId && !companions.includes(bundleId),
+  );
+
+  return (
+    <>
+      <FieldLabel>Companion Apps</FieldLabel>
+      <Text className="text-zinc-600 text-xs mb-4 leading-relaxed">
+        The session keeps running when you switch to these apps.
+      </Text>
+
+      {companions.length > 0 && (
+        <View className="mb-3 gap-1">
+          {companions.map((bundleId) => (
+            <View
+              key={bundleId}
+              className="flex-row items-center px-4 py-3 rounded-xl border border-white/8"
+            >
+              <Text className="flex-1 text-white text-sm">
+                {nameIndex[bundleId] ?? bundleId}
+              </Text>
+              <Pressable onPress={() => onRemove(bundleId)} hitSlop={10}>
+                <Image
+                  source="sf:xmark"
+                  style={{ width: 12, height: 12 }}
+                  tintColor="#52525b"
+                />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {candidates.length > 0 && (
+        <View className="mb-8">
+          <Select
+            value={undefined}
+            onValueChange={(v) => {
+              if (v) onAdd((v as SelectOption).value);
+            }}
+          >
+            <Select.Trigger className="bg-transparent shadow-none border border-white/10">
+              <Text className="text-zinc-500 flex-1">Add companion app…</Text>
+              <Select.TriggerIndicator />
+            </Select.Trigger>
+            <Select.Portal hostName="tracking-rules">
+              <Select.Overlay />
+              <Select.Content
+                presentation="popover"
+                width="trigger"
+                className="border border-white/10 shadow-none"
+                style={{ backgroundColor: "#18181b" }}
+              >
+                <Select.ListLabel>Known apps</Select.ListLabel>
+                {candidates.map(([bundleId, appName]) => (
+                  <Select.Item key={bundleId} value={bundleId} label={appName}>
+                    <Select.ItemLabel />
+                    <Select.ItemIndicator />
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Portal>
+          </Select>
+        </View>
+      )}
+
+      <Separator className="mb-6 opacity-20" />
+      <DeleteRow onDelete={onDelete} />
+      <View className="h-8" />
+    </>
+  );
+}
+
 export default function TrackingRulesScreen() {
   const router = useRouter();
   const theme = useAuroraTheme();
@@ -134,12 +255,16 @@ export default function TrackingRulesScreen() {
   const { rules, addRule, updateRule, removeRule } = useTrackingRulesStore();
   const { nameIndex } = useJournalStore();
 
-  const [sheetMode, setSheetMode] = useState<"hidden" | "add" | "edit">("hidden");
+  const [sheetMode, setSheetMode] = useState<"hidden" | "add" | "edit">(
+    "hidden",
+  );
   const [editingRuleId, setEditingRuleId] = useState<string | undefined>();
   const [ruleName, setRuleName] = useState("");
   const [appName, setAppName] = useState("");
   const [titleKeywords, setTitleKeywords] = useState("");
-  const [selectedProject, setSelectedProject] = useState<SelectOption | undefined>();
+  const [selectedProject, setSelectedProject] = useState<
+    SelectOption | undefined
+  >();
   const [editingCompanions, setEditingCompanions] = useState<string[]>([]);
 
   function openAddSheet() {
@@ -157,7 +282,7 @@ export default function TrackingRulesScreen() {
     setAppName(rule.appName);
     setTitleKeywords(rule.titleKeywords.join(", "));
     setSelectedProject(
-      project ? { value: project.id, label: project.name } : undefined
+      project ? { value: project.id, label: project.name } : undefined,
     );
     setEditingCompanions(rule.companionBundleIds ?? []);
     setEditingRuleId(rule.id);
@@ -206,13 +331,16 @@ export default function TrackingRulesScreen() {
   }
 
   const canSave = !!selectedProject && appName.trim().length > 0;
-  const sheetVisible = sheetMode !== "hidden";
+  const editingRule = rules.find((r) => r.id === editingRuleId);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StaticAuraBackground />
       <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button icon="chevron.left" onPress={() => router.back()} />
+        <Stack.Toolbar.Button
+          icon="chevron.left"
+          onPress={() => router.back()}
+        />
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button icon="plus" onPress={openAddSheet} />
@@ -221,7 +349,8 @@ export default function TrackingRulesScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
       >
         <Text className="text-neutral-500 text-sm mb-8 leading-relaxed">
-          Auto-tracking rules start a timer automatically when a matched app is active. Rules with title keywords are more specific and take priority.
+          Auto-tracking rules start a timer automatically when a matched app is
+          active. Rules with title keywords are more specific and take priority.
         </Text>
 
         {rules.length === 0 ? (
@@ -283,13 +412,17 @@ export default function TrackingRulesScreen() {
                                 key={kw}
                                 className="rounded-full px-2 py-0.5 bg-white/8"
                               >
-                                <Text className="text-white/50 text-xs">{kw}</Text>
+                                <Text className="text-white/50 text-xs">
+                                  {kw}
+                                </Text>
                               </View>
                             ))}
                           </View>
                         )}
                         {isInactive && (
-                          <Text className="text-neutral-600 text-xs mt-1">Inactive</Text>
+                          <Text className="text-neutral-600 text-xs mt-1">
+                            Inactive
+                          </Text>
                         )}
                         {(rule.companionBundleIds?.length ?? 0) > 0 && (
                           <View className="flex-row items-center gap-1 mt-1.5">
@@ -299,7 +432,8 @@ export default function TrackingRulesScreen() {
                               tintColor="#3f3f46"
                             />
                             <Text className="text-zinc-600 text-xs">
-                              {rule.companionBundleIds!.length} companion{rule.companionBundleIds!.length > 1 ? 's' : ''}
+                              {rule.companionBundleIds!.length} companion
+                              {rule.companionBundleIds!.length > 1 ? "s" : ""}
                             </Text>
                           </View>
                         )}
@@ -321,7 +455,7 @@ export default function TrackingRulesScreen() {
       </AnimatedHeaderScrollView>
 
       <Modal
-        visible={sheetVisible}
+        visible={sheetMode !== "hidden"}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={closeSheet}
@@ -339,7 +473,9 @@ export default function TrackingRulesScreen() {
               {sheetMode === "add" ? "Add Rule" : "Edit Rule"}
             </Text>
             <Pressable onPress={saveRule} disabled={!canSave} hitSlop={10}>
-              <Text className={`text-base font-semibold ${canSave ? "text-blue-500" : "text-neutral-600"}`}>
+              <Text
+                className={`text-base font-semibold ${canSave ? "text-blue-500" : "text-neutral-600"}`}
+              >
                 Save
               </Text>
             </Pressable>
@@ -351,15 +487,10 @@ export default function TrackingRulesScreen() {
             showsVerticalScrollIndicator={false}
           >
             <FieldLabel>App Name</FieldLabel>
-            <TextInput
+            <RuleInput
               value={appName}
               onChangeText={setAppName}
-              placeholder="e.g., Xcode, Safari, Figma"
-              placeholderTextColor="#636366"
-              className="text-white px-4 py-3 rounded-xl text-base mb-8 border border-white/10"
-              style={{ backgroundColor: "transparent" }}
               autoCapitalize="words"
-              autoCorrect={false}
             />
 
             <FieldLabel>
@@ -368,15 +499,10 @@ export default function TrackingRulesScreen() {
                 (optional, comma-separated)
               </Text>
             </FieldLabel>
-            <TextInput
+            <RuleInput
               value={titleKeywords}
               onChangeText={setTitleKeywords}
-              placeholder="e.g., .swift, pull request, design"
-              placeholderTextColor="#636366"
-              className="text-white px-4 py-3 rounded-xl text-base mb-8 border border-white/10"
-              style={{ backgroundColor: "transparent" }}
               autoCapitalize="none"
-              autoCorrect={false}
             />
 
             <FieldLabel>
@@ -385,13 +511,9 @@ export default function TrackingRulesScreen() {
                 (optional)
               </Text>
             </FieldLabel>
-            <TextInput
+            <RuleInput
               value={ruleName}
               onChangeText={setRuleName}
-              placeholder="Defaults to app name"
-              placeholderTextColor="#636366"
-              className="text-white px-4 py-3 rounded-xl text-base mb-8 border border-white/10"
-              style={{ backgroundColor: "transparent" }}
               autoCapitalize="words"
             />
 
@@ -406,7 +528,8 @@ export default function TrackingRulesScreen() {
                 <Select.Trigger className="bg-transparent shadow-none border border-white/10">
                   <Text className="text-white flex-1">
                     {selectedProject
-                      ? projects.find((p) => p.id === selectedProject.value)?.name
+                      ? projects.find((p) => p.id === selectedProject.value)
+                          ?.name
                       : "Select a project"}
                   </Text>
                   <Select.TriggerIndicator />
@@ -428,14 +551,20 @@ export default function TrackingRulesScreen() {
                         onValueChange={(v) =>
                           setSelectedProject({
                             value: v,
-                            label: projects.find((proj) => proj.id === v)?.name || "",
+                            label:
+                              projects.find((proj) => proj.id === v)?.name ||
+                              "",
                           })
                         }
                       >
                         <View className="flex-row items-center gap-3 flex-1">
                           <Image
                             source={`sf:${p.icon}`}
-                            style={{ width: 18, height: 18, tintColor: p.color }}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              tintColor: p.color,
+                            }}
                           />
                           <Select.ItemLabel />
                         </View>
@@ -447,96 +576,23 @@ export default function TrackingRulesScreen() {
               </Select>
             </View>
 
-            {sheetMode === "edit" && (() => {
-              const editingRule = rules.find((r) => r.id === editingRuleId);
-              const candidates = Object.entries(nameIndex).filter(
-                ([bundleId]) =>
-                  bundleId !== editingRule?.primaryBundleId &&
-                  !editingCompanions.includes(bundleId)
-              );
-              return (
-                <>
-                  <FieldLabel>Companion Apps</FieldLabel>
-                  <Text className="text-zinc-600 text-xs mb-4 leading-relaxed">
-                    The session keeps running when you switch to these apps.
-                  </Text>
-
-                  {editingCompanions.length > 0 && (
-                    <View className="mb-3 gap-1">
-                      {editingCompanions.map((bundleId) => (
-                        <View
-                          key={bundleId}
-                          className="flex-row items-center px-4 py-3 rounded-xl border border-white/8"
-                        >
-                          <Text className="flex-1 text-white text-sm">
-                            {nameIndex[bundleId] ?? bundleId}
-                          </Text>
-                          <Pressable
-                            onPress={() =>
-                              setEditingCompanions((prev) =>
-                                prev.filter((id) => id !== bundleId)
-                              )
-                            }
-                            hitSlop={10}
-                          >
-                            <Image
-                              source="sf:xmark"
-                              style={{ width: 12, height: 12 }}
-                              tintColor="#52525b"
-                            />
-                          </Pressable>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {candidates.length > 0 && (
-                    <View className="mb-8">
-                      <Select
-                        value={undefined}
-                        onValueChange={(v) => {
-                          if (v)
-                            setEditingCompanions((prev) => [
-                              ...prev,
-                              (v as SelectOption).value,
-                            ]);
-                        }}
-                      >
-                        <Select.Trigger className="bg-transparent shadow-none border border-white/10">
-                          <Text className="text-zinc-500 flex-1">Add companion app…</Text>
-                          <Select.TriggerIndicator />
-                        </Select.Trigger>
-                        <Select.Portal hostName="tracking-rules">
-                          <Select.Overlay />
-                          <Select.Content
-                            presentation="popover"
-                            width="trigger"
-                            className="border border-white/10 shadow-none"
-                            style={{ backgroundColor: "#18181b" }}
-                          >
-                            <Select.ListLabel>Known apps</Select.ListLabel>
-                            {candidates.map(([bundleId, appName]) => (
-                              <Select.Item
-                                key={bundleId}
-                                value={bundleId}
-                                label={appName}
-                              >
-                                <Select.ItemLabel />
-                                <Select.ItemIndicator />
-                              </Select.Item>
-                            ))}
-                          </Select.Content>
-                        </Select.Portal>
-                      </Select>
-                    </View>
-                  )}
-
-                  <Separator className="mb-6 opacity-20" />
-                  <DeleteRow onDelete={handleDelete} />
-                  <View className="h-8" />
-                </>
-              );
-            })()}
+            {sheetMode === "edit" && (
+              <CompanionSection
+                ruleId={editingRuleId!}
+                primaryBundleId={editingRule?.primaryBundleId}
+                companions={editingCompanions}
+                nameIndex={nameIndex}
+                onAdd={(bundleId) =>
+                  setEditingCompanions((prev) => [...prev, bundleId])
+                }
+                onRemove={(bundleId) =>
+                  setEditingCompanions((prev) =>
+                    prev.filter((id) => id !== bundleId),
+                  )
+                }
+                onDelete={handleDelete}
+              />
+            )}
           </ScrollView>
 
           <PortalHost name="tracking-rules" />
