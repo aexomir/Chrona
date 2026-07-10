@@ -12,8 +12,6 @@ struct ChronaActivityAttributes: ActivityAttributes {
 }
 
 public class ActivityControllerModule: Module {
-    private var activityId: String?
-
     public func definition() -> ModuleDefinition {
         Name("ActivityController")
 
@@ -23,42 +21,41 @@ public class ActivityControllerModule: Module {
                 return
             }
 
-            if let existingId = self.activityId {
-                for activity in Activity<ChronaActivityAttributes>.activities
-                where activity.id == existingId {
-                    Task { await activity.end(dismissalPolicy: .immediate) }
+            Task {
+                // End ALL existing Chrona activities before starting a new one.
+                // Handles orphaned activities from prior app sessions (crash / kill).
+                for activity in Activity<ChronaActivityAttributes>.activities {
+                    await activity.end(dismissalPolicy: .immediate)
                 }
-                self.activityId = nil
-            }
 
-            let isoFractional: ISO8601DateFormatter = {
-                let f = ISO8601DateFormatter()
-                f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                return f
-            }()
-            let tsStr = params["startTimestamp"] as? String ?? ""
-            let startDate = isoFractional.date(from: tsStr)
-                ?? ISO8601DateFormatter().date(from: tsStr)
-                ?? Date()
+                let isoFractional: ISO8601DateFormatter = {
+                    let f = ISO8601DateFormatter()
+                    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    return f
+                }()
+                let tsStr = params["startTimestamp"] as? String ?? ""
+                let startDate = isoFractional.date(from: tsStr)
+                    ?? ISO8601DateFormatter().date(from: tsStr)
+                    ?? Date()
 
-            let state = ChronaActivityAttributes.ContentState(
-                startDate: startDate,
-                title: params["title"] as? String ?? "",
-                projectName: params["projectName"] as? String ?? "",
-                projectIcon: params["projectIcon"] as? String ?? "",
-                projectColor: params["projectColor"] as? String ?? ""
-            )
-
-            do {
-                let activity = try Activity.request(
-                    attributes: ChronaActivityAttributes(),
-                    content: .init(state: state, staleDate: nil),
-                    pushType: nil
+                let state = ChronaActivityAttributes.ContentState(
+                    startDate: startDate,
+                    title: params["title"] as? String ?? "",
+                    projectName: params["projectName"] as? String ?? "",
+                    projectIcon: params["projectIcon"] as? String ?? "",
+                    projectColor: params["projectColor"] as? String ?? ""
                 )
-                self.activityId = activity.id
-                promise.resolve(["activityId": activity.id])
-            } catch {
-                promise.reject(Exception(name: "StartActivityError", description: error.localizedDescription))
+
+                do {
+                    let activity = try Activity.request(
+                        attributes: ChronaActivityAttributes(),
+                        content: .init(state: state, staleDate: nil),
+                        pushType: nil
+                    )
+                    promise.resolve(["activityId": activity.id])
+                } catch {
+                    promise.reject(Exception(name: "StartActivityError", description: error.localizedDescription))
+                }
             }
         }
 
@@ -68,23 +65,23 @@ public class ActivityControllerModule: Module {
                 return
             }
 
-            guard let existingId = self.activityId else {
-                promise.resolve(nil)
-                return
-            }
+            Task {
+                guard let activity = Activity<ChronaActivityAttributes>.activities.first else {
+                    promise.resolve(nil)
+                    return
+                }
 
-            for activity in Activity<ChronaActivityAttributes>.activities
-            where activity.id == existingId {
+                let current = activity.content.state
                 let updated = ChronaActivityAttributes.ContentState(
-                    startDate: activity.content.state.startDate,
-                    title: params["title"] as? String ?? activity.content.state.title,
-                    projectName: params["projectName"] as? String ?? activity.content.state.projectName,
-                    projectIcon: params["projectIcon"] as? String ?? activity.content.state.projectIcon,
-                    projectColor: params["projectColor"] as? String ?? activity.content.state.projectColor
+                    startDate: current.startDate,
+                    title: params["title"] as? String ?? current.title,
+                    projectName: params["projectName"] as? String ?? current.projectName,
+                    projectIcon: params["projectIcon"] as? String ?? current.projectIcon,
+                    projectColor: params["projectColor"] as? String ?? current.projectColor
                 )
-                Task { await activity.update(.init(state: updated, staleDate: nil)) }
+                await activity.update(.init(state: updated, staleDate: nil))
+                promise.resolve(nil)
             }
-            promise.resolve(nil)
         }
 
         AsyncFunction("endActivity") { (promise: Promise) in
@@ -93,18 +90,18 @@ public class ActivityControllerModule: Module {
                 return
             }
 
-            if let existingId = self.activityId {
-                for activity in Activity<ChronaActivityAttributes>.activities
-                where activity.id == existingId {
-                    Task { await activity.end(dismissalPolicy: .immediate) }
+            Task {
+                // End ALL activities regardless of any stored ID.
+                for activity in Activity<ChronaActivityAttributes>.activities {
+                    await activity.end(dismissalPolicy: .immediate)
                 }
-                self.activityId = nil
+                promise.resolve(nil)
             }
-            promise.resolve(nil)
         }
 
-        Function("isLiveActivityRunning") {
-            return self.activityId != nil
+        Function("isLiveActivityRunning") { () -> Bool in
+            guard #available(iOS 16.2, *) else { return false }
+            return !Activity<ChronaActivityAttributes>.activities.isEmpty
         }
     }
 }

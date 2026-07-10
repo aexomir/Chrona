@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		Sandboxing is intentionally disabled.
+
+		The Accessibility API (AXUIElement) requires reading window attributes of
+		*other* processes, which is incompatible with the App Sandbox. Since this is
+		a locally distributed helper (not distributed via the Mac App Store), running
+		outside the sandbox is acceptable.
+
+		If you ever need Mac App Store distribution, you would need to:
+		  1. Enable the sandbox (set to <true/>).
+		  2. Remove the AXUIElement window-title code in AppObserver.swift.
+		  3. Accept that window titles will always be empty strings.
+	-->
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+
+	<!-- Allow outbound TCP (Bonjour advertisement + client streaming). -->
+	<key>com.apple.security.network.server</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>

@@ -42,6 +42,8 @@ export function LiveSessionRow({
     return () => clearInterval(id);
   }, [startTimestamp]);
 
+  const accentColor = project?.color ?? "#ef4444";
+
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 50)
@@ -70,12 +72,19 @@ export function LiveSessionRow({
             </Text>
           </View>
           <View className="items-center pt-[18px]">
-            <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            <View
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: accentColor }}
+            />
           </View>
           <Animated.View style={scaleStyle} className="flex-1">
             <View
-              className="flex-1 rounded-2xl px-4 py-3 gap-1 border border-red-500/30"
-              style={{ backgroundColor: theme.card }}
+              className="flex-1 rounded-2xl px-4 py-3 gap-1"
+              style={{
+                backgroundColor: theme.card,
+                borderWidth: 1,
+                borderColor: `${accentColor}4D`,
+              }}
             >
               <View className="flex-row items-start justify-between gap-2">
                 <Text
@@ -85,8 +94,11 @@ export function LiveSessionRow({
                   {title || "Untitled"}
                 </Text>
                 <View className="flex-row items-center gap-1.5 mt-0.5">
-                  <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <Text className="text-red-400 text-xs font-mono">
+                  <View
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: accentColor }}
+                  />
+                  <Text className="text-xs font-mono" style={{ color: accentColor }}>
                     {formatDuration(elapsed)}
                   </Text>
                 </View>

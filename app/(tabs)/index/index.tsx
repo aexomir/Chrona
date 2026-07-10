@@ -63,7 +63,6 @@ export default function DashboardScreen() {
           style={dashboardStyle}
           className="flex-1 items-center justify-center"
         >
-          {/* Focus Ring with integrated stats */}
           <FocusRing />
           {constellationEnabled && <SessionConstellation />}
         </AnimatedView>

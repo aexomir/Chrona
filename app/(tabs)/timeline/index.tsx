@@ -13,6 +13,8 @@ import { GapSeparator } from "@/features/timeline/components/gap-separator";
 import { LiveSessionRow } from "@/features/timeline/components/live-session-row";
 import { SessionRow } from "@/features/timeline/components/session-row";
 import { TimelineEmptyState } from "@/features/timeline/components/timeline-empty-state";
+import { DragOverlay } from "@/features/timeline/merge/drag-overlay";
+import { MergeProvider, useMergeContext } from "@/features/timeline/merge/merge-context";
 import {
   CIRCLE_DURATION,
   CIRCLE_EASING,
@@ -41,6 +43,14 @@ import Animated, {
 } from "react-native-reanimated";
 
 export default function TimelineScreen() {
+  return (
+    <MergeProvider>
+      <TimelineContent />
+    </MergeProvider>
+  );
+}
+
+function TimelineContent() {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -49,6 +59,7 @@ export default function TimelineScreen() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const theme = useAuroraTheme();
+  const { isDragging, updateScrollY } = useMergeContext();
 
   const isTracking = useTimerStore((s) => s.isTracking);
   const startTimestamp = useTimerStore((s) => s.startTimestamp);
@@ -290,6 +301,9 @@ export default function TimelineScreen() {
       </Stack.Toolbar>
 
       <FlashList
+        scrollEnabled={!isDragging}
+        onScroll={(e) => updateScrollY(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
         data={augmentedItems}
         keyExtractor={(item, index) => {
           if (item.kind === "session") return `session-${item.session.id}`;
@@ -404,6 +418,8 @@ export default function TimelineScreen() {
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={<TimelineEmptyState selectedDate={selectedDate} />}
       />
+
+      <DragOverlay />
 
       {/* Date Picker Modal */}
       {showPicker && (

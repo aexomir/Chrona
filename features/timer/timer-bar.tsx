@@ -1,21 +1,18 @@
-import { detectMissedCalendarEvent } from "@/features/calendar/detectMissedCalendarEvent";
-import { detectMissedTime } from "@/features/recovery/detectMissedTime";
-import { getCurrentApp, getMeetingState, onMeetingChange } from "@/features/activity-watch/aw-adapter";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
-import { useRecoveryStore } from "@/features/recovery/recovery-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
-import { useSuggestionsStore } from "@/features/activity-watch/suggestions-store";
-import { useSettingsStore } from "@/features/settings/settings-store";
 import { useTimerStore } from "@/features/timer/timer-store";
-import { useTrackingRulesStore } from "@/features/tracking-rules/tracking-rules-store";
-import { useAutoTrackingStore } from "@/features/activity-watch/auto-tracking-store";
+import { useUntrackedStore } from "@/features/auto-track/untracked-store";
+import { useTrackingRulesStore } from "@/features/auto-track/tracking-rules-store";
+import { usePatternStore, computeRuleSuggestion, computeCompanionBundleIds } from "@/features/intelligence/pattern-store";
+import { getAppsForWindow } from "@/features/intelligence/journal-store";
 import { Neutral } from "@/constants/theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useAppToast } from "@/hooks/use-app-toast";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+
+const INTERRUPTED_SESSION_TTL_MS = 30 * 60 * 1000;
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -29,264 +26,78 @@ function formatTime(seconds: number): string {
 
 export function TimerBar() {
   const isTracking = useTimerStore(s => s.isTracking);
+  const isAutoTracked = useTimerStore(s => s.isAutoTracked);
   const title = useTimerStore(s => s.title);
   const projectId = useTimerStore(s => s.projectId);
   const startTimestamp = useTimerStore(s => s.startTimestamp);
-  const sessions = useSessionsStore(s => s.sessions);
+  const stopTimer = useTimerStore(s => s.stopTimer);
+  const startTimer = useTimerStore(s => s.startTimer);
+  const interruptedSession = useTimerStore(s => s.interruptedSession);
+  const setInterruptedSession = useTimerStore(s => s.setInterruptedSession);
   const addSession = useSessionsStore(s => s.addSession);
-  const suggestProject = useSuggestionsStore(s => s.suggestProject);
-  const learnFromSession = useSuggestionsStore(s => s.learnFromSession);
-  const autoTrackingEnabled = useSettingsStore(s => s.autoTrackingEnabled);
-  const recoveryPeriod = useRecoveryStore(s => s.period);
-  const setRecovery = useRecoveryStore(s => s.set);
-  const clearRecovery = useRecoveryStore(s => s.clear);
-  const isDismissed = useRecoveryStore(s => s.isDismissed);
   const calendarEnabled = useCalendarStore(s => s.isEnabled);
-  const permissionStatus = useCalendarStore(s => s.permissionStatus);
   const getActiveEventSuggestion = useCalendarStore(s => s.getActiveEventSuggestion);
   const fetchCalendarEvents = useCalendarStore(s => s.fetchEvents);
-  const rules = useTrackingRulesStore(s => s.rules);
-  const matchRule = useTrackingRulesStore(s => s.matchRule);
-  const addRule = useTrackingRulesStore(s => s.addRule);
-  const isAutoTracking = useAutoTrackingStore(s => s.isAutoTracking);
-  const autoStartTimestamp = useAutoTrackingStore(s => s.autoStartTimestamp);
-  const matchedRuleId = useAutoTrackingStore(s => s.matchedRuleId);
-  const consecutiveOfflineCount = useAutoTrackingStore(s => s.consecutiveOfflineCount);
-  const startAutoTracking = useAutoTrackingStore(s => s.startAutoTracking);
-  const stopAutoTracking = useAutoTrackingStore(s => s.stopAutoTracking);
-  const setDetectedApp = useAutoTrackingStore(s => s.setDetectedApp);
-  const incrementOfflineCount = useAutoTrackingStore(s => s.incrementOfflineCount);
-  const resetOfflineCount = useAutoTrackingStore(s => s.resetOfflineCount);
   const project = useProjects(s => projectId ? s.projects.find(p => p.id === projectId) ?? null : null);
   const projects = useProjects(s => s.projects);
+  const pendingHint = useUntrackedStore(s => s.pendingHint);
+  const dismissHint = useUntrackedStore(s => s.dismissHint);
+  const patternCounts = usePatternStore(s => s.counts);
+  const patternNames = usePatternStore(s => s.nameIndex);
+  const patternDismissed = usePatternStore(s => s.dismissed);
+  const dismissSuggestion = usePatternStore(s => s.dismiss);
+  const rules = useTrackingRulesStore(s => s.rules);
+  const addRule = useTrackingRulesStore(s => s.addRule);
   const [elapsed, setElapsed] = useState(0);
-  const [autoElapsed, setAutoElapsed] = useState(0);
   const [calendarSuggestion, setCalendarSuggestion] = useState<{
     eventTitle: string;
     projectId: string;
   } | null>(null);
-  const toast = useAppToast();
-  const [activeMeeting, setActiveMeeting] = useState(getMeetingState);
-  const [untrackedApp, setUntrackedApp] = useState<string | null>(null);
-  const [untrackedTitle, setUntrackedTitle] = useState<string | null>(null);
-  const [untrackedDismissed, setUntrackedDismissed] = useState(false);
-  const [ruleCreationOffer, setRuleCreationOffer] = useState<{
-    app: string;
-    projectId: string;
-  } | null>(null);
-  const hasDetectedRef = useRef(false);
   const hasCheckCalendarRef = useRef(false);
-  const prevIsTrackingRef = useRef(isTracking);
-  const prevSessionsRef = useRef(sessions);
-  const isAutoTrackingRef = useRef(isAutoTracking);
-  const matchedRuleIdRef = useRef(matchedRuleId);
-  const consecutiveOfflineCountRef = useRef(consecutiveOfflineCount);
-  const untrackedDismissedRef = useRef(untrackedDismissed);
 
-  // Sync refs (read inside effects)
-  isAutoTrackingRef.current = isAutoTracking;
-  matchedRuleIdRef.current = matchedRuleId;
-  consecutiveOfflineCountRef.current = consecutiveOfflineCount;
-  untrackedDismissedRef.current = untrackedDismissed;
+  const projectIdSet = new Set(projects.map((p) => p.id));
+  const ruleSuggestion = computeRuleSuggestion(
+    patternCounts,
+    patternNames,
+    patternDismissed,
+    rules,
+    projectIdSet,
+  );
+  const suggestionProject = ruleSuggestion
+    ? projects.find((p) => p.id === ruleSuggestion.projectId) ?? null
+    : null;
 
-  // Consolidated elapsed timer: handles both manual and auto-tracking in one interval
+  function handleCreateRule() {
+    if (!ruleSuggestion) return;
+    const companions = computeCompanionBundleIds(ruleSuggestion.bundleId, ruleSuggestion.projectId);
+    addRule({
+      appName: ruleSuggestion.appName,
+      titleKeywords: [],
+      projectId: ruleSuggestion.projectId,
+      primaryBundleId: ruleSuggestion.bundleId,
+      companionBundleIds: companions.length > 0 ? companions : undefined,
+    });
+  }
+
+  // Elapsed timer
   useEffect(() => {
-    const source = isTracking ? startTimestamp : isAutoTracking ? autoStartTimestamp : null;
+    const source = isTracking ? startTimestamp : null;
     if (!source) {
       setElapsed(0);
-      setAutoElapsed(0);
       return;
     }
     const tick = () => {
       const e = Math.floor((Date.now() - new Date(source).getTime()) / 1000);
-      if (isTracking) {
-        setElapsed(e);
-      } else {
-        setAutoElapsed(e);
-      }
+      setElapsed(e);
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [isTracking, isAutoTracking, startTimestamp, autoStartTimestamp]);
+  }, [isTracking, startTimestamp]);
 
-  // saveAutoSession helper: save and reset auto-tracking state
-  const saveAutoSession = () => {
-    const session = stopAutoTracking();
-    if (!session || session.duration < 60) return; // Discard sessions < 60s
-    const rule = rules.find((r) => r.id === session.ruleId);
-    if (!rule) return;
-    addSession({
-      id: Date.now().toString(),
-      title: rule.defaultTitle || session.app,
-      projectId: rule.projectId,
-      startTime: session.startTime,
-      endTime: session.endTime,
-      duration: session.duration,
-      auto: true,
-    });
-    learnFromSession([{ app: session.app, duration: session.duration }], rule.projectId);
-  };
-
-  // Reset untracked hint when tracking starts or sessions change
+  // Calendar event suggestion: check when not tracking
   useEffect(() => {
-    if (isTracking) {
-      setUntrackedDismissed(false);
-      setUntrackedApp(null);
-    }
-  }, [isTracking, sessions]);
-
-  // Offer to create rule after manual session is logged
-  useEffect(() => {
-    if (isTracking || sessions.length === 0 || !autoTrackingEnabled) {
-      setRuleCreationOffer(null);
-      return;
-    }
-
-    const lastSession = sessions[0];
-    // Only offer for manual sessions (not auto-tracked)
-    if (lastSession.auto) {
-      setRuleCreationOffer(null);
-      return;
-    }
-
-    (async () => {
-      const current = await getCurrentApp();
-      if (!current || !lastSession.projectId) {
-        setRuleCreationOffer(null);
-        return;
-      }
-
-      // Check if app already has a rule
-      const existingRule = matchRule(current.app, current.title);
-      if (existingRule) {
-        setRuleCreationOffer(null);
-        return;
-      }
-
-      // Offer to create rule
-      setRuleCreationOffer({
-        app: current.app,
-        projectId: lastSession.projectId,
-      });
-    })();
-  }, [sessions, isTracking, autoTrackingEnabled]);
-
-  // Real-time activity monitoring: always show current app when idle
-  useEffect(() => {
-    if (isTracking) {
-      setUntrackedApp(null);
-      setUntrackedDismissed(false);
-      return;
-    }
-
-    const pollActivity = async () => {
-      const current = await getCurrentApp();
-      if (!current) {
-        setDetectedApp(null, null);
-        return;
-      }
-
-      setDetectedApp(current.app, current.title);
-
-      const rule = matchRule(current.app, current.title);
-      if (rule) {
-        setUntrackedApp(null);
-      } else if (!untrackedDismissedRef.current) {
-        setUntrackedApp(current.app);
-        setUntrackedTitle(current.title);
-      }
-    };
-
-    pollActivity();
-    const id = setInterval(pollActivity, 12_000);
-    return () => clearInterval(id);
-  }, [isTracking, matchRule, setDetectedApp]);
-
-  // Polling effect: auto-track apps when idle (if enabled)
-  useEffect(() => {
-    if (isTracking || !autoTrackingEnabled) {
-      if (isAutoTrackingRef.current) saveAutoSession();
-      return;
-    }
-
-    const poll = async () => {
-      const current = await getCurrentApp();
-      if (!current) {
-        incrementOfflineCount();
-        if (consecutiveOfflineCountRef.current >= 5 && isAutoTrackingRef.current) {
-          saveAutoSession();
-        }
-        return;
-      }
-
-      resetOfflineCount();
-
-      const rule = matchRule(current.app, current.title);
-      if (rule) {
-        if (isAutoTrackingRef.current && matchedRuleIdRef.current !== rule.id) {
-          saveAutoSession();
-        }
-        if (!isAutoTrackingRef.current) {
-          startAutoTracking(current.app, current.title, rule.id);
-        }
-      } else {
-        if (isAutoTrackingRef.current) {
-          saveAutoSession();
-        }
-      }
-    };
-
-    poll();
-    const id = setInterval(poll, 30_000);
-    return () => clearInterval(id);
-  }, [isTracking, autoTrackingEnabled]);
-
-  // If a newly logged session covers the pending recovery period, clear it
-  useEffect(() => {
-    if (!recoveryPeriod) return;
-    const pStart = new Date(recoveryPeriod.startTime);
-    const pEnd = new Date(recoveryPeriod.endTime);
-    if (sessions.some((s) => new Date(s.startTime) < pEnd && new Date(s.endTime) > pStart)) {
-      clearRecovery();
-    }
-  }, [sessions, recoveryPeriod, clearRecovery]);
-
-  // Detection: run once when idle. Reset only when tracking stops or sessions change.
-  // Never resets on dismiss — dismissed gaps are blocked via isDismissed().
-  // Calendar events/mappings are read from getState() to avoid re-triggering on 5-min refresh.
-  useEffect(() => {
-    const trackingChanged = prevIsTrackingRef.current !== isTracking;
-    const sessionsChanged = prevSessionsRef.current !== sessions;
-    prevIsTrackingRef.current = isTracking;
-    prevSessionsRef.current = sessions;
-
-    if (trackingChanged || sessionsChanged) hasDetectedRef.current = false;
-
-    if (isTracking || hasDetectedRef.current || recoveryPeriod !== null) return;
-
-    hasDetectedRef.current = true;
-    (async () => {
-      const awResult = await detectMissedTime(sessions, suggestProject, isDismissed);
-      if (awResult) { setRecovery(awResult); return; }
-
-      const { isEnabled, permissionStatus: ps, events, mappings: m } = useCalendarStore.getState();
-      if (!isEnabled || ps !== "granted") return;
-      const calResult = await detectMissedCalendarEvent(events, m, sessions);
-      if (calResult) setRecovery(calResult);
-    })();
-  }, [
-    isTracking,
-    sessions,
-    suggestProject,
-    recoveryPeriod,
-    setRecovery,
-    isDismissed,
-  ]);
-
-  // Calendar event suggestion effect: check when not tracking
-  useEffect(() => {
-    if (isTracking || recoveryPeriod !== null || !calendarEnabled) {
+    if (isTracking || !calendarEnabled) {
       hasCheckCalendarRef.current = false;
       setCalendarSuggestion(null);
       return;
@@ -301,55 +112,61 @@ export function TimerBar() {
         projectId: suggestion.projectId,
       });
     }
-  }, [isTracking, recoveryPeriod, calendarEnabled, getActiveEventSuggestion]);
+  }, [isTracking, calendarEnabled, getActiveEventSuggestion]);
 
-  // Subscribe to meeting state changes from the Mac app stream
-  useEffect(() => {
-    return onMeetingChange(setActiveMeeting);
-  }, []);
-
-  // Periodic calendar refresh: refresh events every 5 minutes when idle
+  // Periodic calendar refresh every 5 minutes when idle
   useEffect(() => {
     if (!calendarEnabled || isTracking) return;
-
-    const interval = setInterval(
-      () => {
-        fetchCalendarEvents();
-      },
-      5 * 60 * 1000,
-    ); // 5 minutes
-
+    const interval = setInterval(() => {
+      fetchCalendarEvents();
+    }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [calendarEnabled, isTracking, fetchCalendarEvents]);
 
   const calendarProj = calendarSuggestion
     ? projects.find((p) => p.id === calendarSuggestion.projectId)
     : null;
-  const autoRule = isAutoTracking ? rules.find((r) => r.id === matchedRuleId) : null;
-  const autoProject = autoRule ? projects.find((p) => p.id === autoRule.projectId) : null;
+
+  const resumableSession =
+    !isTracking &&
+    interruptedSession !== null &&
+    Date.now() - new Date(interruptedSession.interruptedAt).getTime() < INTERRUPTED_SESSION_TTL_MS
+      ? interruptedSession
+      : null;
+
+  const resumableProject = resumableSession
+    ? projects.find(p => p.id === resumableSession.projectId) ?? null
+    : null;
+
+  function handleResumeSession() {
+    if (!resumableSession) return;
+    startTimer(resumableSession.title, resumableSession.projectId, resumableSession.elapsedSeconds);
+  }
+
+  function handleStopAutoSession() {
+    const sessionData = stopTimer();
+    if (sessionData) {
+      const startMs = new Date(sessionData.startTime).getTime();
+      const endMs = new Date(sessionData.endTime).getTime();
+      const apps = getAppsForWindow(startMs, endMs);
+      addSession({
+        ...sessionData,
+        id: Date.now().toString(),
+        auto: true,
+        ...(apps.length > 0 ? { apps } : {}),
+      });
+    }
+  }
 
   return (
     <Pressable
       style={styles.container}
       onPress={() => {
-        if (ruleCreationOffer) {
-          // Don't navigate when rule creation is offered - let inline actions handle it
-          return;
-        } else if (isAutoTracking) {
+        if (isTracking) {
           router.push("/timer");
-        } else if (untrackedApp && !untrackedDismissed) {
-          router.push(
-            `/untracked?app=${encodeURIComponent(untrackedApp)}${
-              untrackedTitle ? `&title=${encodeURIComponent(untrackedTitle)}` : ""
-            }`,
-          );
-        } else if (recoveryPeriod !== null) {
-          router.push("/recover");
-        } else if (activeMeeting && !isTracking) {
-          router.push(
-            `/timer?suggestTitle=${encodeURIComponent(`${activeMeeting.appDisplayName} Meeting`)}`,
-          );
-        } else if (calendarSuggestion && calendarProj) {
+          return;
+        }
+        if (calendarSuggestion && calendarProj) {
           router.push(
             `/timer?suggestProjectId=${calendarSuggestion.projectId}&suggestEventTitle=${encodeURIComponent(calendarSuggestion.eventTitle)}`,
           );
@@ -358,7 +175,37 @@ export function TimerBar() {
         }
       }}
     >
-      {isTracking ? (
+      {isTracking && isAutoTracked ? (
+        // Auto-tracking active state
+        <View className="flex-row items-center justify-center gap-2">
+          {project ? (
+            <Image
+              source={`sf:${project.icon}`}
+              style={[styles.icon, { tintColor: project.color }]}
+            />
+          ) : (
+            <View className="w-1.5 h-1.5 rounded-full bg-white/40" />
+          )}
+          <Text className="text-white/70 text-sm shrink" numberOfLines={1}>
+            {title}
+          </Text>
+          <Text className="text-white text-sm font-mono shrink-0">
+            {formatTime(elapsed)}
+          </Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              handleStopAutoSession();
+            }}
+            hitSlop={8}
+          >
+            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+              <Text className="text-white/50 text-xs font-medium">Stop</Text>
+            </View>
+          </Pressable>
+        </View>
+      ) : isTracking ? (
+        // Manual tracking state
         <View className="flex-row items-center justify-center gap-2">
           {project ? (
             <Image
@@ -383,50 +230,40 @@ export function TimerBar() {
             {formatTime(elapsed)}
           </Text>
         </View>
-      ) : ruleCreationOffer ? (
-        <View className="flex-row items-center justify-center gap-2">
-          <View className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-          <Text className="text-blue-400 text-sm shrink" numberOfLines={1}>
-            Create rule for {ruleCreationOffer.app}?
+      ) : resumableSession ? (
+        // Interrupted session resume prompt
+        <View className="flex-row items-center justify-center gap-1.5">
+          <Text className="text-white/50 text-sm shrink-0">Resume</Text>
+          <View
+            className="w-1 h-1 rounded-full shrink-0"
+            style={{ backgroundColor: resumableProject?.color ?? Neutral.z600 }}
+          />
+          <Text className="text-white text-sm shrink" numberOfLines={1}>
+            {resumableSession.title}
           </Text>
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
-              addRule(ruleCreationOffer.app, ruleCreationOffer.projectId);
-              setRuleCreationOffer(null);
-              toast.show({ label: `Rule created for ${ruleCreationOffer.app}` });
+              handleResumeSession();
             }}
             hitSlop={8}
           >
-            <Text className="text-blue-400 text-sm font-semibold">✓</Text>
+            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+              <Text className="text-white/70 text-xs font-medium">Resume</Text>
+            </View>
           </Pressable>
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
-              setRuleCreationOffer(null);
+              setInterruptedSession(null);
             }}
             hitSlop={8}
           >
-            <Text className="text-blue-400/50 text-sm font-semibold">×</Text>
+            <Text className="text-white/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
-      ) : recoveryPeriod !== null ? (
-        recoveryPeriod.source === "calendar" ? (
-          <View className="flex-row items-center justify-center gap-2">
-            <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <Text className="text-amber-400 text-sm" numberOfLines={1}>
-              {recoveryPeriod.eventTitle} · Tap to log
-            </Text>
-          </View>
-        ) : (
-          <View className="flex-row items-center justify-center gap-2">
-            <View className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <Text className="text-amber-400 text-sm">
-              Activity not tracked · Tap to review
-            </Text>
-          </View>
-        )
       ) : calendarSuggestion ? (
+        // Calendar suggestion state
         <View className="flex-row items-center justify-center gap-1.5">
           <Text className="text-white/50 text-sm shrink-0">Suggested:</Text>
           <View
@@ -446,44 +283,63 @@ export function TimerBar() {
             <Text className="text-white/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
-      ) : activeMeeting && !isTracking ? (
-        <View className="flex-row items-center justify-center gap-2">
-          <View className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-          <Text className="text-violet-300 text-sm" numberOfLines={1}>
-            In {activeMeeting.appDisplayName} · Tap to track
+      ) : pendingHint ? (
+        // Untracked app hint state
+        <View className="flex-row items-center justify-center gap-1.5">
+          <View className="w-1 h-1 rounded-full shrink-0 bg-amber-400" />
+          <Text className="text-amber-400/80 text-sm shrink" numberOfLines={1}>
+            {pendingHint.appName} untracked
           </Text>
-        </View>
-      ) : isAutoTracking && autoProject ? (
-        <View className="flex-row items-center justify-center gap-2">
-          <Image
-            source={`sf:${autoProject.icon}`}
-            style={[styles.icon, { tintColor: autoProject.color }]}
-          />
-          <Text className="text-white text-sm shrink" numberOfLines={1}>
-            {autoProject.name}
-          </Text>
-          <Text className="text-neutral-500 text-sm shrink-0">Auto</Text>
-          <Text className="text-white text-sm font-mono font-semibold shrink-0">
-            {formatTime(autoElapsed)}
-          </Text>
-        </View>
-      ) : untrackedApp && !untrackedDismissed ? (
-        <View className="flex-row items-center justify-center gap-2">
-          <View className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
-          <Text className="text-neutral-400 text-sm shrink" numberOfLines={1}>
-            {untrackedApp} · Untracked
+          <Text className="text-amber-400/50 text-xs shrink-0">
+            {formatTime(pendingHint.durationSeconds)}
           </Text>
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
-              setUntrackedDismissed(true);
+              dismissHint();
             }}
             hitSlop={8}
           >
-            <Text className="text-neutral-500 text-sm font-semibold">×</Text>
+            <Text className="text-amber-400/50 text-sm font-semibold">×</Text>
+          </Pressable>
+        </View>
+      ) : ruleSuggestion ? (
+        // Rule suggestion state
+        <View className="flex-row items-center justify-center gap-1.5">
+          <Text className="text-white/50 text-sm shrink-0">Auto-track</Text>
+          <View
+            className="w-1 h-1 rounded-full shrink-0"
+            style={{ backgroundColor: suggestionProject?.color ?? Neutral.z600 }}
+          />
+          <Text className="text-white text-sm shrink" numberOfLines={1}>
+            {ruleSuggestion.appName}
+          </Text>
+          <Text className="text-white/50 text-sm shrink-0">
+            for {suggestionProject?.name}?
+          </Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              handleCreateRule();
+            }}
+            hitSlop={8}
+          >
+            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+              <Text className="text-white/70 text-xs font-medium">Create</Text>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              dismissSuggestion(ruleSuggestion.bundleId);
+            }}
+            hitSlop={8}
+          >
+            <Text className="text-white/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
       ) : (
+        // Idle state
         <Text className="text-white/50 text-sm text-center">
           Tap to start a timer
         </Text>

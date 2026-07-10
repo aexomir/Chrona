@@ -15,7 +15,7 @@ import React from "react";
 const AnimatedKeyboardAwareScrollView = Animated.createAnimatedComponent(KeyboardAwareScrollView);
 
 export interface AnimatedHeaderScrollViewProps {
-  title: string;
+  title?: string;
   subtitle?: string;
   leftComponent?: React.ReactNode;
   rightComponent?: React.ReactNode;
@@ -183,17 +183,19 @@ export function AnimatedHeaderScrollView({
         </Animated.View>
 
         <View style={styles.compactHeaderContainer}>
-          <Animated.View
-            style={[styles.compactTitleWrapper, compactAnimStyle]}
-            pointerEvents="none"
-          >
-            <View style={styles.compactTitleCenter}>
-              <Text style={styles.compactTitle}>{title}</Text>
-              {subtitle && (
-                <Text style={styles.compactSubtitle}>{subtitle}</Text>
-              )}
-            </View>
-          </Animated.View>
+          {title && (
+            <Animated.View
+              style={[styles.compactTitleWrapper, compactAnimStyle]}
+              pointerEvents="none"
+            >
+              <View style={styles.compactTitleCenter}>
+                <Text style={styles.compactTitle}>{title}</Text>
+                {subtitle && (
+                  <Text style={styles.compactSubtitle}>{subtitle}</Text>
+                )}
+              </View>
+            </Animated.View>
+          )}
         </View>
       </View>
 
@@ -210,12 +212,14 @@ export function AnimatedHeaderScrollView({
               {leftComponent}
             </View>
           )}
-          <View style={styles.largeTitle}>
-            <Text className="text-white text-4xl font-bold">{title}</Text>
-            {subtitle && (
-              <Text className="text-zinc-500 text-sm mt-1">{subtitle}</Text>
-            )}
-          </View>
+          {title && (
+            <View style={styles.largeTitle}>
+              <Text className="text-white text-4xl font-bold">{title}</Text>
+              {subtitle && (
+                <Text className="text-zinc-500 text-sm mt-1">{subtitle}</Text>
+              )}
+            </View>
+          )}
           {rightComponent && (
             <View
               style={[styles.largeComponentSlot, styles.largeComponentRight]}

@@ -1,18 +1,17 @@
+import { useRef } from "react";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
-import { DevBadge, SoonBadge } from "@/components/wip-badge";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
-import { checkAwAvailability, getCurrentApp, getConnectionMetrics, configureAdapter } from "@/features/activity-watch/aw-adapter";
-import { useAwStream } from "@/features/activity-watch/use-aw-stream";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useSettingsStore, type TimerStartMode } from "@/features/settings/settings-store";
-import { useTrackingRulesStore } from "@/features/tracking-rules/tracking-rules-store";
+import { useStreamStore } from "@/features/stream/stream-store";
+import type { ConnectionStatus } from "@/modules/chrona-stream";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
-import { Switch } from "heroui-native";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, Keyboard } from "react-native";
+import { PortalHost, Select, Switch } from "heroui-native";
+
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -48,11 +47,13 @@ function ChevronSuffix() {
 function SettingsRow({
   label,
   onPress,
+  onLongPress,
   suffix,
   children,
 }: {
   label: string;
   onPress?: () => void;
+  onLongPress?: () => void;
   suffix?: React.ReactNode;
   children?: React.ReactNode;
 }) {
@@ -67,8 +68,8 @@ function SettingsRow({
     </View>
   );
 
-  if (onPress) {
-    return <Pressable onPress={onPress}>{content}</Pressable>;
+  if (onPress || onLongPress) {
+    return <Pressable onPress={onPress} onLongPress={onLongPress}>{content}</Pressable>;
   }
   return content;
 }
@@ -90,6 +91,35 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+type SelectOption = { value: string; label: string };
+
+const MIN_DURATION_OPTIONS: SelectOption[] = [
+  { value: "0", label: "Off" },
+  { value: "30", label: "30 seconds" },
+  { value: "60", label: "1 minute" },
+  { value: "120", label: "2 minutes" },
+  { value: "300", label: "5 minutes" },
+];
+
+const MAC_STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string }> = {
+  idle: { label: "Off", color: "#52525b" },
+  scanning: { label: "Searching…", color: "#d97706" },
+  connecting: { label: "Connecting…", color: "#d97706" },
+  connected: { label: "Connected", color: "#22c55e" },
+  disconnected: { label: "Not Found", color: "#52525b" },
+};
+
+function MacHelperStatus({ status }: { status: ConnectionStatus }) {
+  const { label, color } = MAC_STATUS_CONFIG[status];
+  return (
+    <View className="flex-row items-center gap-2">
+      <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
+      <Text style={{ color, fontSize: 14 }}>{label}</Text>
+      <Image source="sf:arrow.clockwise" style={styles.chevron} tintColor="#636366" />
+    </View>
+  );
+}
+
 function SettingsDivider() {
   const theme = useAuroraTheme();
   return (
@@ -103,87 +133,60 @@ function SettingsDivider() {
   );
 }
 
+function formatTimestamp(ts: number | null): string {
+  if (ts === null) return "—";
+  return new Date(ts).toLocaleTimeString();
+}
+
+function formatEventTime(ts: number): string {
+  return new Date(ts * 1000).toLocaleTimeString();
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const theme = useAuroraTheme();
   const { permissionStatus, isEnabled } = useCalendarStore();
+  const streamStatus = useStreamStore((s) => s.status);
+  const pathSatisfied = useStreamStore((s) => s.pathSatisfied);
+  const currentEvent = useStreamStore((s) => s.currentEvent);
+  const lastEventTime = useStreamStore((s) => s.lastEventTime);
+  const lastHeartbeat = useStreamStore((s) => s.lastHeartbeat);
+  const reconnect = useStreamStore((s) => s.reconnect);
+  const clearEndpointCache = useStreamStore((s) => s.clearEndpointCache);
   const {
     auroraEnabled,
     setAuroraEnabled,
     constellationEnabled,
     setConstellationEnabled,
+    timerStartMode,
+    autoTrackMinDurationSec,
+    setAutoTrackMinDurationSec,
     developerMode,
     setDeveloperMode,
-    awAdapterMode,
-    setAwAdapterMode,
-    awStreamHost,
-    setAwStreamHost,
-    timerStartMode,
   } = useSettingsStore();
+
+  const devTapCount = useRef(0);
+  const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleVersionTap = () => {
+    devTapCount.current += 1;
+    if (devTapTimer.current) clearTimeout(devTapTimer.current);
+    if (devTapCount.current >= 5) {
+      devTapCount.current = 0;
+      setDeveloperMode(!developerMode);
+      return;
+    }
+    devTapTimer.current = setTimeout(() => { devTapCount.current = 0; }, 2000);
+  };
+
+  const currentMinDuration =
+    MIN_DURATION_OPTIONS.find((o) => o.value === autoTrackMinDurationSec.toString()) ??
+    MIN_DURATION_OPTIONS[2];
 
   const TIMER_MODE_LABELS: Record<TimerStartMode, string> = {
     a: "Conversational",
     b: "Hold to Start",
     c: "Project First",
-  };
-  const { rules } = useTrackingRulesStore();
-  const { addRecentHost, recentHosts } = useSettingsStore();
-  const reconnectState = useAwStream();
-  const [devTapCount, setDevTapCount] = useState(0);
-  const [awAvailable, setAwAvailable] = useState<boolean | null>(null);
-  const [activeApp, setActiveApp] = useState<{ app: string; title: string | null } | null>(null);
-  const [metrics, setMetrics] = useState(getConnectionMetrics());
-
-  useEffect(() => {
-    setAwAvailable(null);
-    checkAwAvailability().then((result) => {
-      setAwAvailable(result);
-      if (result === true && awAdapterMode === "stream" && awStreamHost && awStreamHost !== "localhost") {
-        addRecentHost(awStreamHost);
-      }
-    });
-  }, [awAdapterMode, awStreamHost, addRecentHost]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const poll = () => getCurrentApp().then((r) => { if (!cancelled) setActiveApp(r); });
-    poll();
-    const id = setInterval(poll, 3000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const pollMetrics = () => {
-      if (!cancelled) setMetrics(getConnectionMetrics());
-    };
-    const id = setInterval(pollMetrics, 5000);
-    pollMetrics();
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
-  const handleManualReconnect = async () => {
-    if (awAdapterMode === "stream") {
-      setAwAvailable(null);
-      await configureAdapter({ mode: "stream" });
-      const result = await checkAwAvailability();
-      setAwAvailable(result);
-    }
-  };
-
-  function handleAwModeToggle(streamEnabled: boolean) {
-    setAwAdapterMode(streamEnabled ? "stream" : "localhost");
-  }
-
-  const getUptimeLabel = () => {
-    if (!metrics.connectedSince) return "—";
-    const uptime = Date.now() - metrics.connectedSince;
-    const seconds = Math.floor(uptime / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h`;
   };
 
   return (
@@ -233,6 +236,13 @@ export default function SettingsScreen() {
           <SectionLabel>Integrations</SectionLabel>
           <SettingsCard>
             <SettingsRow
+              label="Mac Helper"
+              onPress={reconnect}
+              onLongPress={() => { clearEndpointCache(); reconnect(); }}
+              suffix={<MacHelperStatus status={streamStatus} />}
+            />
+            <SettingsDivider />
+            <SettingsRow
               label="Calendar"
               onPress={() => router.push("/calendar-settings")}
               suffix={
@@ -243,59 +253,50 @@ export default function SettingsScreen() {
             />
             <SettingsDivider />
             <SettingsRow
-              label="ChronaHelper"
-              onPress={awAdapterMode === "stream" ? handleManualReconnect : undefined}
-              suffix={
-                <Text className="text-neutral-500 text-sm">
-                  {reconnectState.isReconnecting
-                    ? `Reconnecting... (${reconnectState.attempt})`
-                    : awAvailable === null
-                      ? "Checking..."
-                      : awAvailable
-                        ? "Connected"
-                        : awAdapterMode === "stream"
-                          ? "Waiting for stream"
-                          : "Not Available"}
-                </Text>
-              }
+              label="Tracking Rules"
+              onPress={() => router.push("/tracking-rules")}
+              suffix={<ChevronSuffix />}
             />
-            {awAvailable === true && metrics.serverHostname && (
-              <View className="py-2 px-5">
-                <Text className="text-neutral-600 text-xs">
-                  {metrics.serverHostname} · {metrics.messagesReceived} batches · {getUptimeLabel()} uptime
-                </Text>
-              </View>
-            )}
             <SettingsDivider />
-            <View className="flex-row items-center justify-between py-4 px-5">
-              <View className="flex-row items-center gap-2 flex-1">
-                <View
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: 4,
-                    backgroundColor: activeApp ? "#4ade80" : "#3f3f46",
-                  }}
-                />
-                <Text className="text-white text-base font-medium">Active App</Text>
-              </View>
-              <View className="items-end" style={{ maxWidth: "55%" }}>
-                {activeApp ? (
-                  <>
-                    <Text className="text-white text-sm font-medium" numberOfLines={1}>
-                      {activeApp.app}
-                    </Text>
-                    {activeApp.title ? (
-                      <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
-                        {activeApp.title}
-                      </Text>
-                    ) : null}
-                  </>
-                ) : (
-                  <Text className="text-neutral-600 text-sm">—</Text>
-                )}
-              </View>
-            </View>
+            <Select
+              value={currentMinDuration}
+              onValueChange={(v) => {
+                if (v) setAutoTrackMinDurationSec(Number((v as SelectOption).value));
+              }}
+            >
+              <Select.Trigger className="bg-transparent shadow-none border-0 rounded-none px-5 py-4">
+                <Text className="text-white text-base font-medium flex-1">
+                  Min. Session Length
+                </Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-neutral-500 text-sm">
+                    {currentMinDuration.label}
+                  </Text>
+                  <Image
+                    source="sf:chevron.right"
+                    style={styles.chevron}
+                    tintColor="#636366"
+                  />
+                </View>
+              </Select.Trigger>
+              <Select.Portal hostName="settings">
+                <Select.Overlay />
+                <Select.Content
+                  presentation="popover"
+                  width="trigger"
+                  className="border border-white/10 shadow-none"
+                  style={{ backgroundColor: "#18181b" }}
+                >
+                  <Select.ListLabel>Min. Session Length</Select.ListLabel>
+                  {MIN_DURATION_OPTIONS.map((opt) => (
+                    <Select.Item key={opt.value} value={opt.value} label={opt.label}>
+                      <Select.ItemLabel />
+                      <Select.ItemIndicator />
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Portal>
+            </Select>
           </SettingsCard>
         </View>
 
@@ -311,123 +312,73 @@ export default function SettingsScreen() {
           </SettingsCard>
         </View>
 
-        {/* DEVELOPER */}
+        {/* DBG */}
         {developerMode && (
           <View className="mt-10">
-            <SectionLabel>Developer</SectionLabel>
+            <SectionLabel>DBG</SectionLabel>
             <SettingsCard>
               <SettingsRow
-                label="Stream Mode"
+                label="Status"
                 suffix={
-                  <View className="flex-row items-center gap-3">
-                    <DevBadge />
-                    <Text className="text-xs text-neutral-500">
-                      {awAdapterMode === "stream" ? "P2P · collector" : "localhost:5600"}
-                    </Text>
-                    <Switch
-                      isSelected={awAdapterMode === "stream"}
-                      onSelectedChange={handleAwModeToggle}
-                    />
-                  </View>
+                  <Text className="text-neutral-400 text-sm font-mono">{streamStatus}</Text>
                 }
               />
-              {awAdapterMode === "stream" && (
-                <>
-                  <SettingsDivider />
-                  <View className="flex-row items-center justify-between py-4 px-5">
-                    <Text className="text-white text-base font-medium flex-1">
-                      Collector Host
-                    </Text>
-                    <TextInput
-                      value={awStreamHost}
-                      onChangeText={setAwStreamHost}
-                      placeholder="localhost"
-                      placeholderTextColor="#52525b"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      keyboardType="url"
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
-                      style={{
-                        color: "#a1a1aa",
-                        fontSize: 14,
-                        textAlign: "right",
-                        minWidth: 140,
-                      }}
-                    />
-                  </View>
-                  {recentHosts.length > 0 && (
-                    <>
-                      <SettingsDivider />
-                      <View className="py-3 px-5">
-                        <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-2">
-                          Recent Hosts
-                        </Text>
-                        <View className="flex-row flex-wrap gap-2">
-                          {recentHosts.map((h) => (
-                            <Pressable
-                              key={h.host}
-                              onPress={() => {
-                                setAwStreamHost(h.host);
-                                setAwAvailable(null);
-                              }}
-                              style={{
-                                paddingHorizontal: 10,
-                                paddingVertical: 6,
-                                borderRadius: 6,
-                                backgroundColor: awStreamHost === h.host ? "#3b82f6" : "#52525b",
-                              }}
-                            >
-                              <Text
-                                className="text-xs font-medium"
-                                style={{
-                                  color: awStreamHost === h.host ? "#ffffff" : "#d4d4d8",
-                                }}
-                              >
-                                {h.host}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      </View>
-                    </>
-                  )}
-                </>
-              )}
               <SettingsDivider />
               <SettingsRow
-                label="Tracking Rules"
-                onPress={() => router.push("/tracking-rules")}
+                label="Network"
                 suffix={
-                  <View className="flex-row items-center gap-2">
-                    <SoonBadge />
-                    <ValueSuffix
-                      value={`${rules.length} rule${rules.length !== 1 ? "s" : ""}`}
-                    />
-                  </View>
+                  <Text className={`text-sm font-mono ${pathSatisfied ? "text-green-500" : "text-neutral-500"}`}>
+                    {pathSatisfied ? "satisfied" : "unsatisfied"}
+                  </Text>
                 }
               />
+              <SettingsDivider />
+              <SettingsRow
+                label="Last Received"
+                suffix={
+                  <Text className="text-neutral-400 text-sm font-mono">{formatTimestamp(lastEventTime)}</Text>
+                }
+              />
+              <SettingsDivider />
+              <SettingsRow
+                label="Last Heartbeat"
+                suffix={
+                  <Text className="text-neutral-400 text-sm font-mono">{formatTimestamp(lastHeartbeat)}</Text>
+                }
+              />
+              {currentEvent && (
+                <>
+                  <SettingsDivider />
+                  <View className="py-3 px-5">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-white text-sm font-medium flex-1" numberOfLines={1}>
+                        {currentEvent.appName}
+                      </Text>
+                      <Text className="text-neutral-500 text-xs font-mono ml-3">
+                        {formatEventTime(currentEvent.timestamp)}
+                      </Text>
+                    </View>
+                    {currentEvent.windowTitle ? (
+                      <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
+                        {currentEvent.windowTitle}
+                      </Text>
+                    ) : null}
+                    <Text className="text-neutral-600 text-xs font-mono mt-1" numberOfLines={1}>
+                      {currentEvent.bundleId}
+                    </Text>
+                  </View>
+                </>
+              )}
             </SettingsCard>
           </View>
         )}
 
-        {/* VERSION FOOTER — tap 5× to unlock developer mode */}
-        <Pressable
-          className="mt-10 mb-8 items-center"
-          onPress={() => {
-            setDevTapCount((prev) => {
-              const next = prev + 1;
-              if (next === 5) {
-                setDeveloperMode(!developerMode);
-                return 0;
-              }
-              return next % 6;
-            });
-          }}
-        >
+        {/* VERSION FOOTER */}
+        <Pressable className="mt-10 mb-8 items-center" onPress={handleVersionTap}>
           <Text className="text-neutral-600 text-xs">Chrona</Text>
         </Pressable>
       </AnimatedHeaderScrollView>
+      <PortalHost name="settings" />
     </View>
   );
 }
