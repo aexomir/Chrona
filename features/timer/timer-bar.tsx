@@ -1,26 +1,17 @@
+import { Neutral } from "@/constants/theme";
 import {
   CALENDAR_REFRESH_INTERVAL_MS,
   useCalendarStore,
 } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useTimerStore } from "@/features/timer/timer-store";
-import { Neutral } from "@/constants/theme";
+import { formatTime } from "@/features/timer/timer-utils";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 const INTERRUPTED_SESSION_TTL_MS = 30 * 60 * 1000;
-
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
 
 export function TimerBar() {
   const isTracking = useTimerStore(s => s.isTracking);
@@ -42,7 +33,6 @@ export function TimerBar() {
   } | null>(null);
   const hasCheckCalendarRef = useRef(false);
 
-  // Elapsed timer
   useEffect(() => {
     const source = isTracking ? startTimestamp : null;
     if (!source) {
@@ -58,7 +48,6 @@ export function TimerBar() {
     return () => clearInterval(id);
   }, [isTracking, startTimestamp]);
 
-  // Calendar event suggestion: check when not tracking
   useEffect(() => {
     if (isTracking || !calendarEnabled) {
       hasCheckCalendarRef.current = false;
@@ -77,7 +66,6 @@ export function TimerBar() {
     }
   }, [isTracking, calendarEnabled, getActiveEventSuggestion]);
 
-  // Periodic calendar refresh every 5 minutes when idle
   useEffect(() => {
     if (!calendarEnabled || isTracking) return;
     const interval = setInterval(() => {
@@ -108,7 +96,7 @@ export function TimerBar() {
 
   return (
     <Pressable
-      style={styles.container}
+      className="flex-1 justify-center items-center"
       onPress={() => {
         if (isTracking) {
           router.push("/timer");
@@ -124,12 +112,11 @@ export function TimerBar() {
       }}
     >
       {isTracking ? (
-        // Manual tracking state
         <View className="flex-row items-center justify-center gap-2">
           {project ? (
             <Image
               source={`sf:${project.icon}`}
-              style={[styles.icon, { tintColor: project.color }]}
+              style={{ width: 13, height: 13, tintColor: project.color }}
             />
           ) : (
             <View className="w-2 h-2 rounded-full bg-red-500" />
@@ -150,7 +137,6 @@ export function TimerBar() {
           </Text>
         </View>
       ) : resumableSession ? (
-        // Interrupted session resume prompt
         <View className="flex-row items-center justify-center gap-1.5">
           <Text className="text-white/50 text-sm shrink-0">Resume</Text>
           <View
@@ -167,7 +153,7 @@ export function TimerBar() {
             }}
             hitSlop={8}
           >
-            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+            <View className="px-2 py-0.5 rounded-md bg-white/[0.08]">
               <Text className="text-white/70 text-xs font-medium">Resume</Text>
             </View>
           </Pressable>
@@ -182,7 +168,6 @@ export function TimerBar() {
           </Pressable>
         </View>
       ) : calendarSuggestion ? (
-        // Calendar suggestion state
         <View className="flex-row items-center justify-center gap-1.5">
           <Text className="text-white/50 text-sm shrink-0">Suggested:</Text>
           <View
@@ -203,7 +188,6 @@ export function TimerBar() {
           </Pressable>
         </View>
       ) : (
-        // Idle state
         <Text className="text-white/50 text-sm text-center">
           Tap to start a timer
         </Text>
@@ -211,15 +195,3 @@ export function TimerBar() {
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  icon: {
-    width: 13,
-    height: 13,
-  },
-});

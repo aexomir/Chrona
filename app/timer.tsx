@@ -1,21 +1,21 @@
 import type { Project } from "@/constants/projects";
+import { Neutral } from "@/constants/theme";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
-import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
+import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
-import { useTimerStore } from "@/features/timer/timer-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
+import { useTimerStore } from "@/features/timer/timer-store";
+import { formatTime } from "@/features/timer/timer-utils";
 import { useAppToast } from "@/hooks/use-app-toast";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { Button, Input, PortalHost, Select } from "heroui-native";
-import * as Haptics from "expo-haptics";
+import { Button, Checkbox, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -41,41 +41,13 @@ const HOLD_R = 72;
 const HOLD_CIRCUMFERENCE = 2 * Math.PI * HOLD_R;
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const styles = StyleSheet.create({
-  titleInput: {
-    fontSize: 26,
-    color: "#ffffff",
-    letterSpacing: -0.5,
-    paddingVertical: 8,
-    fontWeight: "600",
-  },
-  elapsed: {
-    fontSize: 72,
-    lineHeight: 80,
-    letterSpacing: -2,
-  },
-  dotIndicator: {
-    height: 6,
-  },
-  projectChipsScroll: {
-    marginHorizontal: -24,
-  },
-  projectChipsContent: {
-    paddingHorizontal: 24,
-    paddingVertical: 4,
-    gap: 8,
-  },
-});
-
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
+const TITLE_INPUT_STYLE = {
+  fontSize: 26,
+  color: "#ffffff",
+  letterSpacing: -0.5,
+  paddingVertical: 8,
+  fontWeight: "600" as const,
+};
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${Math.floor(seconds)}s`;
@@ -86,18 +58,17 @@ function formatDuration(seconds: number): string {
 }
 
 export default function TimerScreen() {
-  const { projects } = useProjects();
-  const {
-    isTracking,
-    title,
-    projectId,
-    startTimestamp,
-    startTimer,
-    stopTimer,
-    updateTitle,
-    updateProjectId,
-  } = useTimerStore();
-  const { addSession } = useSessionsStore();
+  const projects = useProjects((s) => s.projects);
+  const isTracking = useTimerStore((s) => s.isTracking);
+  const title = useTimerStore((s) => s.title);
+  const projectId = useTimerStore((s) => s.projectId);
+  const startTimestamp = useTimerStore((s) => s.startTimestamp);
+  const startTimer = useTimerStore((s) => s.startTimer);
+  const stopTimer = useTimerStore((s) => s.stopTimer);
+  const updateTitle = useTimerStore((s) => s.updateTitle);
+  const updateProjectId = useTimerStore((s) => s.updateProjectId);
+  const addSession = useSessionsStore((s) => s.addSession);
+  const timerStartMode = useSettingsStore((s) => s.timerStartMode);
   const toast = useAppToast();
   const insets = useSafeAreaInsets();
   const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
@@ -131,7 +102,6 @@ export default function TimerScreen() {
     apps: AppUsage[];
   };
   const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
-  const { timerStartMode } = useSettingsStore();
 
   useEffect(() => {
     if (!isTracking || !startTimestamp) {
@@ -147,7 +117,7 @@ export default function TimerScreen() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [isTracking, startTimestamp, projectId, title, projects]);
+  }, [isTracking, startTimestamp]);
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
@@ -199,7 +169,6 @@ export default function TimerScreen() {
   };
 
   const selProj = projects.find((p) => p.id === selectedProject?.value);
-  const theme = useAuroraTheme();
 
   const navTitle = pendingSession ? "Review Apps" : isTracking ? "Tracking" : "New Timer";
 
@@ -210,7 +179,6 @@ export default function TimerScreen() {
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
       <StaticAuraBackground />
-      {/* Nav bar */}
       <View className="flex-row items-center px-5 pt-2 pb-4">
         <View className="flex-1">
           <Pressable onPress={() => router.back()} hitSlop={12}>
@@ -231,7 +199,6 @@ export default function TimerScreen() {
         />
       ) : isTracking ? (
         <View className="flex-1 justify-center px-8 gap-6">
-          {/* Project accent line */}
           {selProj && (
             <View className="flex-row items-center gap-2">
               <View
@@ -244,27 +211,21 @@ export default function TimerScreen() {
             </View>
           )}
 
-          {/* Elapsed counter */}
           <View className="gap-1">
             <Text className="text-neutral-500 text-xs uppercase tracking-widest">
               elapsed
             </Text>
             <Text
-              className="text-white font-mono font-bold"
-              style={styles.elapsed}
+              className="text-white font-mono font-bold text-[72px] leading-[80px] tracking-[-2px]"
             >
               {formatTime(elapsed)}
             </Text>
           </View>
 
-          {/* Title — editable label */}
           <View className="gap-3">
             <TextInput
               value={taskTitle}
-              onChangeText={(v) => {
-                setTaskTitle(v);
-                updateTitle(v);
-              }}
+              onChangeText={setTaskTitle}
               onBlur={() => {
                 const trimmed = taskTitle.trim();
                 updateTitle(trimmed);
@@ -276,48 +237,16 @@ export default function TimerScreen() {
               returnKeyType="done"
               placeholder="session title"
               placeholderTextColor="rgba(255,255,255,0.15)"
-              style={styles.titleInput}
+              style={TITLE_INPUT_STYLE}
             />
             <View className="h-px bg-white/10" />
           </View>
 
-          <Select
+          <ProjectSelect
             value={selectedProject}
-            onValueChange={(v) =>
-              handleProjectChange(v as SelectOption | undefined)
-            }
-          >
-            <Select.Trigger className="bg-transparent shadow-none border border-white/10">
-              <View className="flex-row items-center gap-2 flex-1">
-                {selProj && (
-                  <Image
-                    source={`sf:${selProj.icon}`}
-                    style={{ width: 16, height: 16, tintColor: selProj.color }}
-                  />
-                )}
-                <Select.Value placeholder="Project (optional)" />
-              </View>
-              <Select.TriggerIndicator />
-            </Select.Trigger>
-            <Select.Portal hostName="timer-modal">
-              <Select.Overlay />
-              <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none bg-zinc-900">
-                <Select.ListLabel>Select a project</Select.ListLabel>
-                {projects.map((p) => (
-                  <Select.Item key={p.id} value={p.id} label={p.name}>
-                    <View className="flex-row items-center gap-3 flex-1">
-                      <Image
-                        source={`sf:${p.icon}`}
-                        style={{ width: 18, height: 18, tintColor: p.color }}
-                      />
-                      <Select.ItemLabel />
-                    </View>
-                    <Select.ItemIndicator />
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Portal>
-          </Select>
+            onChange={handleProjectChange}
+            projects={projects}
+          />
 
           <Button variant="danger" onPress={handleStop}>
             <Button.Label>Stop Timer</Button.Label>
@@ -336,6 +265,57 @@ export default function TimerScreen() {
       )}
       <PortalHost name="timer-modal" />
     </KeyboardAvoidingView>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Shared project picker
+// ─────────────────────────────────────────────
+
+function ProjectSelect({
+  value,
+  onChange,
+  projects,
+}: {
+  value: SelectOption | undefined;
+  onChange: (v: SelectOption | undefined) => void;
+  projects: Project[];
+}) {
+  const selProj = projects.find((p) => p.id === value?.value);
+
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as SelectOption | undefined)}>
+      <Select.Trigger className="bg-transparent shadow-none border border-white/10">
+        <View className="flex-row items-center gap-2 flex-1">
+          {selProj && (
+            <Image
+              source={`sf:${selProj.icon}`}
+              style={{ width: 16, height: 16, tintColor: selProj.color }}
+            />
+          )}
+          <Select.Value placeholder="Project (optional)" />
+        </View>
+        <Select.TriggerIndicator />
+      </Select.Trigger>
+      <Select.Portal hostName="timer-modal">
+        <Select.Overlay />
+        <Select.Content presentation="popover" width="trigger" className="border border-white/10 shadow-none bg-zinc-900">
+          <Select.ListLabel>Select a project</Select.ListLabel>
+          {projects.map((p) => (
+            <Select.Item key={p.id} value={p.id} label={p.name}>
+              <View className="flex-row items-center gap-3 flex-1">
+                <Image
+                  source={`sf:${p.icon}`}
+                  style={{ width: 18, height: 18, tintColor: p.color }}
+                />
+                <Select.ItemLabel />
+              </View>
+              <Select.ItemIndicator />
+            </Select.Item>
+          ))}
+        </Select.Content>
+      </Select.Portal>
+    </Select>
   );
 }
 
@@ -386,6 +366,13 @@ function NewTimerView({
   );
 }
 
+function useDeferredAutoFocus(ref: React.RefObject<TextInput | null>) {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => ref.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [ref]);
+}
+
 // ─────────────────────────────────────────────
 // Mode A — Conversational (bare input + chips)
 // ─────────────────────────────────────────────
@@ -400,6 +387,8 @@ function ConversationalView({
 }: ModeViewProps) {
   const titleFilled = useSharedValue(0);
   const beginScale = useSharedValue(1);
+  const inputRef = useRef<TextInput>(null);
+  useDeferredAutoFocus(inputRef);
 
   useEffect(() => {
     const filled = taskTitle.trim().length > 0 ? 1 : 0;
@@ -423,30 +412,28 @@ function ConversationalView({
 
   return (
     <Animated.View className="gap-8" entering={FadeInDown.duration(300)}>
-      {/* Bare input — no border box, just a cursor on the surface */}
       <View className="gap-3">
         <Text className="text-zinc-600 text-xs uppercase tracking-widest">
           what are you focusing on?
         </Text>
         <TextInput
+          ref={inputRef}
           value={taskTitle}
           onChangeText={setTaskTitle}
           onSubmitEditing={onStart}
           returnKeyType="go"
-          autoFocus
           placeholder="deep work, reading, gym..."
           placeholderTextColor="rgba(255,255,255,0.15)"
-          style={styles.titleInput}
+          style={TITLE_INPUT_STYLE}
         />
         <View className="h-px bg-white/10" />
       </View>
 
-      {/* Project chips — horizontal scroll */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.projectChipsScroll}
-        contentContainerStyle={styles.projectChipsContent}
+        className="-mx-6"
+        contentContainerClassName="px-6 py-1 gap-2"
       >
         <Pressable
           onPress={() => setSelectedProject(undefined)}
@@ -498,7 +485,6 @@ function ConversationalView({
         })}
       </ScrollView>
 
-      {/* Begin button — fades in and breathes once title is filled */}
       <Animated.View style={beginStyle}>
         <Button
           variant="primary"
@@ -528,6 +514,8 @@ function HoldView({
   const holdProgress = useSharedValue(0);
   const breathScale = useSharedValue(1);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<TextInput>(null);
+  useDeferredAutoFocus(inputRef);
 
   useEffect(() => {
     breathScale.value = withRepeat(
@@ -578,58 +566,24 @@ function HoldView({
   return (
     <Animated.View className="gap-5" entering={FadeInDown.duration(300)}>
       <Input
+        ref={inputRef}
         placeholder="What are you working on?"
         value={taskTitle}
         onChangeText={setTaskTitle}
         returnKeyType="done"
-        autoFocus
         className="bg-transparent border-white/10"
       />
 
-      <Select
+      <ProjectSelect
         value={selectedProject}
-        onValueChange={(v) =>
-          setSelectedProject(v as SelectOption | undefined)
-        }
-      >
-        <Select.Trigger className="bg-transparent shadow-none border border-white/10">
-          <View className="flex-row items-center gap-2 flex-1">
-            {selProj && (
-              <Image
-                source={`sf:${selProj.icon}`}
-                style={{ width: 16, height: 16, tintColor: selProj.color }}
-              />
-            )}
-            <Select.Value placeholder="Project (optional)" />
-          </View>
-          <Select.TriggerIndicator />
-        </Select.Trigger>
-        <Select.Portal hostName="timer-modal">
-          <Select.Overlay />
-          <Select.Content presentation="popover" width="trigger">
-            <Select.ListLabel>Select a project</Select.ListLabel>
-            {projects.map((p) => (
-              <Select.Item key={p.id} value={p.id} label={p.name}>
-                <View className="flex-row items-center gap-3 flex-1">
-                  <Image
-                    source={`sf:${p.icon}`}
-                    style={{ width: 18, height: 18, tintColor: p.color }}
-                  />
-                  <Select.ItemLabel />
-                </View>
-                <Select.ItemIndicator />
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Portal>
-      </Select>
+        onChange={(v) => setSelectedProject(v)}
+        projects={projects}
+      />
 
-      {/* Hold ring */}
       <View className="items-center gap-3 py-2">
         <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
           <Animated.View style={ringContainerStyle}>
             <Svg width={174} height={174}>
-              {/* Track */}
               <Circle
                 cx={87}
                 cy={87}
@@ -638,7 +592,6 @@ function HoldView({
                 strokeWidth={2.5}
                 fill="none"
               />
-              {/* Fill arc */}
               <AnimatedCircle
                 cx={87}
                 cy={87}
@@ -757,7 +710,6 @@ function ProjectFirstView({
 
   return (
     <Animated.View className="gap-5" entering={FadeInDown.duration(250)}>
-      {/* Back to project pick */}
       <Pressable
         onPress={() => setStep("pick")}
         className="flex-row items-center gap-1.5 self-start"
@@ -806,29 +758,29 @@ function ProjectFirstView({
 // Ambient ticker — recent sessions scroll
 // ─────────────────────────────────────────────
 
+const TICKER_ITEM_WIDTH = 196;
+
 function RecentTicker() {
-  const { sessions } = useSessionsStore();
-  const { projects } = useProjects();
+  const sessions = useSessionsStore((s) => s.sessions);
+  const projects = useProjects((s) => s.projects);
   const translateX = useSharedValue(0);
 
   const recent = sessions.slice(-7).reverse();
-  if (recent.length < 2) return null;
-
   const items = recent.map((s) => {
     const proj = s.projectId
       ? projects.find((p) => p.id === s.projectId)
       : null;
     return {
       label: s.title,
-      color: proj?.color ?? "#3f3f46",
+      color: proj?.color ?? Neutral.z700,
       projectName: proj?.name ?? null,
     };
   });
 
-  const ITEM_WIDTH = 196;
-  const loopWidth = ITEM_WIDTH * items.length;
+  const loopWidth = TICKER_ITEM_WIDTH * items.length;
 
   useEffect(() => {
+    if (items.length < 2) return;
     translateX.value = 0;
     translateX.value = withRepeat(
       withTiming(-loopWidth, {
@@ -838,29 +790,30 @@ function RecentTicker() {
       -1,
       false,
     );
-  }, [loopWidth]);
+  }, [loopWidth, items.length]);
 
   const tickerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
 
+  if (items.length < 2) return null;
+
   return (
-    <View className="overflow-hidden py-2" style={{ opacity: 0.55 }}>
+    <View className="overflow-hidden py-2 opacity-55">
       <Animated.View className="flex-row" style={tickerStyle}>
         {[...items, ...items].map((item, i) => (
           <View
             key={i}
-            className="flex-row items-center gap-2"
-            style={{ width: ITEM_WIDTH, paddingRight: 28 }}
+            className="flex-row items-center gap-2 pr-7"
+            style={{ width: TICKER_ITEM_WIDTH }}
           >
             <View
               className="w-1 h-1 rounded-full"
               style={{ backgroundColor: item.color }}
             />
             <Text
-              className="text-zinc-600 text-xs"
+              className="text-zinc-600 text-xs flex-1"
               numberOfLines={1}
-              style={{ flex: 1 }}
             >
               {item.projectName ? `${item.projectName} · ` : ""}
               {item.label}
@@ -894,7 +847,7 @@ function AppReviewView({
   const [checked, setChecked] = useState<Set<string>>(
     () => new Set(apps.map((a) => a.app))
   );
-  const { projects } = useProjects();
+  const projects = useProjects((s) => s.projects);
 
   const selProj = sessionProjectId
     ? projects.find((p) => p.id === sessionProjectId)
@@ -993,10 +946,7 @@ function AppRow({ app, checked, onToggle, index }: AppRowProps) {
         onPress={onToggle}
         className="flex-row items-center gap-4 py-3.5 border-b border-white/[0.06]"
       >
-        <Image
-          source={checked ? "sf:checkmark.circle.fill" : "sf:circle"}
-          style={{ width: 22, height: 22, tintColor: checked ? "#ffffff" : "#52525b" }}
-        />
+        <Checkbox isSelected={checked} onSelectedChange={onToggle} />
         <View className="flex-1">
           <Text
             className={
@@ -1019,50 +969,5 @@ function AppRow({ app, checked, onToggle, index }: AppRowProps) {
         </Text>
       </Pressable>
     </Animated.View>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Mode switcher dots
-// ─────────────────────────────────────────────
-
-function DotIndicator({ isActive }: { isActive: boolean }) {
-  const width = useSharedValue(isActive ? 18 : 6);
-
-  useEffect(() => {
-    width.value = withTiming(isActive ? 18 : 6, { duration: 220 });
-  }, [isActive]);
-
-  const style = useAnimatedStyle(() => ({ width: width.value }));
-
-  return (
-    <Animated.View
-      className={`rounded-full ${
-        isActive ? "bg-white/55" : "bg-white/18"
-      }`}
-      style={[
-        style,
-        styles.dotIndicator,
-      ]}
-    />
-  );
-}
-
-function ModeSwitcher({
-  mode,
-  onModeChange,
-}: {
-  mode: StartMode;
-  onModeChange: (m: StartMode) => void;
-}) {
-  const modes: StartMode[] = ["a", "b", "c"];
-  return (
-    <View className="flex-row items-center justify-center gap-2 pb-4 pt-2">
-      {modes.map((m) => (
-        <Pressable key={m} onPress={() => onModeChange(m)} hitSlop={12}>
-          <DotIndicator isActive={m === mode} />
-        </Pressable>
-      ))}
-    </View>
   );
 }
