@@ -1,4 +1,7 @@
-import { useCalendarStore } from "@/features/calendar/calendar-store";
+import {
+  CALENDAR_REFRESH_INTERVAL_MS,
+  useCalendarStore,
+} from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
@@ -87,7 +90,7 @@ export function TimerBar() {
     if (!calendarEnabled || isTracking) return;
     const interval = setInterval(() => {
       fetchCalendarEvents();
-    }, 5 * 60 * 1000);
+    }, CALENDAR_REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [calendarEnabled, isTracking, fetchCalendarEvents]);
 

@@ -19,10 +19,9 @@ export const CALENDAR_BLOCKS: {
   left: DimensionValue;
   width: DimensionValue;
   color: string;
-  label: string;
 }[] = [
-  { left: "4%", width: "22%", color: "#3b82f6", label: "9am" },
-  { left: "30%", width: "14%", color: "#22c55e", label: "12pm" },
-  { left: "48%", width: "28%", color: "#a855f7", label: "1pm" },
-  { left: "80%", width: "14%", color: "#f97316", label: "4pm" },
+  { left: "4%", width: "22%", color: "#3b82f6" },
+  { left: "30%", width: "14%", color: "#22c55e" },
+  { left: "48%", width: "28%", color: "#a855f7" },
+  { left: "80%", width: "14%", color: "#f97316" },
 ];

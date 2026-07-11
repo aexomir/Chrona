@@ -12,11 +12,17 @@ export type CalendarEvent = {
   notes?: string;
 };
 
+export type CalendarPermissionStatus = "undetermined" | "granted" | "denied";
+
+/** Days of history/future to sync when fetching calendar events. */
+const SYNC_DAYS_BACK = 7;
+const SYNC_DAYS_FORWARD = 7;
+
 /**
  * Request permission to access calendar events
  */
 export async function requestCalendarPermission(): Promise<
-  "granted" | "denied"
+  Exclude<CalendarPermissionStatus, "undetermined">
 > {
   try {
     const result = await Calendar.requestCalendarPermissionsAsync();
@@ -29,9 +35,7 @@ export async function requestCalendarPermission(): Promise<
 /**
  * Get current permission status
  */
-export async function getCalendarPermissionStatus(): Promise<
-  "undetermined" | "granted" | "denied"
-> {
+export async function getCalendarPermissionStatus(): Promise<CalendarPermissionStatus> {
   try {
     const result = await Calendar.getCalendarPermissionsAsync();
     if (result.status === "granted") return "granted";
@@ -48,7 +52,7 @@ export async function getCalendarPermissionStatus(): Promise<
 export async function getCalendars(): Promise<CalendarInfo[]> {
   try {
     const calendars = await Calendar.getCalendarsAsync(
-      Calendar.EntityTypes.EVENT
+      Calendar.EntityTypes.EVENT,
     );
     return calendars.map((cal) => ({
       id: cal.id,
@@ -63,12 +67,12 @@ export async function getCalendars(): Promise<CalendarInfo[]> {
  * Fetch calendar events for the given date range
  */
 export async function fetchCalendarEvents(
-  daysBack = 7,
-  daysForward = 7
+  daysBack = SYNC_DAYS_BACK,
+  daysForward = SYNC_DAYS_FORWARD,
 ): Promise<CalendarEvent[]> {
   try {
     const calendars = await Calendar.getCalendarsAsync(
-      Calendar.EntityTypes.EVENT
+      Calendar.EntityTypes.EVENT,
     );
 
     const now = new Date();
@@ -84,7 +88,7 @@ export async function fetchCalendarEvents(
         const calendarEvents = await Calendar.getEventsAsync(
           [calendar.id],
           startDate,
-          endDate
+          endDate,
         );
 
         for (const event of calendarEvents) {
@@ -124,8 +128,8 @@ export async function fetchCalendarEvents(
  * Status label utility for permission + enabled state
  */
 export function calendarStatusLabel(
-  permissionStatus: "undetermined" | "granted" | "denied",
-  isEnabled: boolean
+  permissionStatus: CalendarPermissionStatus,
+  isEnabled: boolean,
 ): string {
   if (permissionStatus === "granted" && isEnabled) return "Connected";
   if (permissionStatus === "granted" && !isEnabled) return "Disconnected";
@@ -145,23 +149,16 @@ export function findActiveEvents(events: CalendarEvent[]): CalendarEvent[] {
 }
 
 /**
- * Check if event matches a mapping's criteria
+ * Find calendar events that overlap a given time range
  */
-export function eventMatchesMapping(
-  event: CalendarEvent,
-  mapping: {
-    calendarName?: string;
-    titleKeywords?: string[];
-  }
-): boolean {
-  if (mapping.calendarName) {
-    if (event.calendarName === mapping.calendarName) return true;
-  }
-  if (mapping.titleKeywords && mapping.titleKeywords.length > 0) {
-    const titleLower = event.title.toLowerCase();
-    return mapping.titleKeywords.some((keyword) =>
-      titleLower.includes(keyword.toLowerCase())
-    );
-  }
-  return false;
+export function findOverlappingEvents(
+  events: CalendarEvent[],
+  rangeStart: Date,
+  rangeEnd: Date,
+): CalendarEvent[] {
+  return events.filter((event) => {
+    const eventStart = new Date(event.startDate);
+    const eventEnd = new Date(event.endDate);
+    return eventStart < rangeEnd && eventEnd > rangeStart;
+  });
 }

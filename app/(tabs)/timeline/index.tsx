@@ -1,6 +1,6 @@
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
-import type { CalendarEvent } from "@/features/calendar/calendar";
+import { findOverlappingEvents, type CalendarEvent } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 import {
@@ -170,11 +170,11 @@ function TimelineContent() {
           }
         }
         const sEnd = item.startTime + item.session.duration * 1000;
-        const overlappingEvents = dayCalendarEvents.filter((e) => {
-          const eStart = new Date(e.startDate).getTime();
-          const eEnd = new Date(e.endDate).getTime();
-          return eStart < sEnd && eEnd > item.startTime;
-        });
+        const overlappingEvents = findOverlappingEvents(
+          dayCalendarEvents,
+          new Date(item.startTime),
+          new Date(sEnd),
+        );
         items.push({
           kind: "session",
           session: item.session,

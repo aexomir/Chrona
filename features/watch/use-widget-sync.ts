@@ -1,6 +1,5 @@
 import ActivityController from "@/modules/activity-controller";
 import { syncTimelineData, syncWidgetData } from "@/storage/widget-storage";
-import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
@@ -15,10 +14,6 @@ export function useWidgetSync() {
       const { isTracking, startTimestamp, title, projectId } =
         useTimerStore.getState();
       const { projects } = useProjects.getState();
-      const { events, permissionStatus, isEnabled } =
-        useCalendarStore.getState();
-
-      const calendarGranted = isEnabled && permissionStatus === "granted";
 
       // ── Chrona widget ─────────────────────────────────────────────
       const projectById = new Map(projects.map((p) => [p.id, p]));
@@ -88,14 +83,12 @@ export function useWidgetSync() {
     const unsubSessions = useSessionsStore.subscribe(debouncedSync);
     const unsubTimer = useTimerStore.subscribe(debouncedSync);
     const unsubProjects = useProjects.subscribe(debouncedSync);
-    const unsubCalendar = useCalendarStore.subscribe(debouncedSync);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       unsubSessions();
       unsubTimer();
       unsubProjects();
-      unsubCalendar();
     };
   }, []);
 }

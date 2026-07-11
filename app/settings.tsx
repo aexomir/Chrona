@@ -73,7 +73,8 @@ function formatEventTime(ts: number): string {
 
 export default function SettingsScreen() {
   const theme = useAuroraTheme();
-  const { permissionStatus, isEnabled } = useCalendarStore();
+  const permissionStatus = useCalendarStore((s) => s.permissionStatus);
+  const isEnabled = useCalendarStore((s) => s.isEnabled);
   const streamStatus = useStreamStore((s) => s.status);
   const pathSatisfied = useStreamStore((s) => s.pathSatisfied);
   const currentEvent = useStreamStore((s) => s.currentEvent);

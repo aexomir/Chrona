@@ -1,7 +1,8 @@
-import { formatTime24 } from "@/features/timeline/timeline-utils";
+import { Semantic } from "@/constants/theme";
 import type { CalendarEvent } from "@/features/calendar/calendar";
-import { useProjects } from "@/features/projects/projects-store";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
+import { useProjects } from "@/features/projects/projects-store";
+import { formatTime24 } from "@/features/timeline/timeline-utils";
 import { Image } from "expo-image";
 import { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -12,6 +13,11 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+
+const COLLAPSED_HEIGHT = 20;
+const EXPANDED_HEIGHT = 100;
+const EXPAND_DURATION_MS = 280;
+const FADE_DURATION_MS = 200;
 
 export function CalendarEventMarker({
   event,
@@ -25,47 +31,34 @@ export function CalendarEventMarker({
   onToggle: () => void;
 }) {
   const { projects } = useProjects();
-  const { mappings } = useCalendarStore();
+  const mappings = useCalendarStore((s) => s.mappings);
 
   // Find the project color for this event
-  const mapping = mappings.find((m) => {
-    if (m.calendarName && m.calendarName === event.calendarName) return true;
-    if (
-      m.titleKeywords?.some((kw) =>
-        event.title.toLowerCase().includes(kw.toLowerCase()),
-      )
-    ) {
-      return true;
-    }
-    return false;
-  });
+  const mapping = mappings.find((m) => m.calendarId === event.calendarId);
 
   const project = mapping
     ? projects.find((p) => p.id === mapping.projectId)
     : null;
-  const eventColor = project?.color ?? "#3b82f6"; // Fallback to blue
+  const eventColor = project?.color ?? Semantic.info;
 
-  const collapsedHeight = 20; // height of single line
-  const expandedHeight = 100; // height of card with padding
-
-  const containerHeight = useSharedValue(collapsedHeight);
+  const containerHeight = useSharedValue(COLLAPSED_HEIGHT);
   const collapsedOpacity = useSharedValue(1);
   const expandedOpacity = useSharedValue(0);
 
   useEffect(() => {
     containerHeight.value = withTiming(
-      expanded ? expandedHeight : collapsedHeight,
+      expanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT,
       {
-        duration: 280,
+        duration: EXPAND_DURATION_MS,
         easing: Easing.out(Easing.cubic),
       },
     );
     collapsedOpacity.value = withTiming(expanded ? 0 : 1, {
-      duration: 200,
+      duration: FADE_DURATION_MS,
       easing: Easing.out(Easing.cubic),
     });
     expandedOpacity.value = withTiming(expanded ? 1 : 0, {
-      duration: 200,
+      duration: FADE_DURATION_MS,
       easing: Easing.out(Easing.cubic),
     });
   }, [expanded, containerHeight, collapsedOpacity, expandedOpacity]);

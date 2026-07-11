@@ -23,6 +23,7 @@ import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 
 // Utils
+import { findOverlappingEvents } from "@/features/calendar/calendar";
 import type { Insight } from "@/features/search/inference";
 import type { InferenceResult } from "@/features/search/inference-store";
 
@@ -38,7 +39,7 @@ export function AIComponentRenderer({
   onSelectFollowUp?: (query: string) => void;
 }) {
   const { sessions } = useSessionsStore();
-  const { events: calendarEvents } = useCalendarStore();
+  const calendarEvents = useCalendarStore((s) => s.events);
   const { projects } = useProjects();
 
   // calendar_event_marker manages expanded state locally
@@ -51,13 +52,11 @@ export function AIComponentRenderer({
     if (!session) return null;
 
     // Find overlapping calendar events
-    const sessionStart = new Date(session.startTime);
-    const sessionEnd = new Date(session.endTime);
-    const overlappingEvents = calendarEvents.filter((event) => {
-      const eventStart = new Date(event.startDate);
-      const eventEnd = new Date(event.endDate);
-      return eventStart < sessionEnd && eventEnd > sessionStart;
-    });
+    const overlappingEvents = findOverlappingEvents(
+      calendarEvents,
+      new Date(session.startTime),
+      new Date(session.endTime),
+    );
 
     return (
       <SessionRow
