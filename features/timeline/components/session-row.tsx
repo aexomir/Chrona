@@ -179,16 +179,6 @@ export const SessionRow = React.memo(function SessionRow({
                       {session.title}
                     </Text>
                     <View className="flex-row items-center gap-1.5">
-                      {session.auto && (
-                        <View
-                          className="rounded-full px-1.5 py-0.5 mt-0.5"
-                          style={{ backgroundColor: theme.chip }}
-                        >
-                          <Text className="text-zinc-500 text-xs font-medium">
-                            Auto
-                          </Text>
-                        </View>
-                      )}
                       <View
                         className="rounded-full px-2 py-0.5 mt-0.5"
                         style={{ backgroundColor: theme.chip }}
