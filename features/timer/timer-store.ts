@@ -11,13 +11,11 @@ export type InterruptedSession = {
 
 type TimerState = {
   isTracking: boolean;
-  isAutoTracked: boolean;
   startTimestamp: string | null;
   title: string;
   projectId: string | null;
   interruptedSession: InterruptedSession | null;
   startTimer: (title: string, projectId?: string | null, fromElapsedSeconds?: number) => void;
-  setAutoTracked: (value: boolean) => void;
   stopTimer: () => {
     startTime: string;
     endTime: string;
@@ -34,7 +32,6 @@ export const useTimerStore = create<TimerState>()(
   persist(
     (set, get) => ({
       isTracking: false,
-      isAutoTracked: false,
       startTimestamp: null,
       title: "",
       projectId: null,
@@ -47,7 +44,6 @@ export const useTimerStore = create<TimerState>()(
           projectId: projectId ?? null,
           interruptedSession: null,
         }),
-      setAutoTracked: (value) => set({ isAutoTracked: value }),
       stopTimer: () => {
         const { isTracking, startTimestamp, title, projectId } = get();
         if (!isTracking || !startTimestamp) return null;
@@ -56,7 +52,7 @@ export const useTimerStore = create<TimerState>()(
           (new Date(endTime).getTime() - new Date(startTimestamp).getTime()) /
             1000
         );
-        set({ isTracking: false, isAutoTracked: false, startTimestamp: null, title: "", projectId: null });
+        set({ isTracking: false, startTimestamp: null, title: "", projectId: null });
         return { startTime: startTimestamp, endTime, duration, title, projectId };
       },
       updateTitle: (title) => set({ title }),
@@ -71,7 +67,6 @@ export const useTimerStore = create<TimerState>()(
         const age = Date.now() - new Date(state.startTimestamp).getTime();
         if (age > 12 * 60 * 60 * 1000) {
           state.isTracking = false;
-          state.isAutoTracked = false;
           state.startTimestamp = null;
           state.title = "";
           state.projectId = null;

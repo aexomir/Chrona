@@ -48,8 +48,6 @@ app/
 ├── projects.tsx             # Project management
 ├── calendar-settings.tsx    # Calendar integration settings
 ├── settings.tsx             # App settings screen
-├── tracking-rules.tsx       # Tracking rules
-├── untracked.tsx            # Untracked session review
 └── (tabs)/
     ├── _layout.tsx          # NativeTabs (5 tabs, minimizeBehavior="onScrollDown")
     ├── index/index.tsx      # Dashboard (FocusRing, streak badge, recent sessions)
@@ -71,7 +69,6 @@ features/                    # Feature-colocated modules (stores, utils, compone
 ├── settings/                # Settings store
 ├── timeline/                # Timeline utilities + components
 ├── timer/                   # Focus ring, timer bar, timer store
-├── tracking-rules/          # Tracking rules store
 └── watch/                   # Watch sync hooks
 
 components/

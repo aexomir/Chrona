@@ -79,18 +79,6 @@ export default function RootLayout() {
                   },
                 }}
               />
-              <Stack.Screen
-                name="tracking-rules"
-                options={{
-                  title: "Tracking Rules",
-                  headerTransparent: true,
-                  headerTitleStyle: {
-                    color: "white",
-                    fontSize: 17,
-                    fontWeight: "600",
-                  },
-                }}
-              />
             </Stack>
             <StatusBar style="light" />
           </ThemeProvider>

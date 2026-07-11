@@ -10,9 +10,9 @@
  * unique window titles seen per bundle ID.
  * Nothing is surfaced to the user — this is a data layer only.
  *
- * Lifecycle (mirror of auto-tracker):
- *   startJournalTracker() — call alongside startAutoTracker()
- *   stopJournalTracker()  — call alongside stopAutoTracker()
+ * Lifecycle:
+ *   startJournalTracker() — call after useStreamStore.start()
+ *   stopJournalTracker()  — call when tearing down
  */
 
 import type { ActivityEvent } from "@/modules/chrona-stream";

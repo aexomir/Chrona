@@ -1,5 +1,4 @@
 import { TimerBar } from "@/features/timer/timer-bar";
-import { SuggestionPopover } from "@/features/timer/suggestion-popover";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { View } from "react-native";
 
@@ -29,7 +28,6 @@ export default function TabLayout() {
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         </NativeTabs.Trigger>
       </NativeTabs>
-      <SuggestionPopover />
     </View>
   );
 }

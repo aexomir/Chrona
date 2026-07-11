@@ -11,19 +11,9 @@ import { useStreamStore } from "@/features/stream/stream-store";
 import type { ConnectionStatus } from "@/modules/chrona-stream";
 import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
-import { ListGroup, PortalHost, Select, Separator, Switch } from "heroui-native";
+import { ListGroup, Separator, Switch } from "heroui-native";
 
 import { Pressable, StyleSheet, Text, View } from "react-native";
-
-type SelectOption = { value: string; label: string };
-
-const MIN_DURATION_OPTIONS: SelectOption[] = [
-  { value: "0", label: "Off" },
-  { value: "30", label: "30 seconds" },
-  { value: "60", label: "1 minute" },
-  { value: "120", label: "2 minutes" },
-  { value: "300", label: "5 minutes" },
-];
 
 const MAC_STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string }> = {
   idle: { label: "Off", color: Neutral.z600 },
@@ -88,8 +78,6 @@ export default function SettingsScreen() {
     constellationEnabled,
     setConstellationEnabled,
     timerStartMode,
-    autoTrackMinDurationSec,
-    setAutoTrackMinDurationSec,
     developerMode,
     setDeveloperMode,
   } = useSettingsStore();
@@ -109,10 +97,6 @@ export default function SettingsScreen() {
       devTapCount.current = 0;
     }, DEV_MODE_TAP_WINDOW_MS);
   };
-
-  const currentMinDuration =
-    MIN_DURATION_OPTIONS.find((o) => o.value === autoTrackMinDurationSec.toString()) ??
-    MIN_DURATION_OPTIONS[2];
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.modalSheet }}>
@@ -186,53 +170,6 @@ export default function SettingsScreen() {
                 value={calendarStatusLabel(permissionStatus, isEnabled)}
               />
             </ListGroup.Item>
-            <Separator className="mx-4" />
-            <ListGroup.Item onPress={() => router.push("/tracking-rules")}>
-              <ListGroup.ItemContent>
-                <ListGroup.ItemTitle>Tracking Rules</ListGroup.ItemTitle>
-              </ListGroup.ItemContent>
-              <ListGroup.ItemSuffix />
-            </ListGroup.Item>
-            <Separator className="mx-4" />
-            <Select
-              value={currentMinDuration}
-              onValueChange={(v) => {
-                if (v) setAutoTrackMinDurationSec(Number((v as SelectOption).value));
-              }}
-            >
-              <Select.Trigger className="bg-transparent shadow-none border-0 rounded-none px-5 py-4">
-                <Text className="text-white text-base font-medium flex-1">
-                  Min. Session Length
-                </Text>
-                <View className="flex-row items-center gap-1">
-                  <Text className="text-neutral-500 text-sm">
-                    {currentMinDuration.label}
-                  </Text>
-                  <Image
-                    source="sf:chevron.right"
-                    style={styles.chevron}
-                    tintColor="#636366"
-                  />
-                </View>
-              </Select.Trigger>
-              <Select.Portal hostName="settings">
-                <Select.Overlay />
-                <Select.Content
-                  presentation="popover"
-                  width="trigger"
-                  className="border border-white/10 shadow-none"
-                  style={{ backgroundColor: Neutral.z900 }}
-                >
-                  <Select.ListLabel>Min. Session Length</Select.ListLabel>
-                  {MIN_DURATION_OPTIONS.map((opt) => (
-                    <Select.Item key={opt.value} value={opt.value} label={opt.label}>
-                      <Select.ItemLabel />
-                      <Select.ItemIndicator />
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Portal>
-            </Select>
           </ListGroup>
         </View>
 
@@ -325,7 +262,6 @@ export default function SettingsScreen() {
           <Text className="text-neutral-600 text-xs">Chrona</Text>
         </Pressable>
       </AnimatedHeaderScrollView>
-      <PortalHost name="settings" />
     </View>
   );
 }
