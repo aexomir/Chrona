@@ -18,9 +18,7 @@ import {
   generateContextualHeadline,
   generateFollowUpSuggestions,
 } from '@/features/search/search-generation';
-
-/** Sessions ending and starting further apart than this get a gap_separator between them. */
-const SESSION_GAP_THRESHOLD_MS = 5 * 60 * 1000;
+import { GAP_THRESHOLD_MS } from '@/features/timeline/timeline-utils';
 
 /**
  * Timeframe string from query to Timeframe type mapping
@@ -40,7 +38,7 @@ function queryTimeframeToTimeframe(
 /**
  * Groups sessions by calendar date (most recent first) and flattens them into
  * date_pill + session_row specs, inserting a gap_separator wherever consecutive
- * sessions on the same date are more than SESSION_GAP_THRESHOLD_MS apart.
+ * sessions on the same date are more than GAP_THRESHOLD_MS apart.
  */
 function buildTimelineSpecs(sessions: Session[]): SearchResultSpec[] {
   const specs: SearchResultSpec[] = [];
@@ -81,7 +79,7 @@ function buildTimelineSpecs(sessions: Session[]): SearchResultSpec[] {
         const current = new Date(sorted[i].endTime).getTime();
         const next = new Date(sorted[i + 1].startTime).getTime();
         const gapMs = current - next;
-        if (gapMs >= SESSION_GAP_THRESHOLD_MS) {
+        if (gapMs >= GAP_THRESHOLD_MS) {
           specs.push({
             type: 'gap_separator',
             durationMs: gapMs,

@@ -1,50 +1,23 @@
+import { Semantic } from "@/constants/theme";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
+import {
+  formatDateTime,
+  formatDuration,
+  formatTimeRange,
+} from "@/features/timeline/timeline-utils";
 import { DatePicker, Host } from "@expo/ui/swift-ui";
 import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
 import { Link, router, Stack, useLocalSearchParams } from "expo-router";
-import { Input, PortalHost, Select } from "heroui-native";
+import { BottomSheet, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useState } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Modal, Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${Math.floor(seconds)}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-function formatDateTime(date: Date): string {
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatTimeRange(startISO: string, endISO: string): string {
-  const start = new Date(startISO);
-  const end = new Date(endISO);
-  const startStr = start.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  const endStr = end.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  return `${startStr} – ${endStr}`;
-}
 
 function SectionLabel({ label }: { label: string }) {
   return (
@@ -95,13 +68,6 @@ export default function SessionDetailScreen() {
     Math.floor((draftEndTime.getTime() - draftStartTime.getTime()) / 1000),
   );
 
-  const hasChanges =
-    draftTitle !== session.title ||
-    draftProjectId?.value !== session.projectId ||
-    draftStartTime.toISOString() !== session.startTime ||
-    draftEndTime.toISOString() !== session.endTime ||
-    draftNotes !== (session.notes ?? "");
-
   const selectedProj = projects.find((p) => p.id === draftProjectId?.value);
 
   const handleSave = () => {
@@ -150,13 +116,13 @@ export default function SessionDetailScreen() {
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon="checkmark"
-          tintColor="#3b82f6"
+          tintColor={Semantic.info}
           variant="prominent"
           onPress={handleSave}
         />
         <Stack.Toolbar.Button
           icon="trash.fill"
-          tintColor="#ef4444"
+          tintColor={Semantic.danger}
           variant="prominent"
           onPress={handleDelete}
         />
@@ -169,7 +135,6 @@ export default function SessionDetailScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Hero summary card */}
           <View
             className="mb-6 rounded-3xl p-5 border"
             style={{
@@ -205,7 +170,6 @@ export default function SessionDetailScreen() {
             )}
           </View>
 
-          {/* Details */}
           <View className="mb-4">
             <SectionLabel label="Details" />
             <View
@@ -277,7 +241,6 @@ export default function SessionDetailScreen() {
             </View>
           </View>
 
-          {/* Time */}
           <View className="mb-4">
             <SectionLabel label="Time" />
             <View
@@ -316,7 +279,6 @@ export default function SessionDetailScreen() {
             </View>
           </View>
 
-          {/* Notes */}
           <View className="mb-4">
             <SectionLabel label="Notes" />
             <View
@@ -336,7 +298,6 @@ export default function SessionDetailScreen() {
             </View>
           </View>
 
-          {/* Apps */}
           {session.apps && session.apps.length > 0 && (
             <View className="mb-2">
               <SectionLabel label="Apps" />
@@ -371,20 +332,11 @@ export default function SessionDetailScreen() {
         </KeyboardAwareScrollView>
       </Link.AppleZoomTarget>
 
-      {/* Time picker sheet */}
-      {showTimePicker && editingField && (
-        <Modal
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowTimePicker(false)}
-        >
-          <Pressable
-            style={{ flex: 1 }}
-            onPress={() => setShowTimePicker(false)}
-          />
-          <View
-            className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe"
-            style={{ backgroundColor: theme.modalSheet }}
+      <BottomSheet isOpen={showTimePicker} onOpenChange={setShowTimePicker}>
+        <BottomSheet.Portal>
+          <BottomSheet.Overlay />
+          <BottomSheet.Content
+            backgroundStyle={{ backgroundColor: theme.modalSheet }}
           >
             <Host matchContents>
               <DatePicker
@@ -400,9 +352,9 @@ export default function SessionDetailScreen() {
             >
               <Text className="text-white font-semibold text-base">Done</Text>
             </Pressable>
-          </View>
-        </Modal>
-      )}
+          </BottomSheet.Content>
+        </BottomSheet.Portal>
+      </BottomSheet>
 
       <PortalHost name="session-detail" />
     </View>

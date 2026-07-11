@@ -1,8 +1,8 @@
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
-import { scrubActive, scrubProgress } from "@/features/timeline/playback";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { heroProgress } from "@/lib/hero-animation";
+import { scrubActive, scrubProgress } from "@/lib/scrub-playback";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {

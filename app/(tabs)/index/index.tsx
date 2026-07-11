@@ -2,9 +2,9 @@ import { SessionConstellation } from "@/features/analytics/session-constellation
 import { Atmosphere } from "@/features/aurora/atmosphere";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { scrubProgress } from "@/features/timeline/playback";
 import { FocusRing } from "@/features/timer/focus-ring";
 import { heroProgress } from "@/lib/hero-animation";
+import { scrubProgress } from "@/lib/scrub-playback";
 import { Stack, useRouter } from "expo-router";
 import { ScrollView, View } from "react-native";
 import Animated, {

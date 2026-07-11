@@ -1,7 +1,7 @@
 import { useProjects } from "@/features/projects/projects-store";
 import { Session, useSessionsStore } from "@/features/sessions/sessions-store";
-import { scrubProgress } from "@/features/timeline/playback";
 import { heroProgress } from "@/lib/hero-animation";
+import { scrubProgress } from "@/lib/scrub-playback";
 import React, { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import Animated, {
