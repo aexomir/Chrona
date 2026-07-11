@@ -112,6 +112,10 @@ export function getDelta(
   };
 }
 
+export function formatHourLabel(hour: number): string {
+  return hour < 12 ? `${hour || 12} AM` : `${hour === 12 ? 12 : hour - 12} PM`;
+}
+
 export function getHourBuckets(sessions: Session[]): number[] {
   const buckets = new Array(24).fill(0);
   for (const s of sessions) {

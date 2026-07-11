@@ -1,7 +1,7 @@
 import type { Session } from '@/features/sessions/sessions-store';
 import type { Project } from '@/constants/projects';
-import type { AIComponentSpec } from '@/features/search/component-spec';
-import type { SearchResult } from '@/features/search/inference';
+import type { SearchResultSpec } from '@/features/search/component-spec';
+import type { SearchResult } from '@/features/search/search-result';
 import {
   getRange,
   filterSessions,
@@ -19,6 +19,9 @@ import {
   generateFollowUpSuggestions,
 } from '@/features/search/search-generation';
 
+/** Sessions ending and starting further apart than this get a gap_separator between them. */
+const SESSION_GAP_THRESHOLD_MS = 5 * 60 * 1000;
+
 /**
  * Timeframe string from query to Timeframe type mapping
  */
@@ -35,8 +38,65 @@ function queryTimeframeToTimeframe(
 }
 
 /**
- * Builds an array of AIComponentSpecs from LLM's SearchResult and computed data.
- * Always starts with ai_insight_card, then conditionally adds components based on boolean flags.
+ * Groups sessions by calendar date (most recent first) and flattens them into
+ * date_pill + session_row specs, inserting a gap_separator wherever consecutive
+ * sessions on the same date are more than SESSION_GAP_THRESHOLD_MS apart.
+ */
+function buildTimelineSpecs(sessions: Session[]): SearchResultSpec[] {
+  const specs: SearchResultSpec[] = [];
+
+  const sessionsByDate = new Map<string, Session[]>();
+  for (const session of sessions) {
+    const dateKey = new Date(session.startTime).toDateString();
+    if (!sessionsByDate.has(dateKey)) {
+      sessionsByDate.set(dateKey, []);
+    }
+    sessionsByDate.get(dateKey)!.push(session);
+  }
+
+  const sortedDates = Array.from(sessionsByDate.keys()).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime()
+  );
+
+  for (const dateStr of sortedDates) {
+    const dateSessions = sessionsByDate.get(dateStr)!;
+
+    specs.push({
+      type: 'date_pill',
+      date: new Date(dateStr).toISOString(),
+    });
+
+    const sorted = [...dateSessions].sort(
+      (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+    );
+
+    for (let i = 0; i < sorted.length; i++) {
+      specs.push({
+        type: 'session_row',
+        sessionId: sorted[i].id,
+        index: i,
+      });
+
+      if (i < sorted.length - 1) {
+        const current = new Date(sorted[i].endTime).getTime();
+        const next = new Date(sorted[i + 1].startTime).getTime();
+        const gapMs = current - next;
+        if (gapMs >= SESSION_GAP_THRESHOLD_MS) {
+          specs.push({
+            type: 'gap_separator',
+            durationMs: gapMs,
+          });
+        }
+      }
+    }
+  }
+
+  return specs;
+}
+
+/**
+ * Builds an array of SearchResultSpecs from the rule-based SearchResult and computed data.
+ * Always starts with insight_card, then conditionally adds components based on boolean flags.
  */
 export function buildSearchSpecs(
   result: SearchResult,
@@ -45,8 +105,8 @@ export function buildSearchSpecs(
   projects: Project[],
   now: Date,
   query?: string,
-): AIComponentSpec[] {
-  const specs: AIComponentSpec[] = [];
+): SearchResultSpec[] {
+  const specs: SearchResultSpec[] = [];
 
   // Get timeframe-based session data for context
   const tf = queryTimeframeToTimeframe(queryTimeframe);
@@ -58,9 +118,9 @@ export function buildSearchSpecs(
     ? generateContextualHeadline(query, queryTimeframe, sessions, projects)
     : { headline: result.headline, tip: result.tip };
 
-  // 1. Always push ai_insight_card at top
+  // 1. Always push insight_card at top
   specs.push({
-    type: 'ai_insight_card',
+    type: 'insight_card',
     headline,
     body: result.body,
     tip,
@@ -70,56 +130,7 @@ export function buildSearchSpecs(
 
   // 2. Timeline: date pill + session rows with gap separators
   if (result.show_timeline && sessions.length > 0) {
-    // Group sessions by date for date pills
-    const sessionsByDate = new Map<string, Session[]>();
-    for (const session of sessions) {
-      const dateKey = new Date(session.startTime).toDateString();
-      if (!sessionsByDate.has(dateKey)) {
-        sessionsByDate.set(dateKey, []);
-      }
-      sessionsByDate.get(dateKey)!.push(session);
-    }
-
-    // Iterate through dates, adding date pills and session rows with gap separators
-    const sortedDates = Array.from(sessionsByDate.keys()).sort(
-      (a, b) => new Date(b).getTime() - new Date(a).getTime()
-    );
-
-    for (const dateStr of sortedDates) {
-      const dateSessions = sessionsByDate.get(dateStr)!;
-
-      // Date pill
-      specs.push({
-        type: 'date_pill',
-        date: new Date(dateStr).toISOString(),
-      });
-
-      // Sort by start time descending
-      const sorted = [...dateSessions].sort(
-        (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-      );
-
-      for (let i = 0; i < sorted.length; i++) {
-        specs.push({
-          type: 'session_row',
-          sessionId: sorted[i].id,
-          index: i,
-        });
-
-        // Gap separator between sessions > 5 min apart
-        if (i < sorted.length - 1) {
-          const current = new Date(sorted[i].endTime).getTime();
-          const next = new Date(sorted[i + 1].startTime).getTime();
-          const gapMs = current - next;
-          if (gapMs >= 5 * 60 * 1000) {
-            specs.push({
-              type: 'gap_separator',
-              durationMs: gapMs,
-            });
-          }
-        }
-      }
-    }
+    specs.push(...buildTimelineSpecs(sessions));
   }
 
   // 3. Metrics: total focus time + session count with deltas
@@ -212,7 +223,7 @@ export function buildSearchSpecs(
 }
 
 /**
- * Fallback specs when LLM fails or no sessions.
+ * Fallback specs when rule-based analysis throws or no sessions exist.
  * Returns a simple insight card + timeline if sessions exist.
  */
 export function buildFallbackSearchSpecs(
@@ -220,14 +231,14 @@ export function buildFallbackSearchSpecs(
   queryTimeframe: 'today' | 'week' | 'month' | 'all',
   allSessions: Session[],
   now: Date
-): AIComponentSpec[] {
-  const specs: AIComponentSpec[] = [];
+): SearchResultSpec[] {
+  const specs: SearchResultSpec[] = [];
 
   const headline = 'Could not process query';
   const body = `I couldn't analyze your question "${query}". Try asking about your focus time, projects, or activity patterns.`;
 
   specs.push({
-    type: 'ai_insight_card',
+    type: 'insight_card',
     headline,
     body,
     sentiment: 'neutral',
@@ -235,56 +246,11 @@ export function buildFallbackSearchSpecs(
   });
 
   // Show timeline if sessions exist
-  const tf: Timeframe = queryTimeframe === 'today' ? 'day' : queryTimeframe === 'all' ? 'all' : queryTimeframe;
-  const { start, end } = getRange(tf, now);
+  const { start, end } = getRange(queryTimeframeToTimeframe(queryTimeframe), now);
   const sessions = filterSessions(allSessions, start, end);
 
   if (sessions.length > 0) {
-    const sessionsByDate = new Map<string, Session[]>();
-    for (const session of sessions) {
-      const dateKey = new Date(session.startTime).toDateString();
-      if (!sessionsByDate.has(dateKey)) {
-        sessionsByDate.set(dateKey, []);
-      }
-      sessionsByDate.get(dateKey)!.push(session);
-    }
-
-    const sortedDates = Array.from(sessionsByDate.keys()).sort(
-      (a, b) => new Date(b).getTime() - new Date(a).getTime()
-    );
-
-    for (const dateStr of sortedDates) {
-      const dateSessions = sessionsByDate.get(dateStr)!;
-
-      specs.push({
-        type: 'date_pill',
-        date: new Date(dateStr).toISOString(),
-      });
-
-      const sorted = [...dateSessions].sort(
-        (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-      );
-
-      for (let i = 0; i < sorted.length; i++) {
-        specs.push({
-          type: 'session_row',
-          sessionId: sorted[i].id,
-          index: i,
-        });
-
-        if (i < sorted.length - 1) {
-          const current = new Date(sorted[i].endTime).getTime();
-          const next = new Date(sorted[i + 1].startTime).getTime();
-          const gapMs = current - next;
-          if (gapMs >= 5 * 60 * 1000) {
-            specs.push({
-              type: 'gap_separator',
-              durationMs: gapMs,
-            });
-          }
-        }
-      }
-    }
+    specs.push(...buildTimelineSpecs(sessions));
   }
 
   // Add follow-up suggestions

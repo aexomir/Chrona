@@ -1,5 +1,5 @@
 /**
- * AIComponentSpec is a discriminated union of all serializable AI component specs.
+ * SearchResultSpec is a discriminated union of all serializable search result specs.
  * Each variant contains only JSON-serializable props (no functions, no Date objects).
  * The renderer resolves store lookups and converts string dates to Date objects as needed.
  */
@@ -15,17 +15,6 @@ export type SessionRowSpec = {
 export type GapSeparatorSpec = {
   type: "gap_separator";
   durationMs: number;
-};
-
-export type CalendarEventMarkerSpec = {
-  type: "calendar_event_marker";
-  eventId: string;
-  index?: number;
-};
-
-export type LiveSessionRowSpec = {
-  type: "live_session_row";
-  index?: number;
 };
 
 export type DatePillSpec = {
@@ -56,10 +45,10 @@ export type BarChart24Spec = {
 
 export type ProjectDistributionSpec = {
   type: "project_distribution";
-  totals: Array<{
+  totals: {
     projectId: string;
     seconds: number;
-  }>;
+  }[];
 };
 
 export type StreakCalloutSpec = {
@@ -67,8 +56,8 @@ export type StreakCalloutSpec = {
   streak: { current: number; ongoing: boolean };
 };
 
-export type AiInsightCardSpec = {
-  type: "ai_insight_card";
+export type InsightCardSpec = {
+  type: "insight_card";
   headline: string;
   body: string;
   tip?: string;
@@ -78,24 +67,22 @@ export type AiInsightCardSpec = {
 
 export type SuggestedFollowUpsSpec = {
   type: "suggested_follow_ups";
-  queries: Array<{
+  queries: {
     text: string;
     icon: string; // SF symbol name
-  }>;
+  }[];
 };
 
 // ──── Discriminated Union ────
 
-export type AIComponentSpec =
+export type SearchResultSpec =
   | SessionRowSpec
   | GapSeparatorSpec
-  | CalendarEventMarkerSpec
-  | LiveSessionRowSpec
   | DatePillSpec
   | SectionHeaderSpec
   | MetricCardSpec
   | BarChart24Spec
   | ProjectDistributionSpec
   | StreakCalloutSpec
-  | AiInsightCardSpec
+  | InsightCardSpec
   | SuggestedFollowUpsSpec;

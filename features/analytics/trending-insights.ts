@@ -1,5 +1,6 @@
 import type { Session } from '@/features/sessions/sessions-store';
 import type { Project } from '@/constants/projects';
+import { formatHourLabel } from '@/features/analytics/stats-utils';
 
 export interface TrendingInsight {
   id: string;
@@ -64,9 +65,7 @@ export function generateTrendingInsights(
 
   if (peakHour && peakHour[1] > 0) {
     const [hour] = peakHour;
-    const timeStr = hour < 12
-      ? `${hour || 12} AM`
-      : `${hour === 12 ? 12 : hour - 12} PM`;
+    const timeStr = formatHourLabel(hour);
 
     insights.push({
       id: 'peak-hour',

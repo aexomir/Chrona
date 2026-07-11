@@ -1,11 +1,9 @@
-import { useState } from "react";
-import type { AIComponentSpec } from "@/features/search/component-spec";
+import { useMemo } from "react";
+import type { SearchResultSpec } from "@/features/search/component-spec";
 
 // Timeline components
 import { SessionRow } from "@/features/timeline/components/session-row";
 import { GapSeparator } from "@/features/timeline/components/gap-separator";
-import { CalendarEventMarker } from "@/features/timeline/components/calendar-event-marker";
-import { LiveSessionRow } from "@/features/timeline/components/live-session-row";
 import { DatePill } from "@/features/timeline/components/date-pill";
 
 // Stats components
@@ -14,88 +12,70 @@ import { MetricCard } from "@/features/analytics/components/metric-card";
 import { BarChart24 } from "@/features/analytics/components/bar-chart24";
 import { ProjectDistribution } from "@/features/analytics/components/project-distribution";
 import { StreakCallout } from "@/features/analytics/components/streak-callout";
-import { AiInsightCard } from "@/features/analytics/components/ai-insight-card";
-import { SuggestedFollowUps } from "@/features/analytics/components/suggested-follow-ups";
+import { InsightCard } from "@/features/search/components/insight-card";
+import { SuggestedFollowUps } from "@/features/search/components/suggested-follow-ups";
 
-// Stores
-import { useSessionsStore } from "@/features/sessions/sessions-store";
-import { useCalendarStore } from "@/features/calendar/calendar-store";
-import { useProjects } from "@/features/projects/projects-store";
-
-// Utils
+import type { Project } from "@/constants/projects";
+import type { CalendarEvent } from "@/features/calendar/calendar";
 import { findOverlappingEvents } from "@/features/calendar/calendar";
-import type { Insight } from "@/features/search/inference";
-import type { InferenceResult } from "@/features/search/inference-store";
+import type { Insight, GeneratedResult } from "@/features/search/search-result";
+import type { Session } from "@/features/sessions/sessions-store";
+
+const noopSelectFollowUp = () => {};
+
+/** Memoizes the overlap scan so it only reruns when this row's session or the calendar events change. */
+function SessionRowWithOverlaps({
+  session,
+  index,
+  calendarEvents,
+}: {
+  session: Session;
+  index: number;
+  calendarEvents: CalendarEvent[];
+}) {
+  const overlappingEvents = useMemo(
+    () => findOverlappingEvents(calendarEvents, new Date(session.startTime), new Date(session.endTime)),
+    [calendarEvents, session.startTime, session.endTime],
+  );
+
+  return <SessionRow session={session} index={index} overlappingEvents={overlappingEvents} />;
+}
 
 /**
- * AIComponentRenderer resolves AI-generated component specs into real React Native components.
- * Handles store lookups, local state, and type-safe rendering.
+ * SearchResultRenderer resolves search result specs into real React Native components.
+ * Rendered once per spec in a results list, so store lookups are resolved once by the parent
+ * and passed in as props/maps rather than each instance subscribing to the full stores.
  */
-export function AIComponentRenderer({
+export function SearchResultRenderer({
   spec,
+  sessionsById,
+  projects,
+  calendarEvents,
   onSelectFollowUp,
 }: {
-  spec: AIComponentSpec;
+  spec: SearchResultSpec;
+  sessionsById: Map<string, Session>;
+  projects: Project[];
+  calendarEvents: CalendarEvent[];
   onSelectFollowUp?: (query: string) => void;
 }) {
-  const { sessions } = useSessionsStore();
-  const calendarEvents = useCalendarStore((s) => s.events);
-  const { projects } = useProjects();
-
-  // calendar_event_marker manages expanded state locally
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-
   // ──── Timeline specs ────
 
   if (spec.type === "session_row") {
-    const session = sessions.find((s) => s.id === spec.sessionId);
+    const session = sessionsById.get(spec.sessionId);
     if (!session) return null;
 
-    // Find overlapping calendar events
-    const overlappingEvents = findOverlappingEvents(
-      calendarEvents,
-      new Date(session.startTime),
-      new Date(session.endTime),
-    );
-
     return (
-      <SessionRow
+      <SessionRowWithOverlaps
         session={session}
         index={spec.index ?? 0}
-        overlappingEvents={overlappingEvents}
+        calendarEvents={calendarEvents}
       />
     );
   }
 
   if (spec.type === "gap_separator") {
     return <GapSeparator durationMs={spec.durationMs} />;
-  }
-
-  if (spec.type === "calendar_event_marker") {
-    const event = calendarEvents.find((e) => e.id === spec.eventId);
-    if (!event) return null;
-
-    return (
-      <CalendarEventMarker
-        event={event}
-        index={spec.index ?? 0}
-        expanded={expandedEventId === spec.eventId}
-        onToggle={() =>
-          setExpandedEventId((prev) =>
-            prev === spec.eventId ? null : spec.eventId
-          )
-        }
-      />
-    );
-  }
-
-  if (spec.type === "live_session_row") {
-    return (
-      <LiveSessionRow
-        startTimestamp={new Date().toISOString()}
-        index={spec.index ?? 0}
-      />
-    );
   }
 
   if (spec.type === "date_pill") {
@@ -143,7 +123,7 @@ export function AIComponentRenderer({
     return <StreakCallout streak={spec.streak} />;
   }
 
-  if (spec.type === "ai_insight_card") {
+  if (spec.type === "insight_card") {
     // Reconstruct Insight object
     const insight: Insight = {
       headline: spec.headline,
@@ -152,33 +132,22 @@ export function AIComponentRenderer({
       sentiment: spec.sentiment,
     };
 
-    // Wrap in InferenceResult structure with synthetic metadata
-    const result: InferenceResult<Insight> = {
+    // Wrap in GeneratedResult structure with synthetic metadata
+    const result: GeneratedResult<Insight> = {
       data: insight,
       fingerprint: "",
       timeframe: "generative",
       generatedAt: spec.generatedAt,
     };
 
-    return (
-      <AiInsightCard
-        insight={result}
-        isGenerating={false}
-        isReady={true}
-        downloadProgress={0}
-        error={null}
-        onRefresh={() => {
-          // No-op: generative UI displays cached insight; re-inference is out of scope
-        }}
-      />
-    );
+    return <InsightCard insight={result} />;
   }
 
   if (spec.type === "suggested_follow_ups") {
     return (
       <SuggestedFollowUps
         queries={spec.queries}
-        onSelectQuery={onSelectFollowUp || (() => {})}
+        onSelectQuery={onSelectFollowUp || noopSelectFollowUp}
       />
     );
   }
