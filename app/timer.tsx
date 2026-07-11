@@ -4,7 +4,6 @@ import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
-import { useSettingsStore } from "@/features/settings/settings-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { formatTime } from "@/features/timer/timer-utils";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -12,7 +11,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Checkbox, Input, PortalHost, Select } from "heroui-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -22,24 +21,16 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, {
-  cancelAnimation,
   Easing,
   FadeInDown,
-  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Circle } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
-type StartMode = "a" | "b" | "c";
-
-const HOLD_R = 72;
-const HOLD_CIRCUMFERENCE = 2 * Math.PI * HOLD_R;
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const TITLE_INPUT_STYLE = {
   fontSize: 26,
@@ -68,7 +59,6 @@ export default function TimerScreen() {
   const updateTitle = useTimerStore((s) => s.updateTitle);
   const updateProjectId = useTimerStore((s) => s.updateProjectId);
   const addSession = useSessionsStore((s) => s.addSession);
-  const timerStartMode = useSettingsStore((s) => s.timerStartMode);
   const toast = useAppToast();
   const insets = useSafeAreaInsets();
   const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
@@ -254,7 +244,6 @@ export default function TimerScreen() {
         </View>
       ) : (
         <NewTimerView
-          mode={timerStartMode}
           taskTitle={taskTitle}
           setTaskTitle={setTaskTitle}
           selectedProject={selectedProject}
@@ -320,10 +309,10 @@ function ProjectSelect({
 }
 
 // ─────────────────────────────────────────────
-// New Timer — shared types
+// New Timer — project-first flow
 // ─────────────────────────────────────────────
 
-type ModeViewProps = {
+type NewTimerViewProps = {
   taskTitle: string;
   setTaskTitle: (t: string) => void;
   selectedProject: SelectOption | undefined;
@@ -332,300 +321,16 @@ type ModeViewProps = {
   onStart: () => void;
 };
 
-type NewTimerViewProps = ModeViewProps & {
-  mode: StartMode;
-};
-
-function NewTimerView({
-  mode,
-  taskTitle,
-  setTaskTitle,
-  selectedProject,
-  setSelectedProject,
-  projects,
-  onStart,
-}: NewTimerViewProps) {
-  const modeProps: ModeViewProps = {
-    taskTitle,
-    setTaskTitle,
-    selectedProject,
-    setSelectedProject,
-    projects,
-    onStart,
-  };
-
+function NewTimerView(props: NewTimerViewProps) {
   return (
     <View className="flex-1">
       <View className="flex-1 justify-center px-6">
-        {mode === "a" && <ConversationalView {...modeProps} />}
-        {mode === "b" && <HoldView {...modeProps} />}
-        {mode === "c" && <ProjectFirstView {...modeProps} />}
+        <ProjectFirstView {...props} />
       </View>
       <RecentTicker />
     </View>
   );
 }
-
-function useDeferredAutoFocus(ref: React.RefObject<TextInput | null>) {
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => ref.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [ref]);
-}
-
-// ─────────────────────────────────────────────
-// Mode A — Conversational (bare input + chips)
-// ─────────────────────────────────────────────
-
-function ConversationalView({
-  taskTitle,
-  setTaskTitle,
-  selectedProject,
-  setSelectedProject,
-  projects,
-  onStart,
-}: ModeViewProps) {
-  const titleFilled = useSharedValue(0);
-  const beginScale = useSharedValue(1);
-  const inputRef = useRef<TextInput>(null);
-  useDeferredAutoFocus(inputRef);
-
-  useEffect(() => {
-    const filled = taskTitle.trim().length > 0 ? 1 : 0;
-    titleFilled.value = withTiming(filled, { duration: 300 });
-    if (filled) {
-      beginScale.value = withRepeat(
-        withTiming(1.04, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
-        -1,
-        true,
-      );
-    } else {
-      cancelAnimation(beginScale);
-      beginScale.value = withTiming(1, { duration: 200 });
-    }
-  }, [taskTitle]);
-
-  const beginStyle = useAnimatedStyle(() => ({
-    opacity: titleFilled.value,
-    transform: [{ scale: beginScale.value }],
-  }));
-
-  return (
-    <Animated.View className="gap-8" entering={FadeInDown.duration(300)}>
-      <View className="gap-3">
-        <Text className="text-zinc-600 text-xs uppercase tracking-widest">
-          what are you focusing on?
-        </Text>
-        <TextInput
-          ref={inputRef}
-          value={taskTitle}
-          onChangeText={setTaskTitle}
-          onSubmitEditing={onStart}
-          returnKeyType="go"
-          placeholder="deep work, reading, gym..."
-          placeholderTextColor="rgba(255,255,255,0.15)"
-          style={TITLE_INPUT_STYLE}
-        />
-        <View className="h-px bg-white/10" />
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="-mx-6"
-        contentContainerClassName="px-6 py-1 gap-2"
-      >
-        <Pressable
-          onPress={() => setSelectedProject(undefined)}
-          className={`px-3 py-1.5 rounded-full border ${
-            selectedProject === undefined
-              ? "border-white/40 bg-white/8"
-              : "border-white/12"
-          }`}
-        >
-          <Text
-            className={`text-xs font-medium ${
-              selectedProject === undefined
-                ? "text-white/80"
-                : "text-white/30"
-            }`}
-          >
-            No project
-          </Text>
-        </Pressable>
-        {projects.map((p) => {
-          const isSelected = selectedProject?.value === p.id;
-          return (
-            <Pressable
-              key={p.id}
-              onPress={() =>
-                setSelectedProject({ value: p.id, label: p.name })
-              }
-              className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border"
-              style={
-                isSelected
-                  ? { borderColor: p.color, backgroundColor: p.color + "22" }
-                  : { borderColor: "rgba(255,255,255,0.12)" }
-              }
-            >
-              <View
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: p.color }}
-              />
-              <Text
-                className="text-xs font-medium"
-                style={{
-                  color: isSelected ? p.color : "rgba(255,255,255,0.35)",
-                }}
-              >
-                {p.name}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <Animated.View style={beginStyle}>
-        <Button
-          variant="primary"
-          onPress={onStart}
-          isDisabled={!taskTitle.trim()}
-        >
-          <Button.Label>Begin</Button.Label>
-        </Button>
-      </Animated.View>
-    </Animated.View>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Mode B — Hold to Start
-// ─────────────────────────────────────────────
-
-function HoldView({
-  taskTitle,
-  setTaskTitle,
-  selectedProject,
-  setSelectedProject,
-  projects,
-  onStart,
-}: ModeViewProps) {
-  const selProj = projects.find((p) => p.id === selectedProject?.value);
-  const holdProgress = useSharedValue(0);
-  const breathScale = useSharedValue(1);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<TextInput>(null);
-  useDeferredAutoFocus(inputRef);
-
-  useEffect(() => {
-    breathScale.value = withRepeat(
-      withTiming(1.06, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    );
-    return () => {
-      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    };
-  }, []);
-
-  const handlePressIn = () => {
-    if (!taskTitle.trim()) return;
-    cancelAnimation(breathScale);
-    breathScale.value = withTiming(1, { duration: 150 });
-    holdProgress.value = withTiming(1, {
-      duration: 600,
-      easing: Easing.out(Easing.quad),
-    });
-    holdTimerRef.current = setTimeout(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onStart();
-    }, 600);
-  };
-
-  const handlePressOut = () => {
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    holdProgress.value = withTiming(0, { duration: 250 });
-    breathScale.value = withRepeat(
-      withTiming(1.06, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    );
-  };
-
-  const arcProps = useAnimatedProps(() => ({
-    strokeDashoffset: HOLD_CIRCUMFERENCE * (1 - holdProgress.value),
-  }));
-
-  const ringContainerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: breathScale.value }],
-  }));
-
-  const ringColor = selProj?.color ?? "rgba(255,255,255,0.6)";
-  const canStart = taskTitle.trim().length > 0;
-
-  return (
-    <Animated.View className="gap-5" entering={FadeInDown.duration(300)}>
-      <Input
-        ref={inputRef}
-        placeholder="What are you working on?"
-        value={taskTitle}
-        onChangeText={setTaskTitle}
-        returnKeyType="done"
-        className="bg-transparent border-white/10"
-      />
-
-      <ProjectSelect
-        value={selectedProject}
-        onChange={(v) => setSelectedProject(v)}
-        projects={projects}
-      />
-
-      <View className="items-center gap-3 py-2">
-        <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
-          <Animated.View style={ringContainerStyle}>
-            <Svg width={174} height={174}>
-              <Circle
-                cx={87}
-                cy={87}
-                r={HOLD_R}
-                stroke="rgba(255,255,255,0.07)"
-                strokeWidth={2.5}
-                fill="none"
-              />
-              <AnimatedCircle
-                cx={87}
-                cy={87}
-                r={HOLD_R}
-                stroke={ringColor}
-                strokeWidth={2.5}
-                fill="none"
-                strokeDasharray={`${HOLD_CIRCUMFERENCE}`}
-                strokeLinecap="round"
-                rotation={-90}
-                origin="87, 87"
-                animatedProps={arcProps}
-              />
-            </Svg>
-          </Animated.View>
-        </Pressable>
-        <Text
-          className="text-xs uppercase tracking-widest"
-          style={{
-            color: canStart
-              ? "rgba(255,255,255,0.3)"
-              : "rgba(255,255,255,0.12)",
-          }}
-        >
-          {canStart ? "hold to begin" : "enter a title first"}
-        </Text>
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Mode C — Project First
-// ─────────────────────────────────────────────
 
 function ProjectFirstView({
   taskTitle,
@@ -634,7 +339,7 @@ function ProjectFirstView({
   setSelectedProject,
   projects,
   onStart,
-}: ModeViewProps) {
+}: NewTimerViewProps) {
   const [step, setStep] = useState<"pick" | "title">("pick");
 
   const handlePickProject = (p: Project | null) => {

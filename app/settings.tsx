@@ -6,7 +6,7 @@ import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
-import { useSettingsStore, type TimerStartMode } from "@/features/settings/settings-store";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { useStreamStore } from "@/features/stream/stream-store";
 import type { ConnectionStatus } from "@/modules/chrona-stream";
 import { Image } from "expo-image";
@@ -21,12 +21,6 @@ const MAC_STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string
   connecting: { label: "Connecting…", color: "#d97706" },
   connected: { label: "Connected", color: Semantic.success },
   disconnected: { label: "Not Found", color: Neutral.z600 },
-};
-
-const TIMER_MODE_LABELS: Record<TimerStartMode, string> = {
-  a: "Conversational",
-  b: "Hold to Start",
-  c: "Project First",
 };
 
 const DEV_MODE_TAP_THRESHOLD = 5;
@@ -77,7 +71,6 @@ export default function SettingsScreen() {
     setAuroraEnabled,
     constellationEnabled,
     setConstellationEnabled,
-    timerStartMode,
     developerMode,
     setDeveloperMode,
   } = useSettingsStore();
@@ -135,13 +128,6 @@ export default function SettingsScreen() {
                 onSelectedChange={setConstellationEnabled}
               />
             </ListGroup.ItemSuffix>
-          </ListGroup.Item>
-          <Separator className="mx-4" />
-          <ListGroup.Item onPress={() => router.push("/timer-style")}>
-            <ListGroup.ItemContent>
-              <ListGroup.ItemTitle>Timer Style</ListGroup.ItemTitle>
-            </ListGroup.ItemContent>
-            <ValueChevronSuffix value={TIMER_MODE_LABELS[timerStartMode]} />
           </ListGroup.Item>
         </ListGroup>
 

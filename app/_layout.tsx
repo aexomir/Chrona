@@ -60,10 +60,6 @@ export default function RootLayout() {
                 options={{ presentation: "modal", headerShown: false }}
               />
               <Stack.Screen
-                name="timer-style"
-                options={{ presentation: "modal", headerShown: false }}
-              />
-              <Stack.Screen
                 name="onboarding"
                 options={{ headerShown: false, gestureEnabled: false }}
               />
