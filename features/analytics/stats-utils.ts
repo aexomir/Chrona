@@ -13,6 +13,15 @@ export const TIMEFRAMES: { label: string; value: Timeframe }[] = [
   { label: "All", value: "all" },
 ];
 
+export const CHART_MAX_HEIGHT = 72;
+
+export const HOUR_AXIS_LABELS = [
+  { h: 0, label: "12am" },
+  { h: 6, label: "6am" },
+  { h: 12, label: "12pm" },
+  { h: 18, label: "6pm" },
+] as const;
+
 // ─── Data helpers ─────────────────────────────────────────────────────────────
 
 export function getRange(tf: Timeframe, now: Date): { start: Date; end: Date } {

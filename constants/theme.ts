@@ -30,6 +30,9 @@ export const Semantic = {
 
   info: "#3b82f6", // blue-500    · suggestions, rule creation
   infoBright: "#60a5fa", // blue-400    · suggestion dots, hint text
+
+  streak: "#f97316", // orange-500  · streak flame icon
+  insight: "#8b5cf6", // violet-500  · peak-hour / insight icon
 } as const;
 
 /**

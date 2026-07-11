@@ -13,7 +13,7 @@ export function ProjectDistribution({
 
   return (
     <GlassCard>
-      <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+      <View className="px-4 py-3">
         {totals.map(({ project, seconds }) => (
           <View key={project.id} className="flex-row items-center gap-2 py-2">
             <Image
@@ -21,29 +21,21 @@ export function ProjectDistribution({
               style={{ width: 14, height: 14, tintColor: project.color }}
             />
             <Text
-              className="text-zinc-400 text-xs"
-              style={{ width: 64 }}
+              className="text-zinc-400 text-xs w-16"
               numberOfLines={1}
             >
               {project.name}
             </Text>
-            <View
-              className="flex-1 rounded-full"
-              style={{ height: 5, backgroundColor: "rgba(255,255,255,0.08)" }}
-            >
+            <View className="flex-1 h-[5px] rounded-full bg-white/[0.08]">
               <View
-                className="rounded-full"
+                className="h-[5px] rounded-full"
                 style={{
                   width: `${(seconds / maxSeconds) * 100}%` as any,
-                  height: 5,
                   backgroundColor: project.color,
                 }}
               />
             </View>
-            <Text
-              className="text-zinc-500 text-xs tabular-nums"
-              style={{ width: 48, textAlign: "right" }}
-            >
+            <Text className="text-zinc-500 text-xs tabular-nums w-12 text-right">
               {formatFocusTime(seconds)}
             </Text>
           </View>

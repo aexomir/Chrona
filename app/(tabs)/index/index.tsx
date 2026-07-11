@@ -1,5 +1,5 @@
-import { SessionConstellation } from "@/features/analytics/session-constellation";
 import { Atmosphere } from "@/features/aurora/atmosphere";
+import { SessionConstellation } from "@/features/aurora/session-constellation";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { FocusRing } from "@/features/timer/focus-ring";

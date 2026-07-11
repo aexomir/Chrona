@@ -1,6 +1,7 @@
-import type { Session } from '@/features/sessions/sessions-store';
+import { Semantic } from '@/constants/theme';
 import type { Project } from '@/constants/projects';
-import { formatHourLabel } from '@/features/analytics/stats-utils';
+import { computeStreak, formatHourLabel } from '@/features/analytics/stats-utils';
+import type { Session } from '@/features/sessions/sessions-store';
 
 export interface TrendingInsight {
   id: string;
@@ -47,7 +48,7 @@ export function generateTrendingInsights(
         title: `${projectName} Focused`,
         subtitle: `${percentage}% of your time this week`,
         icon: 'sf:folder.fill',
-        color: '#3b82f6',
+        color: Semantic.info,
         suggestedQuery: `Projects this week`,
       });
     }
@@ -72,7 +73,7 @@ export function generateTrendingInsights(
       title: 'Peak Focus Hour',
       subtitle: `You're most focused around ${timeStr}`,
       icon: 'sf:clock.fill',
-      color: '#8b5cf6',
+      color: Semantic.insight,
       suggestedQuery: `When do I focus most?`,
     });
   }
@@ -85,63 +86,10 @@ export function generateTrendingInsights(
       title: '🔥 Streak Active',
       subtitle: `${streak.current} days focused in a row`,
       icon: 'sf:flame.fill',
-      color: '#f59e0b',
+      color: Semantic.warning,
       suggestedQuery: `How's my focus streak?`,
     });
   }
 
   return insights.slice(0, 3);
-}
-
-/**
- * Compute current focus streak from session data.
- */
-function computeStreak(sessions: Session[]): { current: number; best: number } {
-  if (sessions.length === 0) return { current: 0, best: 0 };
-
-  const sessionDates = new Set<string>();
-  for (const session of sessions) {
-    const date = new Date(session.startTime).toDateString();
-    sessionDates.add(date);
-  }
-
-  const sortedDates = Array.from(sessionDates)
-    .map((d) => new Date(d).getTime())
-    .sort((a, b) => b - a);
-
-  let currentStreak = 0;
-  let bestStreak = 0;
-  let lastDate = new Date().toDateString();
-
-  for (const timestamp of sortedDates) {
-    const date = new Date(timestamp).toDateString();
-    const lastTime = new Date(lastDate).getTime();
-    const currentTime = new Date(date).getTime();
-    const daysDiff = Math.round((lastTime - currentTime) / (1000 * 60 * 60 * 24));
-
-    if (daysDiff <= 1) {
-      currentStreak++;
-    } else {
-      break;
-    }
-    lastDate = date;
-  }
-
-  bestStreak = currentStreak;
-  for (let i = 0; i < sortedDates.length - 1; i++) {
-    let tempStreak = 1;
-    for (let j = i; j < sortedDates.length - 1; j++) {
-      const daysDiff = Math.round(
-        (sortedDates[j] - sortedDates[j + 1]) / (1000 * 60 * 60 * 24)
-      );
-      if (daysDiff === 1) {
-        tempStreak++;
-      } else {
-        break;
-      }
-    }
-    bestStreak = Math.max(bestStreak, tempStreak);
-  }
-
-  return { current: currentStreak, best: bestStreak };
 }

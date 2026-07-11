@@ -1,7 +1,7 @@
 import { SearchResultRenderer } from "@/features/search/components/result-renderer";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useSearchQuery } from "@/features/search/use-search-query";
-import { generateTrendingInsights } from "@/features/analytics/trending-insights";
+import { generateTrendingInsights } from "@/features/search/trending-insights";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore, type Session } from "@/features/sessions/sessions-store";
