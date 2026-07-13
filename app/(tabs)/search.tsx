@@ -29,6 +29,7 @@ const SKELETON_BASE_HEIGHT = 100;
 const SKELETON_HEIGHT_STEP = 20;
 const STAGGER = { skeleton: 80, insight: 60, chip: 80, result: 50 };
 
+
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const allSessions = useSessionsStore((s) => s.sessions);
@@ -68,6 +69,7 @@ export default function SearchScreen() {
 
   const handleClear = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setQueryText('');
     reset();
     inputRef.current?.focus();
   };
@@ -81,7 +83,7 @@ export default function SearchScreen() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
-        <View className="px-4 pb-6" style={{ paddingTop: insets.top + 16 }}>
+        <View className="px-4 pb-6" style={[{ paddingTop: insets.top + 16 }]}>
           <GlassView
             glassEffectStyle="regular"
             colorScheme="dark"
@@ -118,7 +120,7 @@ export default function SearchScreen() {
                       key={i}
                       entering={FadeInDown.delay(i * STAGGER.skeleton).duration(600)}
                       className="bg-white/[0.08] rounded-xl"
-                      style={{ height: SKELETON_BASE_HEIGHT + i * SKELETON_HEIGHT_STEP }}
+                      style={[{ height: SKELETON_BASE_HEIGHT + i * SKELETON_HEIGHT_STEP }]}
                     />
                   ))}
                 </View>
@@ -150,7 +152,7 @@ export default function SearchScreen() {
                           >
                             <View
                               className="px-[14px] py-3 flex-row items-center gap-3 border-l-[3px]"
-                              style={{ borderLeftColor: insight.color }}
+                              style={[{ borderLeftColor: insight.color }]}
                             >
                               <Image
                                 source={insight.icon}

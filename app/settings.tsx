@@ -26,6 +26,24 @@ const MAC_STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string
 const DEV_MODE_TAP_THRESHOLD = 5;
 const DEV_MODE_TAP_WINDOW_MS = 2000;
 
+const styles = StyleSheet.create({
+  chevron: {
+    width: 13,
+    height: 13,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  statusText: {
+    fontSize: 14,
+  },
+  container: {
+    flex: 1,
+  },
+});
+
 function ValueChevronSuffix({ value }: { value: string }) {
   return (
     <ListGroup.ItemSuffix className="flex-row items-center gap-1">
@@ -40,7 +58,7 @@ function MacHelperStatus({ status }: { status: ConnectionStatus }) {
   return (
     <ListGroup.ItemSuffix className="flex-row items-center gap-2">
       <View style={[styles.statusDot, { backgroundColor: color }]} />
-      <Text style={{ color, fontSize: 14 }}>{label}</Text>
+      <Text style={[styles.statusText, { color }]}>{label}</Text>
       <Image source="sf:arrow.clockwise" style={styles.chevron} tintColor="#636366" />
     </ListGroup.ItemSuffix>
   );
@@ -92,7 +110,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.modalSheet }}>
+    <View style={[styles.container, { backgroundColor: theme.modalSheet }]}>
       <StaticAuraBackground />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button
@@ -251,15 +269,3 @@ export default function SettingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  chevron: {
-    width: 13,
-    height: 13,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-});

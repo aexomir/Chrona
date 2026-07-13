@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -32,13 +33,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SelectOption = { value: string; label: string };
 
-const TITLE_INPUT_STYLE = {
-  fontSize: 26,
-  color: "#ffffff",
-  letterSpacing: -0.5,
-  paddingVertical: 8,
-  fontWeight: "600" as const,
-};
+const styles = StyleSheet.create({
+  titleInput: {
+    fontSize: 26,
+    color: "#ffffff",
+    letterSpacing: -0.5,
+    paddingVertical: 8,
+    fontWeight: "600" as const,
+  },
+  projectColorBg: {
+    borderWidth: 1,
+  },
+  projectButton: {
+    borderWidth: 1,
+  },
+  chevronIcon: {
+    width: 11,
+    height: 11,
+  },
+  noProjectBorder: {
+    borderWidth: 1,
+  },
+});
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${Math.floor(seconds)}s`;
@@ -166,7 +182,7 @@ export default function TimerScreen() {
     <KeyboardAvoidingView
       behavior="padding"
       className="flex-1"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+      style={[{ paddingTop: insets.top, paddingBottom: insets.bottom }]}
     >
       <StaticAuraBackground />
       <View className="flex-row items-center px-5 pt-2 pb-4">
@@ -193,7 +209,7 @@ export default function TimerScreen() {
             <View className="flex-row items-center gap-2">
               <View
                 className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: selProj.color }}
+                style={[{ backgroundColor: selProj.color }]}
               />
               <Text className="text-zinc-400 text-sm tracking-wide">
                 {selProj.name}
@@ -215,10 +231,12 @@ export default function TimerScreen() {
           <View className="gap-3">
             <TextInput
               value={taskTitle}
-              onChangeText={setTaskTitle}
+              onChangeText={(v) => {
+                setTaskTitle(v);
+                updateTitle(v);
+              }}
               onBlur={() => {
                 const trimmed = taskTitle.trim();
-                updateTitle(trimmed);
                 if (trimmed) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               onSubmitEditing={() => {
@@ -227,7 +245,7 @@ export default function TimerScreen() {
               returnKeyType="done"
               placeholder="session title"
               placeholderTextColor="rgba(255,255,255,0.15)"
-              style={TITLE_INPUT_STYLE}
+              style={styles.titleInput}
             />
             <View className="h-px bg-white/10" />
           </View>
@@ -295,7 +313,7 @@ function ProjectSelect({
               <View className="flex-row items-center gap-3 flex-1">
                 <Image
                   source={`sf:${p.icon}`}
-                  style={{ width: 18, height: 18, tintColor: p.color }}
+                  style={[{ width: 18, height: 18, tintColor: p.color }]}
                 />
                 <Select.ItemLabel />
               </View>
@@ -361,26 +379,23 @@ function ProjectFirstView({
             <Pressable
               onPress={() => handlePickProject(p)}
               className="flex-row items-center gap-3 px-4 py-4 rounded-2xl"
-              style={{
+              style={[styles.projectButton, {
                 backgroundColor: p.color + "14",
-                borderWidth: 1,
                 borderColor: p.color + "28",
-              }}
+              }]}
             >
               <View
                 className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: p.color }}
+                style={[{ backgroundColor: p.color }]}
               />
               <Text className="text-white text-base font-medium flex-1">
                 {p.name}
               </Text>
               <Image
                 source="sf:chevron.right"
-                style={{
-                  width: 11,
-                  height: 11,
+                style={[styles.chevronIcon, {
                   tintColor: p.color + "70",
-                }}
+                }]}
               />
             </Pressable>
           </Animated.View>
@@ -391,17 +406,15 @@ function ProjectFirstView({
           <Pressable
             onPress={() => handlePickProject(null)}
             className="flex-row items-center gap-3 px-4 py-4 rounded-2xl"
-            style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.07)" }}
+            style={[styles.noProjectBorder, { borderColor: "rgba(255,255,255,0.07)" }]}
           >
             <View className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
             <Text className="text-zinc-500 text-base flex-1">No project</Text>
             <Image
               source="sf:chevron.right"
-              style={{
-                width: 11,
-                height: 11,
+              style={[styles.chevronIcon, {
                 tintColor: "rgba(255,255,255,0.15)",
-              }}
+              }]}
             />
           </Pressable>
         </Animated.View>
@@ -431,9 +444,9 @@ function ProjectFirstView({
           <View className="flex-row items-center gap-2">
             <View
               className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: selProj.color }}
+              style={[{ backgroundColor: selProj.color }]}
             />
-            <Text className="text-sm font-medium" style={{ color: selProj.color }}>
+            <Text className="text-sm font-medium" style={[{ color: selProj.color }]}>
               {selProj.name}
             </Text>
           </View>
@@ -510,11 +523,11 @@ function RecentTicker() {
           <View
             key={i}
             className="flex-row items-center gap-2 pr-7"
-            style={{ width: TICKER_ITEM_WIDTH }}
+            style={[{ width: TICKER_ITEM_WIDTH }]}
           >
             <View
               className="w-1 h-1 rounded-full"
-              style={{ backgroundColor: item.color }}
+              style={[{ backgroundColor: item.color }]}
             />
             <Text
               className="text-zinc-600 text-xs flex-1"

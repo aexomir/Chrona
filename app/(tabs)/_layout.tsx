@@ -1,10 +1,16 @@
 import { TimerBar } from "@/features/timer/timer-bar";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
 
 export default function TabLayout() {
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <NativeTabs minimizeBehavior="onScrollDown">
         <NativeTabs.BottomAccessory>
           <TimerBar />
