@@ -2,7 +2,7 @@
   "expo": {
     "name": "Chrona",
     "slug": "Chrona",
-    "version": "1.0.33",
+    "version": "1.0.34",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chrona",
@@ -57,7 +57,34 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.com.aexomir.Chrona",
+          "enablePushNotifications": false,
+          "widgets": [
+            {
+              "name": "ChronaTimeWidget",
+              "displayName": "Chrona Time",
+              "description": "Your focus time and active project at a glance.",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ]
+            },
+            {
+              "name": "TimelineWidget",
+              "displayName": "Timeline",
+              "description": "Your Chrona sessions for today at a glance.",
+              "supportedFamilies": [
+                "systemMedium",
+                "systemLarge"
+              ]
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

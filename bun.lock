@@ -28,6 +28,7 @@
         "expo-symbols": "~57.0.0",
         "expo-system-ui": "~57.0.0",
         "expo-web-browser": "~57.0.0",
+        "expo-widgets": "~57.0.3",
         "heroui-native": "^1.0.5",
         "react": "19.2.3",
         "react-dom": "19.2.3",
@@ -1041,6 +1042,8 @@
     "expo-system-ui": ["expo-system-ui@57.0.0", "", { "dependencies": { "@react-native/normalize-colors": "0.86.0", "debug": "^4.3.2" }, "peerDependencies": { "expo": "*", "react-native": "*", "react-native-web": "*" }, "optionalPeers": ["react-native-web"] }, "sha512-jkGRY0RQsncEhaCPdoiNbRCPAe8q5kFrrMbkiLr7p0oFMMY8LOviSKBpUXLnuwzM1gHC/J531tntrhj+nwpFZA=="],
 
     "expo-web-browser": ["expo-web-browser@57.0.0", "", { "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-J+kQAqbH423Ge6YXrQTVKkmH+cS2SSjnc7ocoRDjhmfZ2+XSBXX3Ogds5/aEKjNKUe7ObtPMkVq9uWbXJv4BGw=="],
+
+    "expo-widgets": ["expo-widgets@57.0.3", "", { "dependencies": { "@expo/plist": "^0.8.0", "@expo/ui": "~57.0.4" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-+A4mDZvJgH4NiFVX8yNqZlavo1Jk1ITYghP138IQeex/Hybpcb2Yc+6k7l7WlfinKso0Wn0wFRwf9RDzIjqkPA=="],
 
     "exponential-backoff": ["exponential-backoff@3.1.3", "", {}, "sha512-ZgEeZXj30q+I0EN+CbSSpIyPaJ5HVQD18Z1m+u1FXbAeT94mr1zw50q4q6jiiC447Nl/YTcIYSAftiGqetwXCA=="],
 

@@ -1,7 +1,7 @@
 {
   "name": "chrona",
   "main": "expo-router/entry",
-  "version": "1.0.33",
+  "version": "1.0.34",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -36,6 +36,7 @@
     "expo-symbols": "~57.0.0",
     "expo-system-ui": "~57.0.0",
     "expo-web-browser": "~57.0.0",
+    "expo-widgets": "~57.0.3",
     "heroui-native": "^1.0.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",

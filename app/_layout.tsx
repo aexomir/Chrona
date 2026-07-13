@@ -1,7 +1,9 @@
 import { ChronaSplash } from "@/components/chrona-splash";
 import { hasCompletedOnboarding } from "@/features/onboarding/onboarding-storage";
+import { useWidgetSync } from "@/features/widgets/use-widget-sync";
 import { useBackgroundServices } from "@/hooks/use-background-services";
 import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
+import "@/widgets";
 import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
 import { useFonts } from "expo-font";
 import { Stack, router } from "expo-router";
@@ -25,6 +27,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Pacifico_400Regular });
 
+  useWidgetSync();
   useBackgroundServices();
 
   useEffect(() => {
