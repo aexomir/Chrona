@@ -13,9 +13,12 @@ import { HeroUINativeProvider } from "heroui-native";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { Uniwind } from "uniwind";
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
+
+Uniwind.setTheme("dark");
 
 export const unstable_settings = {
   anchor: "(tabs)",

@@ -1,16 +1,14 @@
-/** Structural colors consumed by expo-router (light/dark nav theme) */
+/** Structural colors — dark mode only */
 export const Colors = {
-  light: {
-    background: "#f9f9f9",
-    text: "#11181C",
-    tint: "#0a7ea4",
-  },
   dark: {
     background: "#18181b",
     text: "#ECEDEE",
     tint: "#ffffff",
   },
 } as const;
+
+/** Export dark colors as the default/only theme */
+export const theme = Colors.dark;
 
 /**
  * Status / semantic colors — aurora-independent.
