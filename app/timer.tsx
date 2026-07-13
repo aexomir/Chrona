@@ -110,10 +110,7 @@ export default function TimerScreen() {
   const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
 
   useEffect(() => {
-    if (!isTracking || !startTimestamp) {
-      setElapsed(0);
-      return;
-    }
+    if (!isTracking || !startTimestamp) return;
     const tick = () => {
       const newElapsed = Math.floor(
         (Date.now() - new Date(startTimestamp).getTime()) / 1000,
@@ -224,7 +221,7 @@ export default function TimerScreen() {
             <Text
               className="text-white font-mono font-bold text-[72px] leading-[80px] tracking-[-2px]"
             >
-              {formatTime(elapsed)}
+              {formatTime(isTracking ? elapsed : 0)}
             </Text>
           </View>
 

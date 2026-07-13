@@ -200,9 +200,11 @@ function TimelineContent() {
       idx === -1
         ? -CIRCLE_SIZE
         : circleXForIndexInWidth(idx, stripWidthRef.current);
-    circleX.value = animated
-      ? withTiming(x, { duration: CIRCLE_DURATION, easing: CIRCLE_EASING })
-      : x;
+    circleX.set(
+      animated
+        ? withTiming(x, { duration: CIRCLE_DURATION, easing: CIRCLE_EASING })
+        : x,
+    );
   }
 
   function onStripLayout(width: number) {
@@ -225,7 +227,7 @@ function TimelineContent() {
     const newWeekDays = getWeekDays(targetWeekStart);
     const idx = newWeekDays.findIndex((d) => isSameDay(d, date));
     if (idx !== -1 && stripWidthRef.current > 0) {
-      circleX.value = circleXForIndexInWidth(idx, stripWidthRef.current);
+      circleX.set(circleXForIndexInWidth(idx, stripWidthRef.current));
     }
   }
 
@@ -235,17 +237,20 @@ function TimelineContent() {
     const newWeekDays = getWeekDays(getWeekStart(today, newOffset));
     const idx = newWeekDays.findIndex((d) => isSameDay(d, selectedDate));
 
-    circleX.value =
+    circleX.set(
       idx !== -1 && stripWidth > 0
         ? circleXForIndexInWidth(idx, stripWidth)
-        : -CIRCLE_SIZE;
+        : -CIRCLE_SIZE,
+    );
 
-    weekTranslate.value = delta > 0 ? stripWidth : -stripWidth;
+    weekTranslate.set(delta > 0 ? stripWidth : -stripWidth);
     setWeekOffset(newOffset);
-    weekTranslate.value = withTiming(0, {
-      duration: 260,
-      easing: Easing.out(Easing.cubic),
-    });
+    weekTranslate.set(
+      withTiming(0, {
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
   }
 
   return (

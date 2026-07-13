@@ -16,13 +16,6 @@
         "NSLocalNetworkUsageDescription": "Chrona connects to Chrona Helper on your Mac to show which app you're currently using.",
         "NSBonjourServices": [
           "_chrona._tcp"
-        ],
-        "AppGroupIdentifier": "group.com.aexomir.Chrona",
-        "NSSupportsLiveActivities": true
-      },
-      "entitlements": {
-        "com.apple.security.application-groups": [
-          "group.com.aexomir.Chrona"
         ]
       }
     },
@@ -41,9 +34,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "macos": {
-      "icon": "./assets/images/icon.png"
-    },
-    "watchos": {
       "icon": "./assets/images/icon.png"
     },
     "plugins": [
@@ -66,7 +56,8 @@
           "calendarPermission": "Chrona uses your calendar to suggest projects for upcoming events."
         }
       ],
-      "@bacons/apple-targets"
+      "@react-native-community/datetimepicker",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,

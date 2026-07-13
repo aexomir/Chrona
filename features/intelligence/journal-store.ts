@@ -150,7 +150,7 @@ let activeTitles: Record<string, Set<string>> = {};
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function _recordTitle(bundleId: string, title: string | null) {
+function _recordTitle(bundleId: string | null, title: string | null) {
   if (!bundleId || !title || title.trim() === "") return;
   if (!activeTitles[bundleId]) activeTitles[bundleId] = new Set();
   const set = activeTitles[bundleId];

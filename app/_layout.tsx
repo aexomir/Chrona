@@ -1,10 +1,8 @@
 import { ChronaSplash } from "@/components/chrona-splash";
 import { hasCompletedOnboarding } from "@/features/onboarding/onboarding-storage";
-import { useWatchIntegration } from "@/features/watch/use-watch-integration";
-import { useWidgetSync } from "@/features/watch/use-widget-sync";
 import { useBackgroundServices } from "@/hooks/use-background-services";
 import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
-import { DarkTheme, ThemeProvider } from "@react-navigation/native";
+import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
 import { useFonts } from "expo-font";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -27,8 +25,6 @@ export const unstable_settings = {
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Pacifico_400Regular });
 
-  useWidgetSync();
-  useWatchIntegration();
   useBackgroundServices();
 
   useEffect(() => {
