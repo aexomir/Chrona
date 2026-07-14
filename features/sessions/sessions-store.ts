@@ -17,6 +17,7 @@ export type Session = {
   duration: number; // seconds
   apps?: AppUsage[]; // optional, attached after AW query
   notes?: string;
+  auto?: boolean;
 };
 
 type SessionsState = {

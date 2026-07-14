@@ -1,3 +1,5 @@
+import { startAutoTracker, stopAutoTracker } from "@/features/auto-track/auto-tracker";
+import { useUntrackedStore } from "@/features/auto-track/untracked-store";
 import { startIdleHandler, stopIdleHandler } from "@/features/idle/idle-handler";
 import { startJournalTracker, stopJournalTracker } from "@/features/intelligence/journal-store";
 import { useProjects } from "@/features/projects/projects-store";
@@ -24,9 +26,12 @@ export function useBackgroundServices() {
   useEffect(() => {
     if (process.env.EXPO_OS !== "ios") return;
     const { start, stop } = useStreamStore.getState();
+    const { _startWatching, _stopWatching } = useUntrackedStore.getState();
     start();
+    startAutoTracker();
     startIdleHandler();
     startJournalTracker();
+    _startWatching();
 
     const unsubTimer = useTimerStore.subscribe(() => pushTimerState());
     const unsubStream = useStreamStore.subscribe((state, prev) => {
@@ -38,8 +43,10 @@ export function useBackgroundServices() {
     return () => {
       unsubTimer();
       unsubStream();
+      stopAutoTracker();
       stopIdleHandler();
       stopJournalTracker();
+      _stopWatching();
       stop();
     };
   }, []);

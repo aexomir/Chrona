@@ -9,6 +9,8 @@ type SettingsState = {
   setConstellationEnabled: (enabled: boolean) => void;
   developerMode: boolean;
   setDeveloperMode: (enabled: boolean) => void;
+  autoTrackMinDurationSec: number;
+  setAutoTrackMinDurationSec: (seconds: number) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -21,6 +23,8 @@ export const useSettingsStore = create<SettingsState>()(
         set({ constellationEnabled: enabled }),
       developerMode: false,
       setDeveloperMode: (enabled) => set({ developerMode: enabled }),
+      autoTrackMinDurationSec: 60,
+      setAutoTrackMinDurationSec: (seconds) => set({ autoTrackMinDurationSec: seconds }),
     }),
     {
       name: "settings",

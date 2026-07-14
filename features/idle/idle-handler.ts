@@ -19,6 +19,7 @@
 import type { ActivityEvent } from "@/modules/chrona-stream";
 import { emitter } from "@/modules/chrona-stream";
 
+import { forceStopForSystemIdle } from "@/features/auto-track/auto-tracker";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 
@@ -28,19 +29,25 @@ let eventSub: Sub | null = null;
 function handleEvent(event: ActivityEvent) {
   if (event.type !== "user_idle") return;
 
-  const { isTracking, title, projectId, startTimestamp } = useTimerStore.getState();
+  const { isTracking, isAutoTracked, title, projectId, startTimestamp } = useTimerStore.getState();
   if (!isTracking) return;
 
   const elapsedSeconds = startTimestamp
     ? Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000)
     : 0;
 
-  const sessionData = useTimerStore.getState().stopTimer();
-  if (sessionData) {
-    useSessionsStore.getState().addSession({
-      ...sessionData,
-      id: Date.now().toString(),
-    });
+  if (isAutoTracked) {
+    // Auto-tracked sessions must go through the auto-tracker's own save path
+    // so the session is tagged `auto: true` and gets its app breakdown attached.
+    forceStopForSystemIdle();
+  } else {
+    const sessionData = useTimerStore.getState().stopTimer();
+    if (sessionData) {
+      useSessionsStore.getState().addSession({
+        ...sessionData,
+        id: Date.now().toString(),
+      });
+    }
   }
 
   useTimerStore.getState().setInterruptedSession({

@@ -148,12 +148,21 @@ export default function SessionDetailScreen() {
             >
               {formatDuration(computedDuration)}
             </Text>
-            <Text className="text-zinc-500 text-sm mb-4">
-              {formatTimeRange(
-                draftStartTime.toISOString(),
-                draftEndTime.toISOString(),
+            <View className="flex-row items-center gap-1.5 mb-4">
+              <Text className="text-zinc-500 text-sm">
+                {formatTimeRange(
+                  draftStartTime.toISOString(),
+                  draftEndTime.toISOString(),
+                )}
+              </Text>
+              {session.auto && (
+                <Image
+                  source="sf:bolt.fill"
+                  style={{ width: 9, height: 9 }}
+                  tintColor="#71717a"
+                />
               )}
-            </Text>
+            </View>
             {selectedProj && (
               <View className="flex-row items-center gap-2">
                 <Image

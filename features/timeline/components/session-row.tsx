@@ -179,6 +179,13 @@ export const SessionRow = React.memo(function SessionRow({
                       {session.title}
                     </Text>
                     <View className="flex-row items-center gap-1.5">
+                      {session.auto && (
+                        <Image
+                          source="sf:bolt.fill"
+                          style={{ width: 9, height: 9, marginTop: 2 }}
+                          tintColor="#71717a"
+                        />
+                      )}
                       <View
                         className="rounded-full px-2 py-0.5 mt-0.5"
                         style={{ backgroundColor: theme.chip }}

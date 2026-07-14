@@ -1,3 +1,4 @@
+import { AppReviewSheet } from "@/components/app-review-sheet";
 import { ChronaSplash } from "@/components/chrona-splash";
 import { hasCompletedOnboarding } from "@/features/onboarding/onboarding-storage";
 import { useWidgetSync } from "@/features/widgets/use-widget-sync";
@@ -77,10 +78,23 @@ export default function RootLayout() {
                   },
                 }}
               />
+              <Stack.Screen
+                name="tracking-rules"
+                options={{
+                  title: "Tracking Rules",
+                  headerTransparent: true,
+                  headerTitleStyle: {
+                    color: "white",
+                    fontSize: 17,
+                    fontWeight: "600",
+                  },
+                }}
+              />
             </Stack>
             <StatusBar style="light" />
           </ThemeProvider>
         </KeyboardProvider>
+        <AppReviewSheet />
       </HeroUINativeProvider>
       <ChronaSplash />
     </GestureHandlerRootView>
