@@ -30,65 +30,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  metricsView: {
-    marginTop: 28,
-  },
-  chartView: {
-    marginTop: 24,
-  },
-  projectsView: {
-    marginTop: 24,
-  },
-  fixedHeader: {
-    height: 56,
-    paddingHorizontal: 16,
-    justifyContent: "center",
-  },
-  tabsList: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 20,
-    paddingVertical: 3,
-  },
-  tabsTrigger: {
-    flex: 1,
-    paddingVertical: 9,
-  },
-  tabsLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  compactTitleContainer: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  compactTitle: {
-    color: TextAlpha.primary,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  compactTitleSecondary: {
-    color: TextAlpha.tertiary,
-    fontWeight: "400",
-  },
-});
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
-
 export default function StatsScreen() {
   const [timeframe, setTimeframe] = useState<Timeframe>("week");
   const allSessions = useSessionsStore((s) => s.sessions);
@@ -126,7 +67,7 @@ export default function StatsScreen() {
   const headerHeight = insets.top + 56;
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1">
       <StaticAuraBackground />
       <ScrollShadow
         className="flex-1"
@@ -146,11 +87,11 @@ export default function StatsScreen() {
           {isEmpty ? (
             <StatsEmptyState timeframe={timeframe} />
           ) : (
-            <View style={styles.contentContainer}>
+            <View className="px-4 pb-10">
               <Animated.View
                 key={`metrics-${timeframe}`}
                 entering={FadeInDown.duration(380)}
-                style={styles.metricsView}
+                className="mt-7"
               >
                 <SectionHeader
                   title="Trends vs Last Period"
@@ -173,7 +114,7 @@ export default function StatsScreen() {
               <Animated.View
                 key={`chart-${timeframe}`}
                 entering={FadeInDown.delay(70).duration(380)}
-                style={styles.chartView}
+                className="mt-6"
               >
                 <SectionHeader
                   title="Most Active Hours"
@@ -186,7 +127,7 @@ export default function StatsScreen() {
                 <Animated.View
                   key={`projects-${timeframe}`}
                   entering={FadeInDown.delay(140).duration(380)}
-                  style={styles.projectsView}
+                  className="mt-6"
                 >
                   <SectionHeader
                     title="Project Distribution"
@@ -209,12 +150,7 @@ export default function StatsScreen() {
         </ScrollView>
       </ScrollShadow>
 
-      {/* Fixed header */}
-      <View
-        className="absolute top-0 left-0 right-0"
-        style={{ paddingTop: insets.top }}
-      >
-        {/* Separator line */}
+      <View className="absolute top-0 left-0 right-0" style={{ paddingTop: insets.top }}>
         <Animated.View
           pointerEvents="none"
           style={[
@@ -238,19 +174,27 @@ export default function StatsScreen() {
           />
         </Animated.View>
 
-        <View style={styles.fixedHeader}>
-          {/* Compact title */}
+        <View className="h-14 px-4 justify-center">
           <Animated.View
-            style={[styles.compactTitleContainer, compactAnimStyle]}
+            className="absolute inset-0 justify-center items-center"
+            style={compactAnimStyle}
             pointerEvents="none"
           >
-            <Text style={styles.compactTitle}>
+            <Text
+              className="text-[15px] font-semibold"
+              style={{ color: TextAlpha.primary }}
+            >
               Stats
-              <Text style={styles.compactTitleSecondary}> · {activeLabel}</Text>
+              <Text
+                className="font-normal"
+                style={{ color: TextAlpha.tertiary }}
+              >
+                {" "}
+                · {activeLabel}
+              </Text>
             </Text>
           </Animated.View>
 
-          {/* Timeframe pill selector */}
           <Animated.View style={pillAnimStyle}>
             <Tabs
               value={timeframe}
@@ -261,22 +205,20 @@ export default function StatsScreen() {
                 }
               }}
             >
-              <Tabs.List style={styles.tabsList}>
+              <Tabs.List className="bg-white/10 rounded-[20px] py-[3px]">
                 <Tabs.Indicator className="bg-white/90 rounded-[20px]" />
                 {TIMEFRAMES.map((tf) => (
                   <Tabs.Trigger
                     key={tf.value}
                     value={tf.value}
-                    style={styles.tabsTrigger}
+                    className="flex-1 py-[9px]"
                   >
                     {({ isSelected }) => (
                       <Tabs.Label
-                        style={[
-                          styles.tabsLabel,
-                          {
-                            color: isSelected ? "#000" : TextAlpha.tertiary,
-                          },
-                        ]}
+                        className="text-[13px] font-medium"
+                        style={{
+                          color: isSelected ? "#000" : TextAlpha.tertiary,
+                        }}
                       >
                         {tf.label}
                       </Tabs.Label>

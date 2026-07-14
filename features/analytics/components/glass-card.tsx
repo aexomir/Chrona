@@ -3,22 +3,14 @@ import { StyleSheet, View } from "react-native";
 
 export function GlassCard({
   children,
-  style,
+  className,
 }: {
   children: React.ReactNode;
-  style?: object;
+  className?: string;
 }) {
   return (
     <View
-      style={[
-        {
-          overflow: "hidden",
-          borderRadius: 20,
-          borderWidth: 0.5,
-          borderColor: "rgba(255,255,255,0.10)",
-        },
-        style,
-      ]}
+      className={`overflow-hidden rounded-[20px] border-[0.5px] border-white/10 ${className ?? ""}`}
     >
       <BlurView
         intensity={55}

@@ -1,15 +1,25 @@
 import type { Project } from "@/constants/projects";
-import type { AIComponentSpec } from "@/features/search/component-spec";
-import { parseQueryTimeframe, type SearchResult } from "@/features/search/inference";
-import { buildFallbackSearchSpecs, buildSearchSpecs } from "@/features/search/search-utils";
+import type { SearchResultSpec } from "@/features/search/component-spec";
+import {
+  parseQueryTimeframe,
+  type SearchResult,
+} from "@/features/search/search-result";
+import {
+  isProjectIntent,
+  isStreakIntent,
+} from "@/features/search/query-intent";
+import {
+  buildFallbackSearchSpecs,
+  buildSearchSpecs,
+} from "@/features/search/search-utils";
 import type { Session } from "@/features/sessions/sessions-store";
 import { useState } from "react";
 
+const SEARCH_DELAY_MS = 10;
+
 export interface UseSearchQueryReturn {
-  isReady: boolean;
   isSearching: boolean;
-  specs: AIComponentSpec[] | null;
-  lastQuery: string;
+  specs: SearchResultSpec[] | null;
   search(
     query: string,
     allSessions: Session[],
@@ -40,13 +50,9 @@ function analyzeQuery(query: string): SearchResult {
     lowerQuery.includes("when") ||
     lowerQuery.includes("pattern");
 
-  const askingAboutProjects =
-    lowerQuery.includes("project") || lowerQuery.includes("which");
+  const askingAboutProjects = isProjectIntent(lowerQuery);
 
-  const askingAboutStreak =
-    lowerQuery.includes("streak") ||
-    lowerQuery.includes("consistency") ||
-    lowerQuery.includes("consecutive");
+  const askingAboutStreak = isStreakIntent(lowerQuery);
 
   // Default: show timeline and metrics
   const showTimeline =
@@ -79,8 +85,7 @@ function analyzeQuery(query: string): SearchResult {
 
 export function useSearchQuery(): UseSearchQueryReturn {
   const [isSearching, setIsSearching] = useState(false);
-  const [specs, setSpecs] = useState<AIComponentSpec[] | null>(null);
-  const [lastQuery, setLastQuery] = useState("");
+  const [specs, setSpecs] = useState<SearchResultSpec[] | null>(null);
 
   const search = async (
     query: string,
@@ -90,12 +95,11 @@ export function useSearchQuery(): UseSearchQueryReturn {
     if (isSearching || !query.trim()) return;
 
     setIsSearching(true);
-    setLastQuery(query);
     const now = new Date();
     const queryTimeframe = parseQueryTimeframe(query);
 
     // Simulate brief processing delay for UX (optional)
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, SEARCH_DELAY_MS));
 
     try {
       // Analyze query using rule-based logic
@@ -127,14 +131,11 @@ export function useSearchQuery(): UseSearchQueryReturn {
 
   const reset = () => {
     setSpecs(null);
-    setLastQuery("");
   };
 
   return {
-    isReady: true, // Always ready—no model to download
     isSearching,
     specs,
-    lastQuery,
     search,
     reset,
   };

@@ -5,7 +5,9 @@ import {
   getHourBuckets,
   computeStreak,
   formatFocusTime,
+  formatHourLabel,
 } from "@/features/analytics/stats-utils";
+import { isProjectIntent, isStatsIntent, isStreakIntent } from "@/features/search/query-intent";
 
 /**
  * Generate contextual headline based on query and actual data
@@ -21,19 +23,13 @@ export function generateContextualHeadline(
   const totalFormatted = formatFocusTime(totalSeconds);
 
   // Detect query intent
-  const isStatsQuery =
-    lowerQuery.includes("stat") ||
-    lowerQuery.includes("how much") ||
-    lowerQuery.includes("total");
+  const isStatsQuery = isStatsIntent(lowerQuery);
   const isTimeQuery =
     lowerQuery.includes("when") ||
     lowerQuery.includes("time") ||
     lowerQuery.includes("hour");
-  const isStreakQuery =
-    lowerQuery.includes("streak") ||
-    lowerQuery.includes("consistency") ||
-    lowerQuery.includes("consecutive");
-  const isProjectQuery = lowerQuery.includes("project") || lowerQuery.includes("which");
+  const isStreakQuery = isStreakIntent(lowerQuery);
+  const isProjectQuery = isProjectIntent(lowerQuery);
   const isTodayQuery = lowerQuery.includes("today");
   const isWeekQuery = lowerQuery.includes("week") || timeframe === "week";
 
@@ -70,10 +66,7 @@ export function generateContextualHeadline(
   if (isTimeQuery) {
     const hourBuckets = getHourBuckets(sessions);
     const peakHourIdx = hourBuckets.indexOf(Math.max(...hourBuckets));
-    const peakHourStr =
-      peakHourIdx < 12
-        ? `${peakHourIdx || 12} AM`
-        : `${peakHourIdx === 12 ? 12 : peakHourIdx - 12} PM`;
+    const peakHourStr = formatHourLabel(peakHourIdx);
 
     return {
       headline: `Your peak focus time is around ${peakHourStr}`,
@@ -92,7 +85,7 @@ export function generateContextualHeadline(
     }
     return {
       headline: `🔥 ${streak.current}-day streak going`,
-      tip: `Best: ${streak.best} days`,
+      tip: streak.ongoing ? "Keep it going today" : "Get back on track to extend it",
     };
   }
 
@@ -127,7 +120,7 @@ export function generateContextualHeadline(
 
   // Generic fallback
   return {
-    headline: `Here's your ${timeframe === "day" ? "today" : timeframe} focus summary`,
+    headline: `Here's your ${timeframe} focus summary`,
     tip: `Total: ${totalFormatted} across ${sessions.length} session${sessions.length !== 1 ? "s" : ""}`,
   };
 }
@@ -139,14 +132,10 @@ export function generateFollowUpSuggestions(
   query: string,
 ): { text: string; icon: string }[] {
   const lowerQuery = query.toLowerCase();
-  const suggestions: Array<{ text: string; icon: string }> = [];
+  const suggestions: { text: string; icon: string }[] = [];
 
   // If they asked about stats, suggest breakdown
-  if (
-    lowerQuery.includes("stat") ||
-    lowerQuery.includes("how much") ||
-    lowerQuery.includes("total")
-  ) {
+  if (isStatsIntent(lowerQuery)) {
     suggestions.push({
       text: "See my projects breakdown",
       icon: "sf:folder.fill",
@@ -173,7 +162,7 @@ export function generateFollowUpSuggestions(
     });
   }
   // If they asked about projects, suggest time patterns and stats
-  else if (lowerQuery.includes("project") || lowerQuery.includes("which")) {
+  else if (isProjectIntent(lowerQuery)) {
     suggestions.push({
       text: "When do I work most?",
       icon: "sf:clock.fill",
@@ -184,11 +173,7 @@ export function generateFollowUpSuggestions(
     });
   }
   // If they asked about streak, suggest stats and projects
-  else if (
-    lowerQuery.includes("streak") ||
-    lowerQuery.includes("consistency") ||
-    lowerQuery.includes("consecutive")
-  ) {
+  else if (isStreakIntent(lowerQuery)) {
     suggestions.push({
       text: "Show me this week stats",
       icon: "sf:chart.bar.fill",

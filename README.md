@@ -48,8 +48,7 @@ app/
 ├── projects.tsx             # Project management
 ├── calendar-settings.tsx    # Calendar integration settings
 ├── settings.tsx             # App settings screen
-├── tracking-rules.tsx       # Tracking rules
-├── untracked.tsx            # Untracked session review
+├── tracking-rules.tsx       # Auto-tracking rules (app → project mapping)
 └── (tabs)/
     ├── _layout.tsx          # NativeTabs (5 tabs, minimizeBehavior="onScrollDown")
     ├── index/index.tsx      # Dashboard (FocusRing, streak badge, recent sessions)
@@ -62,6 +61,7 @@ app/
 features/                    # Feature-colocated modules (stores, utils, components)
 ├── activity-watch/          # AW API client, suggestions store, streaming transport
 ├── analytics/               # Stats utils, trending insights, session constellation
+├── auto-track/              # Tracking rules store, matcher, auto-tracker orchestrator
 ├── aurora/                  # Shader background, atmosphere detection, theme hook
 ├── calendar/                # Calendar store, utilities, missed event detection
 ├── projects/                # Projects store
@@ -71,7 +71,6 @@ features/                    # Feature-colocated modules (stores, utils, compone
 ├── settings/                # Settings store
 ├── timeline/                # Timeline utilities + components
 ├── timer/                   # Focus ring, timer bar, timer store
-├── tracking-rules/          # Tracking rules store
 └── watch/                   # Watch sync hooks
 
 components/

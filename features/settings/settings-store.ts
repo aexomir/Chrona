@@ -2,8 +2,6 @@ import { mmkvStorage } from "@/storage";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type TimerStartMode = "a" | "b" | "c";
-
 type SettingsState = {
   auroraEnabled: boolean;
   setAuroraEnabled: (enabled: boolean) => void;
@@ -11,8 +9,6 @@ type SettingsState = {
   setConstellationEnabled: (enabled: boolean) => void;
   developerMode: boolean;
   setDeveloperMode: (enabled: boolean) => void;
-  timerStartMode: TimerStartMode;
-  setTimerStartMode: (mode: TimerStartMode) => void;
   autoTrackMinDurationSec: number;
   setAutoTrackMinDurationSec: (seconds: number) => void;
 };
@@ -27,11 +23,8 @@ export const useSettingsStore = create<SettingsState>()(
         set({ constellationEnabled: enabled }),
       developerMode: false,
       setDeveloperMode: (enabled) => set({ developerMode: enabled }),
-      timerStartMode: "a",
-      setTimerStartMode: (mode) => set({ timerStartMode: mode }),
       autoTrackMinDurationSec: 60,
-      setAutoTrackMinDurationSec: (seconds) =>
-        set({ autoTrackMinDurationSec: seconds }),
+      setAutoTrackMinDurationSec: (seconds) => set({ autoTrackMinDurationSec: seconds }),
     }),
     {
       name: "settings",

@@ -13,6 +13,15 @@ export const TIMEFRAMES: { label: string; value: Timeframe }[] = [
   { label: "All", value: "all" },
 ];
 
+export const CHART_MAX_HEIGHT = 72;
+
+export const HOUR_AXIS_LABELS = [
+  { h: 0, label: "12am" },
+  { h: 6, label: "6am" },
+  { h: 12, label: "12pm" },
+  { h: 18, label: "6pm" },
+] as const;
+
 // ─── Data helpers ─────────────────────────────────────────────────────────────
 
 export function getRange(tf: Timeframe, now: Date): { start: Date; end: Date } {
@@ -110,6 +119,10 @@ export function getDelta(
     dir: pct > 0 ? "up" : pct < 0 ? "down" : "same",
     pct: Math.abs(pct),
   };
+}
+
+export function formatHourLabel(hour: number): string {
+  return hour < 12 ? `${hour || 12} AM` : `${hour === 12 ? 12 : hour - 12} PM`;
 }
 
 export function getHourBuckets(sessions: Session[]): number[] {

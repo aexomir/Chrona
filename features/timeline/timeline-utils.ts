@@ -1,6 +1,37 @@
+import type { CalendarEvent } from "@/features/calendar/calendar";
+import type { Session } from "@/features/sessions/sessions-store";
 import { Easing } from "react-native-reanimated";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type BaseItem =
+  | { kind: "session"; session: Session; startTime: number }
+  | { kind: "live"; startTime: number }
+  | { kind: "calendar"; event: CalendarEvent; startTime: number };
+
+export type AugmentedItem =
+  | {
+      kind: "session";
+      session: Session;
+      startTime: number;
+      index: number;
+      overlappingEvents: CalendarEvent[];
+    }
+  | { kind: "live"; startTime: number; index: number }
+  | { kind: "gap"; durationMs: number }
+  | {
+      kind: "calendar";
+      event: CalendarEvent;
+      startTime: number;
+      index: number;
+    };
+
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Sessions separated by more than this get a gap separator between them. */
+export const GAP_THRESHOLD_MS = 20 * 60 * 1000;
+
+export const EMPTY_STATE_HOURS = [7, 9, 11, 13, 15, 17, 19, 21];
 
 export const MONTHS = [
   "Jan",
@@ -67,6 +98,31 @@ export function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+export function formatDateTime(date: Date): string {
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+export function formatTimeRange(startISO: string, endISO: string): string {
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  const startStr = start.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const endStr = end.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${startStr} – ${endStr}`;
 }
 
 export function formatGapDuration(ms: number): string {

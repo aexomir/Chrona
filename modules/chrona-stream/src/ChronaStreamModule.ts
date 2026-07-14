@@ -1,8 +1,12 @@
-import { EventEmitter, requireNativeModule } from 'expo';
+import { requireNativeModule } from 'expo';
+import { NativeModule } from 'expo-modules-core';
 
 import type { ActivityEvent, StatusChangedPayload } from './ChronaStream.types';
 
-declare class ChronaStreamNativeModule {
+declare class ChronaStreamNativeModule extends NativeModule<{
+  onStatusChanged: (payload: StatusChangedPayload) => void;
+  onEvent: (event: ActivityEvent) => void;
+}> {
   /** Start Bonjour discovery and connect to the first Chrona Helper found. */
   start(): void;
   /** Cancel discovery and disconnect. */
@@ -18,15 +22,9 @@ declare class ChronaStreamNativeModule {
     timerTitle: string,
     startTimestamp: string
   ): void;
-  // Required by EventEmitter
-  addListener(eventName: string, listener: (...args: unknown[]) => void): void;
-  removeListeners(count: number): void;
 }
 
 const native = requireNativeModule<ChronaStreamNativeModule>('ChronaStream');
-export const emitter = new EventEmitter<{
-  onStatusChanged: [StatusChangedPayload];
-  onEvent: [ActivityEvent];
-}>(native);
+export const emitter = native;
 
 export default native;

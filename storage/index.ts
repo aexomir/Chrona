@@ -1,9 +1,9 @@
 import { createMMKV } from "react-native-mmkv";
-import type { StateStorage } from "zustand/middleware";
+import type { PersistStorage } from "zustand/middleware";
 
 export const storage = createMMKV();
 
-export const mmkvStorage: StateStorage = {
+export const mmkvStorage: PersistStorage<unknown> = {
   getItem: (name) => {
     const value = storage.getString(name);
     return value ? JSON.parse(value) : null;
@@ -12,6 +12,6 @@ export const mmkvStorage: StateStorage = {
     storage.set(name, JSON.stringify(value));
   },
   removeItem: (name) => {
-    storage.delete(name);
+    storage.remove(name);
   },
 };

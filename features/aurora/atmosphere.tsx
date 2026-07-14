@@ -3,8 +3,8 @@ import { detectAtmosphere } from "@/features/aurora/atmosphereDetector";
 import { AURORA_SKSL, toFloat3 } from "@/features/aurora/atmosphereShader";
 import { Session } from "@/features/sessions/sessions-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
-import { scrubProgress } from "@/features/timeline/playback";
 import { Canvas, Fill, Shader, Skia } from "@shopify/react-native-skia";
+import { scrubProgress } from "@/lib/scrub-playback";
 import { useWindowDimensions, View } from "react-native";
 import {
   interpolate,

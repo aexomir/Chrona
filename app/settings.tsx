@@ -1,95 +1,19 @@
 import { useRef } from "react";
+import { SectionLabel } from "@/components/section-label";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
+import { Neutral, Semantic } from "@/constants/theme";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
-import { useSettingsStore, type TimerStartMode } from "@/features/settings/settings-store";
+import { useSettingsStore } from "@/features/settings/settings-store";
 import { useStreamStore } from "@/features/stream/stream-store";
 import type { ConnectionStatus } from "@/modules/chrona-stream";
 import { Image } from "expo-image";
-import { Stack, useRouter } from "expo-router";
-import { PortalHost, Select, Switch } from "heroui-native";
+import { router, Stack } from "expo-router";
+import { ListGroup, PortalHost, Select, Separator, Switch } from "heroui-native";
 
 import { Pressable, StyleSheet, Text, View } from "react-native";
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <Text className="text-xs text-neutral-500 uppercase tracking-widest mb-3 ml-0">
-      {children}
-    </Text>
-  );
-}
-
-function ValueSuffix({ value }: { value: string }) {
-  return (
-    <View className="flex-row items-center gap-1">
-      <Text className="text-neutral-500 text-sm">{value}</Text>
-      <Image
-        source="sf:chevron.right"
-        style={styles.chevron}
-        tintColor="#636366"
-      />
-    </View>
-  );
-}
-
-function ChevronSuffix() {
-  return (
-    <Image
-      source="sf:chevron.right"
-      style={styles.chevron}
-      tintColor="#636366"
-    />
-  );
-}
-
-function SettingsRow({
-  label,
-  onPress,
-  onLongPress,
-  suffix,
-  children,
-}: {
-  label: string;
-  onPress?: () => void;
-  onLongPress?: () => void;
-  suffix?: React.ReactNode;
-  children?: React.ReactNode;
-}) {
-  const content = (
-    <View
-      className="flex-row items-center justify-between py-4 px-5"
-      style={{ backgroundColor: "transparent" }}
-    >
-      <Text className="text-white text-base font-medium flex-1">{label}</Text>
-      {suffix && <View>{suffix}</View>}
-      {children}
-    </View>
-  );
-
-  if (onPress || onLongPress) {
-    return <Pressable onPress={onPress} onLongPress={onLongPress}>{content}</Pressable>;
-  }
-  return content;
-}
-
-function SettingsCard({ children }: { children: React.ReactNode }) {
-  const theme = useAuroraTheme();
-  return (
-    <View
-      style={{
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.cardBorder,
-        backgroundColor: theme.card,
-        overflow: "hidden",
-      }}
-    >
-      {children}
-    </View>
-  );
-}
 
 type SelectOption = { value: string; label: string };
 
@@ -102,34 +26,51 @@ const MIN_DURATION_OPTIONS: SelectOption[] = [
 ];
 
 const MAC_STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string }> = {
-  idle: { label: "Off", color: "#52525b" },
+  idle: { label: "Off", color: Neutral.z600 },
   scanning: { label: "Searching…", color: "#d97706" },
   connecting: { label: "Connecting…", color: "#d97706" },
-  connected: { label: "Connected", color: "#22c55e" },
-  disconnected: { label: "Not Found", color: "#52525b" },
+  connected: { label: "Connected", color: Semantic.success },
+  disconnected: { label: "Not Found", color: Neutral.z600 },
 };
+
+const DEV_MODE_TAP_THRESHOLD = 5;
+const DEV_MODE_TAP_WINDOW_MS = 2000;
+
+const styles = StyleSheet.create({
+  chevron: {
+    width: 13,
+    height: 13,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  statusText: {
+    fontSize: 14,
+  },
+  container: {
+    flex: 1,
+  },
+});
+
+function ValueChevronSuffix({ value }: { value: string }) {
+  return (
+    <ListGroup.ItemSuffix className="flex-row items-center gap-1">
+      <Text className="text-neutral-500 text-sm">{value}</Text>
+      <Image source="sf:chevron.right" style={styles.chevron} tintColor="#636366" />
+    </ListGroup.ItemSuffix>
+  );
+}
 
 function MacHelperStatus({ status }: { status: ConnectionStatus }) {
   const { label, color } = MAC_STATUS_CONFIG[status];
   return (
-    <View className="flex-row items-center gap-2">
-      <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }} />
-      <Text style={{ color, fontSize: 14 }}>{label}</Text>
+    <ListGroup.ItemSuffix className="flex-row items-center gap-2">
+      <View style={[styles.statusDot, { backgroundColor: color }]} />
+      <Text style={[styles.statusText, { color }]}>{label}</Text>
       <Image source="sf:arrow.clockwise" style={styles.chevron} tintColor="#636366" />
-    </View>
-  );
-}
-
-function SettingsDivider() {
-  const theme = useAuroraTheme();
-  return (
-    <View
-      style={{
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: theme.cardBorder,
-        marginLeft: 20,
-      }}
-    />
+    </ListGroup.ItemSuffix>
   );
 }
 
@@ -143,9 +84,9 @@ function formatEventTime(ts: number): string {
 }
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const theme = useAuroraTheme();
-  const { permissionStatus, isEnabled } = useCalendarStore();
+  const permissionStatus = useCalendarStore((s) => s.permissionStatus);
+  const isEnabled = useCalendarStore((s) => s.isEnabled);
   const streamStatus = useStreamStore((s) => s.status);
   const pathSatisfied = useStreamStore((s) => s.pathSatisfied);
   const currentEvent = useStreamStore((s) => s.currentEvent);
@@ -158,12 +99,15 @@ export default function SettingsScreen() {
     setAuroraEnabled,
     constellationEnabled,
     setConstellationEnabled,
-    timerStartMode,
-    autoTrackMinDurationSec,
-    setAutoTrackMinDurationSec,
     developerMode,
     setDeveloperMode,
+    autoTrackMinDurationSec,
+    setAutoTrackMinDurationSec,
   } = useSettingsStore();
+
+  const currentMinDuration =
+    MIN_DURATION_OPTIONS.find((o) => o.value === autoTrackMinDurationSec.toString()) ??
+    MIN_DURATION_OPTIONS[2];
 
   const devTapCount = useRef(0);
   const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -171,26 +115,18 @@ export default function SettingsScreen() {
   const handleVersionTap = () => {
     devTapCount.current += 1;
     if (devTapTimer.current) clearTimeout(devTapTimer.current);
-    if (devTapCount.current >= 5) {
+    if (devTapCount.current >= DEV_MODE_TAP_THRESHOLD) {
       devTapCount.current = 0;
       setDeveloperMode(!developerMode);
       return;
     }
-    devTapTimer.current = setTimeout(() => { devTapCount.current = 0; }, 2000);
-  };
-
-  const currentMinDuration =
-    MIN_DURATION_OPTIONS.find((o) => o.value === autoTrackMinDurationSec.toString()) ??
-    MIN_DURATION_OPTIONS[2];
-
-  const TIMER_MODE_LABELS: Record<TimerStartMode, string> = {
-    a: "Conversational",
-    b: "Hold to Start",
-    c: "Project First",
+    devTapTimer.current = setTimeout(() => {
+      devTapCount.current = 0;
+    }, DEV_MODE_TAP_WINDOW_MS);
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={[styles.container, { backgroundColor: theme.modalSheet }]}>
       <StaticAuraBackground />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button
@@ -203,61 +139,65 @@ export default function SettingsScreen() {
       >
         {/* APPEARANCE */}
         <SectionLabel>Appearance</SectionLabel>
-        <SettingsCard>
-          <SettingsRow
-            label="Aurora Theme"
-            suffix={
+        <ListGroup className={theme.listGroupClassName}>
+          <ListGroup.Item>
+            <ListGroup.ItemContent>
+              <ListGroup.ItemTitle>Aurora Theme</ListGroup.ItemTitle>
+            </ListGroup.ItemContent>
+            <ListGroup.ItemSuffix>
               <Switch
                 isSelected={auroraEnabled}
                 onSelectedChange={setAuroraEnabled}
               />
-            }
-          />
-          <SettingsDivider />
-          <SettingsRow
-            label="Constellation"
-            suffix={
+            </ListGroup.ItemSuffix>
+          </ListGroup.Item>
+          <Separator className="mx-4" />
+          <ListGroup.Item>
+            <ListGroup.ItemContent>
+              <ListGroup.ItemTitle>Constellation</ListGroup.ItemTitle>
+            </ListGroup.ItemContent>
+            <ListGroup.ItemSuffix>
               <Switch
                 isSelected={constellationEnabled}
                 onSelectedChange={setConstellationEnabled}
               />
-            }
-          />
-          <SettingsDivider />
-          <SettingsRow
-            label="Timer Style"
-            onPress={() => router.push("/timer-style")}
-            suffix={<ValueSuffix value={TIMER_MODE_LABELS[timerStartMode]} />}
-          />
-        </SettingsCard>
+            </ListGroup.ItemSuffix>
+          </ListGroup.Item>
+        </ListGroup>
 
         {/* INTEGRATIONS */}
         <View className="mt-10">
           <SectionLabel>Integrations</SectionLabel>
-          <SettingsCard>
-            <SettingsRow
-              label="Mac Helper"
+          <ListGroup className={theme.listGroupClassName}>
+            <ListGroup.Item
               onPress={reconnect}
-              onLongPress={() => { clearEndpointCache(); reconnect(); }}
-              suffix={<MacHelperStatus status={streamStatus} />}
-            />
-            <SettingsDivider />
-            <SettingsRow
-              label="Calendar"
-              onPress={() => router.push("/calendar-settings")}
-              suffix={
-                <ValueSuffix
-                  value={calendarStatusLabel(permissionStatus, isEnabled)}
-                />
-              }
-            />
-            <SettingsDivider />
-            <SettingsRow
-              label="Tracking Rules"
-              onPress={() => router.push("/tracking-rules")}
-              suffix={<ChevronSuffix />}
-            />
-            <SettingsDivider />
+              onLongPress={() => {
+                clearEndpointCache();
+                reconnect();
+              }}
+            >
+              <ListGroup.ItemContent>
+                <ListGroup.ItemTitle>Mac Helper</ListGroup.ItemTitle>
+              </ListGroup.ItemContent>
+              <MacHelperStatus status={streamStatus} />
+            </ListGroup.Item>
+            <Separator className="mx-4" />
+            <ListGroup.Item onPress={() => router.push("/calendar-settings")}>
+              <ListGroup.ItemContent>
+                <ListGroup.ItemTitle>Calendar</ListGroup.ItemTitle>
+              </ListGroup.ItemContent>
+              <ValueChevronSuffix
+                value={calendarStatusLabel(permissionStatus, isEnabled)}
+              />
+            </ListGroup.Item>
+            <Separator className="mx-4" />
+            <ListGroup.Item onPress={() => router.push("/tracking-rules")}>
+              <ListGroup.ItemContent>
+                <ListGroup.ItemTitle>Tracking Rules</ListGroup.ItemTitle>
+              </ListGroup.ItemContent>
+              <ListGroup.ItemSuffix />
+            </ListGroup.Item>
+            <Separator className="mx-4" />
             <Select
               value={currentMinDuration}
               onValueChange={(v) => {
@@ -285,7 +225,7 @@ export default function SettingsScreen() {
                   presentation="popover"
                   width="trigger"
                   className="border border-white/10 shadow-none"
-                  style={{ backgroundColor: "#18181b" }}
+                  style={{ backgroundColor: Neutral.z900 }}
                 >
                   <Select.ListLabel>Min. Session Length</Select.ListLabel>
                   {MIN_DURATION_OPTIONS.map((opt) => (
@@ -297,79 +237,90 @@ export default function SettingsScreen() {
                 </Select.Content>
               </Select.Portal>
             </Select>
-          </SettingsCard>
+          </ListGroup>
         </View>
 
         {/* DATA */}
         <View className="mt-10">
           <SectionLabel>Data</SectionLabel>
-          <SettingsCard>
-            <SettingsRow
-              label="Projects"
-              onPress={() => router.push("/projects")}
-              suffix={<ChevronSuffix />}
-            />
-          </SettingsCard>
+          <ListGroup className={theme.listGroupClassName}>
+            <ListGroup.Item onPress={() => router.push("/projects")}>
+              <ListGroup.ItemContent>
+                <ListGroup.ItemTitle>Projects</ListGroup.ItemTitle>
+              </ListGroup.ItemContent>
+              <ListGroup.ItemSuffix />
+            </ListGroup.Item>
+          </ListGroup>
         </View>
 
         {/* DBG */}
         {developerMode && (
           <View className="mt-10">
             <SectionLabel>DBG</SectionLabel>
-            <SettingsCard>
-              <SettingsRow
-                label="Status"
-                suffix={
+            <ListGroup className={theme.listGroupClassName}>
+              <ListGroup.Item>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Status</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix>
                   <Text className="text-neutral-400 text-sm font-mono">{streamStatus}</Text>
-                }
-              />
-              <SettingsDivider />
-              <SettingsRow
-                label="Network"
-                suffix={
+                </ListGroup.ItemSuffix>
+              </ListGroup.Item>
+              <Separator className="mx-4" />
+              <ListGroup.Item>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Network</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix>
                   <Text className={`text-sm font-mono ${pathSatisfied ? "text-green-500" : "text-neutral-500"}`}>
                     {pathSatisfied ? "satisfied" : "unsatisfied"}
                   </Text>
-                }
-              />
-              <SettingsDivider />
-              <SettingsRow
-                label="Last Received"
-                suffix={
+                </ListGroup.ItemSuffix>
+              </ListGroup.Item>
+              <Separator className="mx-4" />
+              <ListGroup.Item>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Last Received</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix>
                   <Text className="text-neutral-400 text-sm font-mono">{formatTimestamp(lastEventTime)}</Text>
-                }
-              />
-              <SettingsDivider />
-              <SettingsRow
-                label="Last Heartbeat"
-                suffix={
+                </ListGroup.ItemSuffix>
+              </ListGroup.Item>
+              <Separator className="mx-4" />
+              <ListGroup.Item>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Last Heartbeat</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix>
                   <Text className="text-neutral-400 text-sm font-mono">{formatTimestamp(lastHeartbeat)}</Text>
-                }
-              />
+                </ListGroup.ItemSuffix>
+              </ListGroup.Item>
               {currentEvent && (
                 <>
-                  <SettingsDivider />
-                  <View className="py-3 px-5">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-white text-sm font-medium flex-1" numberOfLines={1}>
+                  <Separator className="mx-4" />
+                  <ListGroup.Item>
+                    <ListGroup.ItemContent>
+                      <ListGroup.ItemTitle numberOfLines={1}>
                         {currentEvent.appName}
+                      </ListGroup.ItemTitle>
+                      {currentEvent.windowTitle ? (
+                        <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
+                          {currentEvent.windowTitle}
+                        </Text>
+                      ) : null}
+                      <Text className="text-neutral-600 text-xs font-mono mt-1" numberOfLines={1}>
+                        {currentEvent.bundleId}
                       </Text>
-                      <Text className="text-neutral-500 text-xs font-mono ml-3">
+                    </ListGroup.ItemContent>
+                    <ListGroup.ItemSuffix>
+                      <Text className="text-neutral-500 text-xs font-mono">
                         {formatEventTime(currentEvent.timestamp)}
                       </Text>
-                    </View>
-                    {currentEvent.windowTitle ? (
-                      <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={1}>
-                        {currentEvent.windowTitle}
-                      </Text>
-                    ) : null}
-                    <Text className="text-neutral-600 text-xs font-mono mt-1" numberOfLines={1}>
-                      {currentEvent.bundleId}
-                    </Text>
-                  </View>
+                    </ListGroup.ItemSuffix>
+                  </ListGroup.Item>
                 </>
               )}
-            </SettingsCard>
+            </ListGroup>
           </View>
         )}
 
@@ -382,10 +333,3 @@ export default function SettingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  chevron: {
-    width: 13,
-    height: 13,
-  },
-});

@@ -9,6 +9,7 @@
 
 import Cocoa
 import ApplicationServices
+import ServiceManagement
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -22,6 +23,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Remove from the Dock — this app lives exclusively in the menu bar.
         NSApp.setActivationPolicy(.accessory)
+
+        registerAsLoginItemIfNeeded()
 
         statusBar    = StatusBarController()
         server       = BonjourServer()
@@ -68,5 +71,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         // Never quit when a window closes — there are no windows.
         false
+    }
+
+    // MARK: - Login item
+
+    /// Registers this app to launch at login. Best-effort — a failure here
+    /// should never block launch or surface an alert; the user can still
+    /// toggle it manually from the menu bar (see StatusBarController).
+    private func registerAsLoginItemIfNeeded() {
+        let service = SMAppService.mainApp
+        guard service.status != .enabled else { return }
+        do {
+            try service.register()
+        } catch {
+            print("SMAppService registration failed: \(error)")
+        }
     }
 }

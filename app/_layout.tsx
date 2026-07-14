@@ -1,10 +1,11 @@
+import { AppReviewSheet } from "@/components/app-review-sheet";
 import { ChronaSplash } from "@/components/chrona-splash";
 import { hasCompletedOnboarding } from "@/features/onboarding/onboarding-storage";
-import { useWatchIntegration } from "@/features/watch/use-watch-integration";
-import { useWidgetSync } from "@/features/watch/use-widget-sync";
+import { useWidgetSync } from "@/features/widgets/use-widget-sync";
 import { useBackgroundServices } from "@/hooks/use-background-services";
 import { Pacifico_400Regular } from "@expo-google-fonts/pacifico";
-import { DarkTheme, ThemeProvider } from "@react-navigation/native";
+import "@/widgets";
+import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
 import { useFonts } from "expo-font";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -13,9 +14,12 @@ import { HeroUINativeProvider } from "heroui-native";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { Uniwind } from "uniwind";
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
+
+Uniwind.setTheme("dark");
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -25,7 +29,6 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Pacifico_400Regular });
 
   useWidgetSync();
-  useWatchIntegration();
   useBackgroundServices();
 
   useEffect(() => {
@@ -60,10 +63,6 @@ export default function RootLayout() {
                 options={{ presentation: "modal", headerShown: false }}
               />
               <Stack.Screen
-                name="timer-style"
-                options={{ presentation: "modal", headerShown: false }}
-              />
-              <Stack.Screen
                 name="onboarding"
                 options={{ headerShown: false, gestureEnabled: false }}
               />
@@ -95,6 +94,7 @@ export default function RootLayout() {
             <StatusBar style="light" />
           </ThemeProvider>
         </KeyboardProvider>
+        <AppReviewSheet />
       </HeroUINativeProvider>
       <ChronaSplash />
     </GestureHandlerRootView>

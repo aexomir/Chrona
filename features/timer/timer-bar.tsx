@@ -1,28 +1,21 @@
-import { useCalendarStore } from "@/features/calendar/calendar-store";
+import { Neutral } from "@/constants/theme";
+import {
+  CALENDAR_REFRESH_INTERVAL_MS,
+  useCalendarStore,
+} from "@/features/calendar/calendar-store";
+import { usePendingReviewStore } from "@/features/auto-track/pending-review-store";
+import { useUntrackedStore } from "@/features/auto-track/untracked-store";
+import { getAppsForWindow } from "@/features/intelligence/journal-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
-import { useUntrackedStore } from "@/features/auto-track/untracked-store";
-import { useTrackingRulesStore } from "@/features/auto-track/tracking-rules-store";
-import { usePatternStore, computeRuleSuggestion, computeCompanionBundleIds } from "@/features/intelligence/pattern-store";
-import { getAppsForWindow } from "@/features/intelligence/journal-store";
-import { Neutral } from "@/constants/theme";
+import { formatTime } from "@/features/timer/timer-utils";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 const INTERRUPTED_SESSION_TTL_MS = 30 * 60 * 1000;
-
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
 
 export function TimerBar() {
   const isTracking = useTimerStore(s => s.isTracking);
@@ -42,12 +35,6 @@ export function TimerBar() {
   const projects = useProjects(s => s.projects);
   const pendingHint = useUntrackedStore(s => s.pendingHint);
   const dismissHint = useUntrackedStore(s => s.dismissHint);
-  const patternCounts = usePatternStore(s => s.counts);
-  const patternNames = usePatternStore(s => s.nameIndex);
-  const patternDismissed = usePatternStore(s => s.dismissed);
-  const dismissSuggestion = usePatternStore(s => s.dismiss);
-  const rules = useTrackingRulesStore(s => s.rules);
-  const addRule = useTrackingRulesStore(s => s.addRule);
   const [elapsed, setElapsed] = useState(0);
   const [calendarSuggestion, setCalendarSuggestion] = useState<{
     eventTitle: string;
@@ -55,31 +42,6 @@ export function TimerBar() {
   } | null>(null);
   const hasCheckCalendarRef = useRef(false);
 
-  const projectIdSet = new Set(projects.map((p) => p.id));
-  const ruleSuggestion = computeRuleSuggestion(
-    patternCounts,
-    patternNames,
-    patternDismissed,
-    rules,
-    projectIdSet,
-  );
-  const suggestionProject = ruleSuggestion
-    ? projects.find((p) => p.id === ruleSuggestion.projectId) ?? null
-    : null;
-
-  function handleCreateRule() {
-    if (!ruleSuggestion) return;
-    const companions = computeCompanionBundleIds(ruleSuggestion.bundleId, ruleSuggestion.projectId);
-    addRule({
-      appName: ruleSuggestion.appName,
-      titleKeywords: [],
-      projectId: ruleSuggestion.projectId,
-      primaryBundleId: ruleSuggestion.bundleId,
-      companionBundleIds: companions.length > 0 ? companions : undefined,
-    });
-  }
-
-  // Elapsed timer
   useEffect(() => {
     const source = isTracking ? startTimestamp : null;
     if (!source) {
@@ -95,7 +57,6 @@ export function TimerBar() {
     return () => clearInterval(id);
   }, [isTracking, startTimestamp]);
 
-  // Calendar event suggestion: check when not tracking
   useEffect(() => {
     if (isTracking || !calendarEnabled) {
       hasCheckCalendarRef.current = false;
@@ -114,12 +75,11 @@ export function TimerBar() {
     }
   }, [isTracking, calendarEnabled, getActiveEventSuggestion]);
 
-  // Periodic calendar refresh every 5 minutes when idle
   useEffect(() => {
     if (!calendarEnabled || isTracking) return;
     const interval = setInterval(() => {
       fetchCalendarEvents();
-    }, 5 * 60 * 1000);
+    }, CALENDAR_REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [calendarEnabled, isTracking, fetchCalendarEvents]);
 
@@ -149,18 +109,22 @@ export function TimerBar() {
       const startMs = new Date(sessionData.startTime).getTime();
       const endMs = new Date(sessionData.endTime).getTime();
       const apps = getAppsForWindow(startMs, endMs);
-      addSession({
-        ...sessionData,
-        id: Date.now().toString(),
-        auto: true,
-        ...(apps.length > 0 ? { apps } : {}),
-      });
+      if (apps.length > 1) {
+        usePendingReviewStore.getState().offer({ ...sessionData, apps });
+      } else {
+        addSession({
+          ...sessionData,
+          id: Date.now().toString(),
+          auto: true,
+          ...(apps.length > 0 ? { apps } : {}),
+        });
+      }
     }
   }
 
   return (
     <Pressable
-      style={styles.container}
+      className="flex-1 justify-center items-center"
       onPress={() => {
         if (isTracking) {
           router.push("/timer");
@@ -176,12 +140,11 @@ export function TimerBar() {
       }}
     >
       {isTracking && isAutoTracked ? (
-        // Auto-tracking active state
         <View className="flex-row items-center justify-center gap-2">
           {project ? (
             <Image
               source={`sf:${project.icon}`}
-              style={[styles.icon, { tintColor: project.color }]}
+              style={{ width: 13, height: 13, tintColor: project.color }}
             />
           ) : (
             <View className="w-1.5 h-1.5 rounded-full bg-white/40" />
@@ -199,18 +162,17 @@ export function TimerBar() {
             }}
             hitSlop={8}
           >
-            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+            <View className="px-2 py-0.5 rounded-md bg-white/[0.08]">
               <Text className="text-white/50 text-xs font-medium">Stop</Text>
             </View>
           </Pressable>
         </View>
       ) : isTracking ? (
-        // Manual tracking state
         <View className="flex-row items-center justify-center gap-2">
           {project ? (
             <Image
               source={`sf:${project.icon}`}
-              style={[styles.icon, { tintColor: project.color }]}
+              style={{ width: 13, height: 13, tintColor: project.color }}
             />
           ) : (
             <View className="w-2 h-2 rounded-full bg-red-500" />
@@ -231,7 +193,6 @@ export function TimerBar() {
           </Text>
         </View>
       ) : resumableSession ? (
-        // Interrupted session resume prompt
         <View className="flex-row items-center justify-center gap-1.5">
           <Text className="text-white/50 text-sm shrink-0">Resume</Text>
           <View
@@ -248,7 +209,7 @@ export function TimerBar() {
             }}
             hitSlop={8}
           >
-            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+            <View className="px-2 py-0.5 rounded-md bg-white/[0.08]">
               <Text className="text-white/70 text-xs font-medium">Resume</Text>
             </View>
           </Pressable>
@@ -263,7 +224,6 @@ export function TimerBar() {
           </Pressable>
         </View>
       ) : calendarSuggestion ? (
-        // Calendar suggestion state
         <View className="flex-row items-center justify-center gap-1.5">
           <Text className="text-white/50 text-sm shrink-0">Suggested:</Text>
           <View
@@ -284,7 +244,6 @@ export function TimerBar() {
           </Pressable>
         </View>
       ) : pendingHint ? (
-        // Untracked app hint state
         <View className="flex-row items-center justify-center gap-1.5">
           <View className="w-1 h-1 rounded-full shrink-0 bg-amber-400" />
           <Text className="text-amber-400/80 text-sm shrink" numberOfLines={1}>
@@ -303,43 +262,7 @@ export function TimerBar() {
             <Text className="text-amber-400/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
-      ) : ruleSuggestion ? (
-        // Rule suggestion state
-        <View className="flex-row items-center justify-center gap-1.5">
-          <Text className="text-white/50 text-sm shrink-0">Auto-track</Text>
-          <View
-            className="w-1 h-1 rounded-full shrink-0"
-            style={{ backgroundColor: suggestionProject?.color ?? Neutral.z600 }}
-          />
-          <Text className="text-white text-sm shrink" numberOfLines={1}>
-            {ruleSuggestion.appName}
-          </Text>
-          <Text className="text-white/50 text-sm shrink-0">
-            for {suggestionProject?.name}?
-          </Text>
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              handleCreateRule();
-            }}
-            hitSlop={8}
-          >
-            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
-              <Text className="text-white/70 text-xs font-medium">Create</Text>
-            </View>
-          </Pressable>
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              dismissSuggestion(ruleSuggestion.bundleId);
-            }}
-            hitSlop={8}
-          >
-            <Text className="text-white/50 text-sm font-semibold">×</Text>
-          </Pressable>
-        </View>
       ) : (
-        // Idle state
         <Text className="text-white/50 text-sm text-center">
           Tap to start a timer
         </Text>
@@ -347,15 +270,3 @@ export function TimerBar() {
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  icon: {
-    width: 13,
-    height: 13,
-  },
-});

@@ -17,7 +17,6 @@ type TimerState = {
   projectId: string | null;
   interruptedSession: InterruptedSession | null;
   startTimer: (title: string, projectId?: string | null, fromElapsedSeconds?: number) => void;
-  setAutoTracked: (value: boolean) => void;
   stopTimer: () => {
     startTime: string;
     endTime: string;
@@ -28,6 +27,7 @@ type TimerState = {
   updateTitle: (title: string) => void;
   updateProjectId: (id: string | null) => void;
   setInterruptedSession: (session: InterruptedSession | null) => void;
+  setAutoTracked: (value: boolean) => void;
 };
 
 export const useTimerStore = create<TimerState>()(
@@ -42,12 +42,12 @@ export const useTimerStore = create<TimerState>()(
       startTimer: (title, projectId = null, fromElapsedSeconds = 0) =>
         set({
           isTracking: true,
+          isAutoTracked: false,
           startTimestamp: new Date(Date.now() - fromElapsedSeconds * 1000).toISOString(),
           title,
           projectId: projectId ?? null,
           interruptedSession: null,
         }),
-      setAutoTracked: (value) => set({ isAutoTracked: value }),
       stopTimer: () => {
         const { isTracking, startTimestamp, title, projectId } = get();
         if (!isTracking || !startTimestamp) return null;
@@ -62,6 +62,7 @@ export const useTimerStore = create<TimerState>()(
       updateTitle: (title) => set({ title }),
       updateProjectId: (id) => set({ projectId: id }),
       setInterruptedSession: (session) => set({ interruptedSession: session }),
+      setAutoTracked: (value) => set({ isAutoTracked: value }),
     }),
     {
       name: "timer",

@@ -1,8 +1,7 @@
 import { startAutoTracker, stopAutoTracker } from "@/features/auto-track/auto-tracker";
-import { startIdleHandler, stopIdleHandler } from "@/features/idle/idle-handler";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
+import { startIdleHandler, stopIdleHandler } from "@/features/idle/idle-handler";
 import { startJournalTracker, stopJournalTracker } from "@/features/intelligence/journal-store";
-import { startPatternTracker, stopPatternTracker } from "@/features/intelligence/pattern-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useStreamStore } from "@/features/stream/stream-store";
 import { useTimerStore } from "@/features/timer/timer-store";
@@ -32,7 +31,6 @@ export function useBackgroundServices() {
     startAutoTracker();
     startIdleHandler();
     startJournalTracker();
-    startPatternTracker();
     _startWatching();
 
     const unsubTimer = useTimerStore.subscribe(() => pushTimerState());
@@ -48,7 +46,6 @@ export function useBackgroundServices() {
       stopAutoTracker();
       stopIdleHandler();
       stopJournalTracker();
-      stopPatternTracker();
       _stopWatching();
       stop();
     };

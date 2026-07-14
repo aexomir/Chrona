@@ -1,12 +1,9 @@
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
-import type { CalendarEvent } from "@/features/calendar/calendar";
+import { findOverlappingEvents } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
-import {
-  type Session,
-  useSessionsStore,
-} from "@/features/sessions/sessions-store";
+import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { CalendarEventMarker } from "@/features/timeline/components/calendar-event-marker";
 import { DatePill } from "@/features/timeline/components/date-pill";
 import { GapSeparator } from "@/features/timeline/components/gap-separator";
@@ -16,12 +13,15 @@ import { TimelineEmptyState } from "@/features/timeline/components/timeline-empt
 import { DragOverlay } from "@/features/timeline/merge/drag-overlay";
 import { MergeProvider, useMergeContext } from "@/features/timeline/merge/merge-context";
 import {
+  type AugmentedItem,
+  type BaseItem,
   CIRCLE_DURATION,
   CIRCLE_EASING,
   CIRCLE_SIZE,
   CIRCLE_TOP,
   circleXForIndexInWidth,
   DAY_ABBREVS,
+  GAP_THRESHOLD_MS,
   getWeekDays,
   getWeekStart,
   isSameDay,
@@ -32,9 +32,9 @@ import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { Stack } from "expo-router";
-import { Button } from "heroui-native";
+import { BottomSheet, Button, Checkbox } from "heroui-native";
 import { Fragment, useMemo, useRef, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -113,28 +113,6 @@ function TimelineContent() {
     isSameDay(new Date(startTimestamp), selectedDate) &&
     (!filtersActive || selectedProjectIds.includes(timerProjectId ?? ""));
 
-  type BaseItem =
-    | { kind: "session"; session: Session; startTime: number }
-    | { kind: "live"; startTime: number }
-    | { kind: "calendar"; event: CalendarEvent; startTime: number };
-
-  type AugmentedItem =
-    | {
-        kind: "session";
-        session: Session;
-        startTime: number;
-        index: number;
-        overlappingEvents: CalendarEvent[];
-      }
-    | { kind: "live"; startTime: number; index: number }
-    | { kind: "gap"; durationMs: number }
-    | {
-        kind: "calendar";
-        event: CalendarEvent;
-        startTime: number;
-        index: number;
-      };
-
   const augmentedItems = useMemo(() => {
     const allBaseItems: BaseItem[] = [
       ...daySessions.map((s) => ({
@@ -165,16 +143,16 @@ function TimelineContent() {
       if (item.kind === "session") {
         if (prevSessionEndTime !== null) {
           const gapMs = item.startTime - prevSessionEndTime;
-          if (gapMs >= 20 * 60 * 1000) {
+          if (gapMs >= GAP_THRESHOLD_MS) {
             items.push({ kind: "gap", durationMs: gapMs });
           }
         }
         const sEnd = item.startTime + item.session.duration * 1000;
-        const overlappingEvents = dayCalendarEvents.filter((e) => {
-          const eStart = new Date(e.startDate).getTime();
-          const eEnd = new Date(e.endDate).getTime();
-          return eStart < sEnd && eEnd > item.startTime;
-        });
+        const overlappingEvents = findOverlappingEvents(
+          dayCalendarEvents,
+          new Date(item.startTime),
+          new Date(sEnd),
+        );
         items.push({
           kind: "session",
           session: item.session,
@@ -186,7 +164,7 @@ function TimelineContent() {
       } else if (item.kind === "live") {
         if (prevSessionEndTime !== null) {
           const gapMs = item.startTime - prevSessionEndTime;
-          if (gapMs >= 20 * 60 * 1000) {
+          if (gapMs >= GAP_THRESHOLD_MS) {
             items.push({ kind: "gap", durationMs: gapMs });
           }
         }
@@ -207,11 +185,9 @@ function TimelineContent() {
     return items;
   }, [daySessions, dayCalendarEvents, liveInDay, startTimestamp]);
 
-  //circle
   const circleX = useSharedValue(-CIRCLE_SIZE);
   const stripWidthRef = useRef(0);
   const animatedCircle = useAnimatedStyle(() => ({ left: circleX.value }));
-  //week slide
   const weekTranslate = useSharedValue(0);
   const animatedWeek = useAnimatedStyle(() => ({
     transform: [{ translateX: weekTranslate.value }],
@@ -224,9 +200,11 @@ function TimelineContent() {
       idx === -1
         ? -CIRCLE_SIZE
         : circleXForIndexInWidth(idx, stripWidthRef.current);
-    circleX.value = animated
-      ? withTiming(x, { duration: CIRCLE_DURATION, easing: CIRCLE_EASING })
-      : x;
+    circleX.set(
+      animated
+        ? withTiming(x, { duration: CIRCLE_DURATION, easing: CIRCLE_EASING })
+        : x,
+    );
   }
 
   function onStripLayout(width: number) {
@@ -249,7 +227,7 @@ function TimelineContent() {
     const newWeekDays = getWeekDays(targetWeekStart);
     const idx = newWeekDays.findIndex((d) => isSameDay(d, date));
     if (idx !== -1 && stripWidthRef.current > 0) {
-      circleX.value = circleXForIndexInWidth(idx, stripWidthRef.current);
+      circleX.set(circleXForIndexInWidth(idx, stripWidthRef.current));
     }
   }
 
@@ -259,17 +237,20 @@ function TimelineContent() {
     const newWeekDays = getWeekDays(getWeekStart(today, newOffset));
     const idx = newWeekDays.findIndex((d) => isSameDay(d, selectedDate));
 
-    circleX.value =
+    circleX.set(
       idx !== -1 && stripWidth > 0
         ? circleXForIndexInWidth(idx, stripWidth)
-        : -CIRCLE_SIZE;
+        : -CIRCLE_SIZE,
+    );
 
-    weekTranslate.value = delta > 0 ? stripWidth : -stripWidth;
+    weekTranslate.set(delta > 0 ? stripWidth : -stripWidth);
     setWeekOffset(newOffset);
-    weekTranslate.value = withTiming(0, {
-      duration: 260,
-      easing: Easing.out(Easing.cubic),
-    });
+    weekTranslate.set(
+      withTiming(0, {
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
   }
 
   return (
@@ -314,7 +295,7 @@ function TimelineContent() {
         renderItem={({ item }) => {
           if (item.kind === "session") {
             return (
-              <View style={{ paddingHorizontal: 12 }}>
+              <View className="px-3">
                 <SessionRow
                   session={item.session}
                   index={item.index}
@@ -325,7 +306,7 @@ function TimelineContent() {
           }
           if (item.kind === "live") {
             return (
-              <View style={{ paddingHorizontal: 12 }}>
+              <View className="px-3">
                 <LiveSessionRow
                   startTimestamp={startTimestamp!}
                   index={item.index}
@@ -335,14 +316,14 @@ function TimelineContent() {
           }
           if (item.kind === "gap") {
             return (
-              <View style={{ paddingHorizontal: 12 }}>
+              <View className="px-3">
                 <GapSeparator durationMs={item.durationMs} />
               </View>
             );
           }
           if (item.kind === "calendar") {
             return (
-              <View style={{ paddingHorizontal: 12 }}>
+              <View className="px-3">
                 <CalendarEventMarker
                   event={item.event}
                   index={item.index}
@@ -413,7 +394,7 @@ function TimelineContent() {
             </Animated.View>
           </View>
         }
-        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+        ItemSeparatorComponent={() => <View className="h-2" />}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
         contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={<TimelineEmptyState selectedDate={selectedDate} />}
@@ -421,20 +402,11 @@ function TimelineContent() {
 
       <DragOverlay />
 
-      {/* Date Picker Modal */}
-      {showPicker && (
-        <Modal
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPicker(false)}
-        >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setShowPicker(false)}
-          />
-          <View
-            className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe"
-            style={{ backgroundColor: theme.modalSheet }}
+      <BottomSheet isOpen={showPicker} onOpenChange={setShowPicker}>
+        <BottomSheet.Portal>
+          <BottomSheet.Overlay />
+          <BottomSheet.Content
+            backgroundStyle={{ backgroundColor: theme.modalSheet }}
           >
             <Host matchContents>
               <DatePicker
@@ -450,34 +422,16 @@ function TimelineContent() {
             >
               <Text className="text-white font-semibold text-base">Done</Text>
             </Pressable>
-          </View>
-        </Modal>
-      )}
+          </BottomSheet.Content>
+        </BottomSheet.Portal>
+      </BottomSheet>
 
-      {/* Filter Modal */}
-      {showFilter && (
-        <Modal
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowFilter(false)}
-        >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setShowFilter(false)}
-          />
-          <View
-            className="absolute bottom-0 left-0 right-0 rounded-t-2xl pb-safe"
-            style={{ backgroundColor: theme.modalSheet }}
+      <BottomSheet isOpen={showFilter} onOpenChange={setShowFilter}>
+        <BottomSheet.Portal>
+          <BottomSheet.Overlay />
+          <BottomSheet.Content
+            backgroundStyle={{ backgroundColor: theme.modalSheet }}
           >
-            {/* Handle */}
-            <View className="items-center pt-3 pb-1">
-              <View
-                className="w-10 h-1 rounded-full"
-                style={{ backgroundColor: theme.handle }}
-              />
-            </View>
-
-            {/* Header */}
             <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
               <Text className="text-white text-lg font-semibold">
                 Filter by Project
@@ -489,7 +443,6 @@ function TimelineContent() {
               )}
             </View>
 
-            {/* Project list */}
             <View className="px-5">
               {projects.map((p, i) => {
                 const isSelected = selectedProjectIds.includes(p.id);
@@ -497,13 +450,12 @@ function TimelineContent() {
                   <Pressable
                     key={p.id}
                     onPress={() => toggleProject(p.id)}
-                    className="flex-row items-center gap-3 py-3.5"
+                    className={`flex-row items-center gap-3 py-3.5 ${
+                      i < projects.length - 1 ? "border-b" : ""
+                    }`}
                     style={
                       i < projects.length - 1
-                        ? {
-                            borderBottomWidth: 1,
-                            borderBottomColor: theme.cardBorder,
-                          }
+                        ? { borderBottomColor: theme.cardBorder }
                         : undefined
                     }
                   >
@@ -514,15 +466,9 @@ function TimelineContent() {
                     <Text className="text-white text-base flex-1">
                       {p.name}
                     </Text>
-                    <Image
-                      source={
-                        isSelected ? "sf:checkmark.circle.fill" : "sf:circle"
-                      }
-                      style={{
-                        width: 22,
-                        height: 22,
-                        tintColor: isSelected ? "#ffffff" : "#52525b",
-                      }}
+                    <Checkbox
+                      isSelected={isSelected}
+                      onSelectedChange={() => toggleProject(p.id)}
                     />
                   </Pressable>
                 );
@@ -534,9 +480,9 @@ function TimelineContent() {
                 <Button.Label>Done</Button.Label>
               </Button>
             </View>
-          </View>
-        </Modal>
-      )}
+          </BottomSheet.Content>
+        </BottomSheet.Portal>
+      </BottomSheet>
     </>
   );
 }

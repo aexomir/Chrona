@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { Toast, useToast } from "heroui-native";
+import { Toast, useToast, type ToastComponentProps } from "heroui-native";
 import { View } from "react-native";
 
 type Variant = "success" | "warning" | "danger" | "default";
@@ -30,11 +30,10 @@ const glassStyle = {
   elevation: 8,
 };
 
-type AppToastProps = {
+type AppToastProps = ToastComponentProps & {
   label: string;
   variant: Variant;
   withClose: boolean;
-  [key: string]: unknown;
 };
 
 function AppToastComponent({ label, variant, withClose, ...props }: AppToastProps) {

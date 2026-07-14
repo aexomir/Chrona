@@ -1,20 +1,21 @@
 import {
   fetchCalendarEvents,
+  findActiveEvents,
   getCalendarPermissionStatus,
   requestCalendarPermission,
-  findActiveEvents,
-  eventMatchesMapping,
   type CalendarEvent,
+  type CalendarPermissionStatus,
 } from "@/features/calendar/calendar";
 import { mmkvStorage } from "@/storage";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export const CALENDAR_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
 export type CalendarMapping = {
-  id: string;
+  calendarId: string;
+  calendarName: string;
   projectId: string;
-  calendarName?: string; // exact match against event.calendarName
-  titleKeywords?: string[]; // case-insensitive substring match against event.title
 };
 
 type ActiveEventSuggestion = {
@@ -23,19 +24,23 @@ type ActiveEventSuggestion = {
 };
 
 type CalendarState = {
-  permissionStatus: "undetermined" | "granted" | "denied";
+  permissionStatus: CalendarPermissionStatus;
   isEnabled: boolean;
   events: CalendarEvent[];
   eventsLastFetched: string | null;
   mappings: CalendarMapping[];
 
   syncPermissionStatus(): Promise<void>;
-  requestPermission(): Promise<void>;
+  requestPermission(): Promise<
+    Exclude<CalendarPermissionStatus, "undetermined">
+  >;
   setEnabled(enabled: boolean): void;
   fetchEvents(): Promise<boolean>;
-  addMapping(m: Omit<CalendarMapping, "id">): void;
-  updateMapping(id: string, patch: Partial<Omit<CalendarMapping, "id">>): void;
-  removeMapping(id: string): void;
+  setCalendarProject(
+    calendarId: string,
+    calendarName: string,
+    projectId: string | null,
+  ): void;
   getActiveEventSuggestion(): ActiveEventSuggestion | null;
 };
 
@@ -56,6 +61,7 @@ export const useCalendarStore = create<CalendarState>()(
       async requestPermission() {
         const status = await requestCalendarPermission();
         set({ permissionStatus: status });
+        return status;
       },
 
       setEnabled(enabled: boolean) {
@@ -78,51 +84,33 @@ export const useCalendarStore = create<CalendarState>()(
         }
       },
 
-      addMapping(m) {
-        set((state) => ({
-          mappings: [
-            ...state.mappings,
-            {
-              ...m,
-              id: Date.now().toString(),
-            },
-          ],
-        }));
-      },
-
-      updateMapping(id, patch) {
-        set((state) => ({
-          mappings: state.mappings.map((mapping) =>
-            mapping.id === id ? { ...mapping, ...patch } : mapping
-          ),
-        }));
-      },
-
-      removeMapping(id) {
-        set((state) => ({
-          mappings: state.mappings.filter((m) => m.id !== id),
-        }));
+      setCalendarProject(calendarId, calendarName, projectId) {
+        set((state) => {
+          const rest = state.mappings.filter(
+            (m) => m.calendarId !== calendarId,
+          );
+          return {
+            mappings: projectId
+              ? [...rest, { calendarId, calendarName, projectId }]
+              : rest,
+          };
+        });
       },
 
       getActiveEventSuggestion() {
         const activeEvents = findActiveEvents(get().events);
-        if (activeEvents.length === 0) return null;
-
-        // Find first event that matches a mapping
         for (const event of activeEvents) {
-          for (const mapping of get().mappings) {
-            if (eventMatchesMapping(event, mapping)) {
-              return { event, projectId: mapping.projectId };
-            }
-          }
+          const mapping = get().mappings.find(
+            (m) => m.calendarId === event.calendarId,
+          );
+          if (mapping) return { event, projectId: mapping.projectId };
         }
-
         return null;
       },
     }),
     {
       name: "calendar",
       storage: mmkvStorage,
-    }
-  )
+    },
+  ),
 );

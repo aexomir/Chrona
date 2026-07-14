@@ -145,7 +145,7 @@ export function ChronaSplash() {
   return (
     <View style={styles.overlay} pointerEvents="none">
       {/* Single Animated.View — everything bursts together as one unit */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, burstStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, burstStyle]}>
         {/* Background — matches native launch screen color */}
         <View style={[styles.bg, { backgroundColor: bgColor }]} />
 
@@ -208,14 +208,14 @@ export function ChronaSplash() {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 100,
   },
   bg: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   center: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },

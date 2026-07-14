@@ -180,14 +180,11 @@ export const SessionRow = React.memo(function SessionRow({
                     </Text>
                     <View className="flex-row items-center gap-1.5">
                       {session.auto && (
-                        <View
-                          className="rounded-full px-1.5 py-0.5 mt-0.5"
-                          style={{ backgroundColor: theme.chip }}
-                        >
-                          <Text className="text-zinc-500 text-xs font-medium">
-                            Auto
-                          </Text>
-                        </View>
+                        <Image
+                          source="sf:bolt.fill"
+                          style={{ width: 9, height: 9, marginTop: 2 }}
+                          tintColor="#71717a"
+                        />
                       )}
                       <View
                         className="rounded-full px-2 py-0.5 mt-0.5"

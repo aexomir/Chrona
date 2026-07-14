@@ -5,6 +5,7 @@
 // in AppDelegate), so the status item is the only user-visible surface.
 
 import Cocoa
+import ServiceManagement
 
 final class StatusBarController {
 
@@ -169,6 +170,17 @@ final class StatusBarController {
 
         menu.addItem(.separator())
 
+        let launchItem = NSMenuItem(
+            title: "Launch at Login",
+            action: #selector(toggleLaunchAtLogin),
+            keyEquivalent: ""
+        )
+        launchItem.target = self
+        launchItem.state = (SMAppService.mainApp.status == .enabled) ? .on : .off
+        menu.addItem(launchItem)
+
+        menu.addItem(.separator())
+
         let accessItem = NSMenuItem(
             title: "Accessibility Settings…",
             action: #selector(openAccessibilitySettings),
@@ -201,6 +213,20 @@ final class StatusBarController {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        let service = SMAppService.mainApp
+        do {
+            if service.status == .enabled {
+                try service.unregister()
+            } else {
+                try service.register()
+            }
+        } catch {
+            print("SMAppService toggle failed: \(error)")
+        }
+        rebuildMenu()
     }
 }
 

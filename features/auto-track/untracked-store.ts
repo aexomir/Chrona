@@ -42,6 +42,12 @@ let eventSub: Sub | null = null;
 function handleEvent(event: ActivityEvent, set: (fn: (s: UntrackedState) => Partial<UntrackedState>) => void) {
   if (event.type === 'heartbeat') return;
 
+  // pong/user_idle/user_active carry empty appName/bundleId (see auto-tracker.ts
+  // for the full explanation) — treating them as "a different app" would reset
+  // the untracked-app dwell clock every ~15s (the ping interval), and the hint
+  // would practically never reach UNTRACKED_THRESHOLD_MS.
+  if (event.type !== 'app_change' && event.type !== 'hello') return;
+
   const { isTracking } = useTimerStore.getState();
 
   // A running timer means the user is intentionally tracked — clear any hint

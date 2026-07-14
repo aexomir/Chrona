@@ -1,16 +1,14 @@
-/** Structural colors consumed by expo-router (light/dark nav theme) */
+/** Structural colors — dark mode only */
 export const Colors = {
-  light: {
-    background: "#f9f9f9",
-    text: "#11181C",
-    tint: "#0a7ea4",
-  },
   dark: {
     background: "#18181b",
     text: "#ECEDEE",
     tint: "#ffffff",
   },
 } as const;
+
+/** Export dark colors as the default/only theme */
+export const theme = Colors.dark;
 
 /**
  * Status / semantic colors — aurora-independent.
@@ -30,6 +28,9 @@ export const Semantic = {
 
   info: "#3b82f6", // blue-500    · suggestions, rule creation
   infoBright: "#60a5fa", // blue-400    · suggestion dots, hint text
+
+  streak: "#f97316", // orange-500  · streak flame icon
+  insight: "#8b5cf6", // violet-500  · peak-hour / insight icon
 } as const;
 
 /**

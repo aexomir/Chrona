@@ -22,6 +22,7 @@ import { useTimerStore } from "@/features/timer/timer-store";
 
 import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
 import { matchRule } from "./matcher";
+import { usePendingReviewStore } from "./pending-review-store";
 import { IDLE_TIMEOUT_MS, SWITCH_GRACE_MS } from "./timing-config";
 import type { TrackingRule } from "./tracking-rules-store";
 import { useTrackingRulesStore } from "./tracking-rules-store";
@@ -31,6 +32,7 @@ type Sub = ReturnType<typeof emitter.addListener>;
 let eventSub: Sub | null = null;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let autoStartedRuleId: string | null = null;
+let autoStartedBundleId: string | null = null;
 let lastEventWasTracked = false;
 let appLeftAt: number | null = null;
 let pendingRule: TrackingRule | null = null;
@@ -93,18 +95,35 @@ function stopAndSave() {
     if (effectiveDuration >= minDuration) {
       const startMs = new Date(sessionData.startTime).getTime();
       const apps = getAppsForWindow(startMs, effectiveEndMs);
-      useSessionsStore.getState().addSession({
-        ...sessionData,
-        endTime: new Date(effectiveEndMs).toISOString(),
-        duration: effectiveDuration,
-        id: Date.now().toString(),
-        auto: true,
-        ...(apps.length > 0 ? { apps } : {}),
-      });
+      const endTime = new Date(effectiveEndMs).toISOString();
+      if (apps.length > 1) {
+        // More than one app touched during the window — queue for review
+        // instead of silently baking every distraction into the breakdown.
+        // The review sheet drains this whenever the app is next foregrounded,
+        // whether that's immediately or after a long system-idle absence.
+        usePendingReviewStore.getState().offer({
+          startTime: sessionData.startTime,
+          endTime,
+          duration: effectiveDuration,
+          title: sessionData.title,
+          projectId: sessionData.projectId,
+          apps,
+        });
+      } else {
+        useSessionsStore.getState().addSession({
+          ...sessionData,
+          endTime,
+          duration: effectiveDuration,
+          id: Date.now().toString(),
+          auto: true,
+          ...(apps.length > 0 ? { apps } : {}),
+        });
+      }
     }
   }
   appLeftAt = null;
   autoStartedRuleId = null;
+  autoStartedBundleId = null;
 }
 
 function startAutoTimer(rule: TrackingRule, event: ActivityEvent) {
@@ -113,6 +132,7 @@ function startAutoTimer(rule: TrackingRule, event: ActivityEvent) {
   useTimerStore.getState().startTimer(title, rule.projectId);
   useTimerStore.getState().setAutoTracked(true);
   autoStartedRuleId = rule.id;
+  autoStartedBundleId = event.bundleId;
 }
 
 function isCompanionApp(ruleId: string, bundleId: string): boolean {
@@ -129,10 +149,21 @@ function handleEvent(event: ActivityEvent) {
     return;
   }
 
+  // Only app_change/hello carry real app data (appName/windowTitle/bundleId).
+  // pong (connection-liveness reply to the iOS client's ping, unrelated to app
+  // tracking) and user_idle/user_active all have those fields empty — treating
+  // them as "switched to an untracked app" would start the departure countdown
+  // every ~15s (the ping interval) even while the user never left the tracked
+  // app, since an empty bundleId never matches autoStartedBundleId either.
+  if (event.type !== "app_change" && event.type !== "hello") {
+    return;
+  }
+
   const { isTracking, isAutoTracked } = useTimerStore.getState();
 
   if (autoStartedRuleId !== null && (!isTracking || !isAutoTracked)) {
     autoStartedRuleId = null;
+    autoStartedBundleId = null;
     appLeftAt = null;
     clearIdleTimer();
     clearSwitchGraceTimer();
@@ -196,9 +227,20 @@ function handleEvent(event: ActivityEvent) {
         // appLeftAt records the real departure time; heartbeats won't reset
         // the idle timer during the pending state.
       }
+    } else if (event.bundleId === autoStartedBundleId) {
+      // Still the same running app that started this session — just a
+      // transient window-title state that doesn't currently satisfy the
+      // rule's keywords (build status, unsaved-changes dot, a popup/secondary
+      // window). This is NOT a departure: matching is only meant to decide
+      // whether to START a session, not whether an already-running one
+      // should keep going. Treating this as "switched away" would fire the
+      // idle/min-duration stop while the user never left the app.
+      clearSwitchGraceTimer();
+      clearIdleTimer();
+      onTrackedApp = true;
     }
-    // Else: switched to an untracked app — idle timer will stop the session
-    // after IDLE_TIMEOUT_MS if the user doesn't return to the tracked app
+    // Else: switched to a genuinely different, untracked app — idle timer
+    // will stop the session after IDLE_TIMEOUT_MS if the user doesn't return
   } else if (!isTracking) {
     if (match) {
       startAutoTimer(match, event);
@@ -212,16 +254,18 @@ function handleEvent(event: ActivityEvent) {
 
   // Track the moment the user leaves the tracked app so stopAndSave can use
   // the real session end time rather than the inflated idle-timer fire time.
-  if (autoStartedRuleId !== null && !onTrackedApp && appLeftAt === null) {
-    appLeftAt = Date.now();
-  } else if (onTrackedApp) {
+  //
+  // Only (re)schedule the idle countdown on the transition itself — either
+  // just returned to a tracked/companion app (fresh safety-net timer, reset
+  // by the next heartbeat) or just left one (starts the real countdown).
+  // Further app_change events on the SAME still-untracked app (e.g. a title
+  // change in Slack/Safari/etc.) must NOT reschedule, or the countdown would
+  // never reach zero as long as that app keeps emitting events.
+  if (onTrackedApp) {
     appLeftAt = null;
-  }
-
-  // Schedule (or keep) the idle countdown. When on the tracked app this acts
-  // as a safety net in case no further events arrive; it will be reset by the
-  // next heartbeat. When on an untracked app it starts the 2-min countdown.
-  if (onTrackedApp || autoStartedRuleId !== null) {
+    scheduleIdleTimer();
+  } else if (autoStartedRuleId !== null && appLeftAt === null) {
+    appLeftAt = Date.now();
     scheduleIdleTimer();
   }
 }

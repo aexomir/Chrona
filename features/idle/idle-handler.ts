@@ -4,9 +4,9 @@
  * When the Mac detects no keyboard or mouse input for 5 minutes it sends a
  * `user_idle` event. When input resumes it sends `user_active`. This module:
  *
- *   user_idle  → stops any active session (manual or auto-tracked) and stores
- *                `interruptedSession` in the timer store so the TimerBar can
- *                offer a one-tap resume when the user returns.
+ *   user_idle  → stops any active session and stores `interruptedSession`
+ *                in the timer store so the TimerBar can offer a one-tap
+ *                resume when the user returns.
  *
  *   user_active → no action needed; the TimerBar reads `interruptedSession`
  *                 directly from the store to show the resume prompt.
@@ -19,9 +19,9 @@
 import type { ActivityEvent } from "@/modules/chrona-stream";
 import { emitter } from "@/modules/chrona-stream";
 
+import { forceStopForSystemIdle } from "@/features/auto-track/auto-tracker";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
-import { forceStopForSystemIdle } from "@/features/auto-track/auto-tracker";
 
 type Sub = ReturnType<typeof emitter.addListener>;
 let eventSub: Sub | null = null;
@@ -37,6 +37,8 @@ function handleEvent(event: ActivityEvent) {
     : 0;
 
   if (isAutoTracked) {
+    // Auto-tracked sessions must go through the auto-tracker's own save path
+    // so the session is tagged `auto: true` and gets its app breakdown attached.
     forceStopForSystemIdle();
   } else {
     const sessionData = useTimerStore.getState().stopTimer();
