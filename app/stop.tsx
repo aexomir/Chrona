@@ -18,7 +18,7 @@ export default function StopScreen() {
         ...(apps.length > 0 ? { apps } : {}),
       });
     }
-    router.replace("/index");
+    router.replace("/");
   }, []);
 
   return <View />;

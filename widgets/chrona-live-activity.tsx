@@ -1,14 +1,15 @@
-import { HStack, Image, Link, Text, VStack } from "@expo/ui/swift-ui";
+import { HStack, Image, Link, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
-  cornerRadius,
+  background,
   font,
   foregroundStyle,
   frame,
+  minimumScaleFactor,
+  monospacedDigit,
   padding,
+  shapes,
 } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity, type LiveActivityEnvironment } from "expo-widgets";
-
-import { Semantic } from "@/constants/theme";
 
 export type ChronaLiveActivityProps = {
   startDate: string;
@@ -18,166 +19,187 @@ export type ChronaLiveActivityProps = {
   projectColor: string;
 };
 
-function accentOf(props: ChronaLiveActivityProps): string {
-  return props.projectColor.length > 0 ? props.projectColor : Semantic.streak;
-}
-
-function StopLink() {
-  "widget";
-  return (
-    <Link
-      destination="chrona://stop"
-      modifiers={[
-        padding({ vertical: 8 }),
-        foregroundStyle("rgba(255,255,255,0.6)"),
-        font({ size: 13, weight: "semibold" }),
-      ]}
-    >
-      <HStack spacing={4}>
-        <Image systemName="stop.fill" size={12} color="rgba(255,255,255,0.6)" />
-        <Text modifiers={[font({ size: 13, weight: "semibold" }), foregroundStyle("rgba(255,255,255,0.6)")]}>
-          Stop
-        </Text>
-      </HStack>
-    </Link>
-  );
-}
-
-function IconCircle(props: { icon: string; color: string; size: number }) {
-  "widget";
-  return (
-    <VStack
-      alignment="center"
-      modifiers={[
-        frame({ width: props.size, height: props.size }),
-        cornerRadius(props.size / 2),
-      ]}
-    >
-      <Image systemName={(props.icon || "timer") as never} size={props.size * 0.5} color={props.color} />
-    </VStack>
-  );
-}
-
-function Banner(props: ChronaLiveActivityProps) {
-  "widget";
-  const accent = accentOf(props);
-  return (
-    <VStack alignment="leading" spacing={10} modifiers={[padding({ horizontal: 16, vertical: 14 })]}>
-      <HStack spacing={10}>
-        <IconCircle icon={props.projectIcon} color={accent} size={36} />
-        <VStack alignment="leading" spacing={2}>
-          <Text modifiers={[font({ size: 13, weight: "semibold" }), foregroundStyle("#FFFFFF")]}>
-            {props.title.length > 0 ? props.title : "Chrona Session"}
-          </Text>
-          <Text modifiers={[font({ size: 11, weight: "medium" }), foregroundStyle(accent)]}>
-            {props.projectName.length > 0 ? props.projectName : "Chrona"}
-          </Text>
-        </VStack>
-        <Text
-          date={new Date(props.startDate)}
-          dateStyle="timer"
-          modifiers={[
-            font({ size: 22, weight: "bold", design: "monospaced" }),
-            foregroundStyle(accent),
-          ]}
-        />
-      </HStack>
-      <StopLink />
-    </VStack>
-  );
-}
-
-function ExpandedLeading(props: ChronaLiveActivityProps) {
-  "widget";
-  const accent = accentOf(props);
-  return (
-    <HStack spacing={10} modifiers={[padding({ leading: 4 })]}>
-      <IconCircle icon={props.projectIcon} color={accent} size={36} />
-      <VStack alignment="leading" spacing={2}>
-        <Text modifiers={[font({ size: 13, weight: "semibold" }), foregroundStyle("#FFFFFF")]}>
-          {props.title.length > 0 ? props.title : "Chrona Session"}
-        </Text>
-        <Text modifiers={[font({ size: 11, weight: "medium" }), foregroundStyle(accent)]}>
-          {props.projectName.length > 0 ? props.projectName : "Chrona"}
-        </Text>
-      </VStack>
-    </HStack>
-  );
-}
-
-function ExpandedTrailing(props: ChronaLiveActivityProps) {
-  "widget";
-  return (
-    <Text
-      date={new Date(props.startDate)}
-      dateStyle="timer"
-      modifiers={[
-        padding({ trailing: 4 }),
-        font({ size: 22, weight: "bold", design: "monospaced" }),
-        foregroundStyle(accentOf(props)),
-      ]}
-    />
-  );
-}
-
-function ExpandedBottom() {
-  "widget";
-  return (
-    <VStack modifiers={[padding({ horizontal: 4, bottom: 4 })]}>
-      <StopLink />
-    </VStack>
-  );
-}
-
-function CompactLeading(props: ChronaLiveActivityProps) {
-  "widget";
-  return (
-    <Image
-      systemName={(props.projectIcon || "timer") as never}
-      size={16}
-      color={accentOf(props)}
-    />
-  );
-}
-
-function CompactTrailing(props: ChronaLiveActivityProps) {
-  "widget";
-  return (
-    <Text
-      date={new Date(props.startDate)}
-      dateStyle="timer"
-      modifiers={[
-        font({ size: 12, weight: "semibold", design: "monospaced" }),
-        foregroundStyle(accentOf(props)),
-      ]}
-    />
-  );
-}
-
-function Minimal(props: ChronaLiveActivityProps) {
-  "widget";
-  return (
-    <Image
-      systemName={(props.projectIcon || "timer") as never}
-      size={14}
-      color={accentOf(props)}
-    />
-  );
-}
-
 function ChronaLiveActivityLayout(
   props: ChronaLiveActivityProps,
   _environment: LiveActivityEnvironment,
 ) {
   "widget";
+
+  const accent = props.projectColor.length > 0 ? props.projectColor : "#f97316";
+
   return {
-    banner: <Banner {...props} />,
-    compactLeading: <CompactLeading {...props} />,
-    compactTrailing: <CompactTrailing {...props} />,
-    minimal: <Minimal {...props} />,
-    expandedLeading: <ExpandedLeading {...props} />,
-    expandedTrailing: <ExpandedTrailing {...props} />,
-    expandedBottom: <ExpandedBottom />,
+    banner: (
+      <VStack
+        alignment="leading"
+        spacing={10}
+        modifiers={[padding({ horizontal: 16, vertical: 14 })]}
+      >
+        <HStack spacing={10}>
+          <VStack
+            alignment="center"
+            modifiers={[
+              frame({ width: 34, height: 34 }),
+              background(accent, shapes.roundedRectangle({ cornerRadius: 10 })),
+            ]}
+          >
+            <Image
+              systemName={(props.projectIcon || "timer") as never}
+              size={16}
+              color="#FFFFFF"
+            />
+          </VStack>
+          <VStack alignment="leading" spacing={2}>
+            <Text
+              modifiers={[
+                font({ size: 14, weight: "semibold" }),
+                foregroundStyle("#FFFFFF"),
+              ]}
+            >
+              {props.title.length > 0 ? props.title : "Chrona Session"}
+            </Text>
+            <Text
+              modifiers={[
+                font({ size: 11, weight: "medium" }),
+                foregroundStyle(accent),
+              ]}
+            >
+              {props.projectName.length > 0 ? props.projectName : "Chrona"}
+            </Text>
+          </VStack>
+        </HStack>
+        <HStack spacing={10}>
+          <Text
+            date={new Date(props.startDate)}
+            dateStyle="timer"
+            modifiers={[
+              font({ size: 30, weight: "bold", design: "monospaced" }),
+              foregroundStyle("#FFFFFF"),
+            ]}
+          />
+          <Spacer />
+          <Link
+            destination="chrona://stop"
+            modifiers={[
+              padding({ horizontal: 14, vertical: 7 }),
+              background(accent, shapes.capsule()),
+            ]}
+          >
+            <HStack spacing={5}>
+              <Image systemName="stop.fill" size={11} color="#FFFFFF" />
+              <Text
+                modifiers={[
+                  font({ size: 12, weight: "semibold" }),
+                  foregroundStyle("#FFFFFF"),
+                ]}
+              >
+                Stop
+              </Text>
+            </HStack>
+          </Link>
+        </HStack>
+      </VStack>
+    ),
+    compactLeading: (
+      <Image
+        systemName={(props.projectIcon || "timer") as never}
+        size={13}
+        color={accent}
+      />
+    ),
+    compactTrailing: (
+      <Text
+        date={new Date(props.startDate)}
+        dateStyle="timer"
+        modifiers={[
+          font({ size: 11, weight: "semibold", design: "monospaced" }),
+          foregroundStyle(accent),
+          monospacedDigit(),
+          frame({ width: 44, alignment: "trailing" }),
+          minimumScaleFactor(0.8),
+        ]}
+      />
+    ),
+    minimal: (
+      <Image
+        systemName={(props.projectIcon || "timer") as never}
+        size={13}
+        color={accent}
+      />
+    ),
+    expandedLeading: (
+      <HStack spacing={10} modifiers={[padding({ leading: 4 })]}>
+        <VStack
+          alignment="center"
+          modifiers={[
+            frame({ width: 36, height: 36 }),
+            background(accent, shapes.roundedRectangle({ cornerRadius: 10 })),
+          ]}
+        >
+          <Image
+            systemName={(props.projectIcon || "timer") as never}
+            size={17}
+            color="#FFFFFF"
+          />
+        </VStack>
+        <VStack alignment="leading" spacing={2}>
+          <Text
+            modifiers={[
+              font({ size: 14, weight: "semibold" }),
+              foregroundStyle("#FFFFFF"),
+            ]}
+          >
+            {props.title.length > 0 ? props.title : "Chrona Session"}
+          </Text>
+          <Text
+            modifiers={[
+              font({ size: 11, weight: "medium" }),
+              foregroundStyle(accent),
+            ]}
+          >
+            {props.projectName.length > 0 ? props.projectName : "Chrona"}
+          </Text>
+        </VStack>
+      </HStack>
+    ),
+    expandedTrailing: (
+      <Text
+        date={new Date(props.startDate)}
+        dateStyle="timer"
+        modifiers={[
+          padding({ trailing: 4 }),
+          font({ size: 26, weight: "bold", design: "monospaced" }),
+          foregroundStyle("#FFFFFF"),
+          monospacedDigit(),
+          frame({ width: 100, alignment: "trailing" }),
+          minimumScaleFactor(0.8),
+        ]}
+      />
+    ),
+    expandedBottom: (
+      <HStack modifiers={[padding({ horizontal: 4, bottom: 4 })]}>
+        <Spacer />
+        <Link
+          destination="chrona://stop"
+          modifiers={[
+            padding({ horizontal: 18, vertical: 9 }),
+            background(accent, shapes.capsule()),
+          ]}
+        >
+          <HStack spacing={6}>
+            <Image systemName="stop.fill" size={13} color="#FFFFFF" />
+            <Text
+              modifiers={[
+                font({ size: 13, weight: "semibold" }),
+                foregroundStyle("#FFFFFF"),
+              ]}
+            >
+              Stop
+            </Text>
+          </HStack>
+        </Link>
+        <Spacer />
+      </HStack>
+    ),
   };
 }
 
