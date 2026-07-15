@@ -1,7 +1,7 @@
 {
   "name": "chrona",
   "main": "expo-router/entry",
-  "version": "1.0.37",
+  "version": "1.0.38",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -64,6 +64,7 @@
     "eslint-config-expo": "~57.0.0",
     "husky": "^9.1.7",
     "jest-expo": "~57.0.1",
+    "lint-staged": "^17.0.8",
     "ts-node": "^10.9.2",
     "typescript": "~6.0.3"
   },
