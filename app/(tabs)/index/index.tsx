@@ -51,6 +51,7 @@ export default function DashboardScreen() {
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon="gearshape.fill"
+          accessibilityLabel="Settings"
           onPress={() => router.push("/settings")}
         />
       </Stack.Toolbar>

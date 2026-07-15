@@ -1,0 +1,75 @@
+# Tests the actual stop-timer flow: after Stop Timer, the app either shows
+# the "Review Apps" screen (if the ChronaHelper Mac app tracked ≥1 app during
+# the session) or saves the session immediately and returns to the idle
+# TimerBar. There is no confidence-based auto-confirm step in the current
+# app — that was a stale assumption in the old version of this flow.
+#
+# Limitation: Maestro can't control the ChronaHelper connection or inject
+# tracked-app data, so which branch fires depends on whether a real Mac
+# Helper session is active. On a fresh simulator with no Mac Helper
+# connection, expect the immediate-save branch every time.
+#
+# Run: maestro test .maestro/timer_stop_flow.yaml
+
+appId: com.aexomir.Chrona
+
+---
+- launchApp
+- waitForAnimationToEnd
+
+# Open the New Timer modal (project-first flow: pick a project, then a title)
+- tapOn:
+    text: "Tap to start a timer"
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "New Timer"
+- assertVisible:
+    text: ".*what are you working on.*"
+
+# Skip project selection — deterministic regardless of what projects exist.
+# heroui-native merges the row's title and chevron icon into one
+# accessibility node ("No project, Forward"), so match partially.
+- tapOn:
+    text: ".*No project.*"
+
+- tapOn:
+    id: "new-timer-title-input"
+- inputText: "Deep work"
+
+- tapOn:
+    text: "Start Timer"
+- waitForAnimationToEnd
+
+# TimerBar now shows the running session. Its Pressable merges the title and
+# elapsed-time text into one accessibility node, so match partially.
+- assertVisible:
+    text: ".*Deep work.*"
+
+# Reopen the timer modal to see the tracking screen
+- tapOn:
+    text: ".*Deep work.*"
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "Tracking"
+
+- tapOn:
+    text: "Stop Timer"
+- waitForAnimationToEnd
+
+# Branch A: apps were tracked during the session — Review Apps screen shows
+- assertVisible:
+    text: "Review Apps"
+    optional: true
+- assertVisible:
+    text: "apps used"
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+
+# Branch B: no apps tracked — session saves immediately, back to idle
+- assertVisible:
+    text: "Tap to start a timer"
+    optional: true

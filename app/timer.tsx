@@ -455,6 +455,7 @@ function ProjectFirstView({
       </Pressable>
 
       <Input
+        testID="new-timer-title-input"
         placeholder="What are you working on?"
         value={taskTitle}
         onChangeText={setTaskTitle}
