@@ -1,6 +1,6 @@
 # Chrona
 
-A minimal, dark-first time tracking app for people who want to be intentional about how they spend their time. Built with Expo 55 / React Native 0.83 / React 19.
+A minimal, dark-first time tracking app for people who want to be intentional about how they spend their time. Built with Expo SDK 57 / React Native 0.86 / React 19.
 
 **Design ethos:** Calm · Precise · Minimal. Like a high-end watch — nothing superfluous, every element earns its place.
 
@@ -9,16 +9,14 @@ A minimal, dark-first time tracking app for people who want to be intentional ab
 ## Features
 
 - **Chrona Timer** — Start sessions tied to projects, with live tracking and iOS Live Activities support
-- **ActivityWatch Integration** — Automatically captures app usage during sessions and learns which apps belong to which projects
-- **Smart Suggestions** — Learns from past sessions to suggest the right project when you switch context; integrates with active calendar events
-- **Missed Time Recovery** — Detects gaps >= 15 minutes in tracked time (up to 8h back) and prompts you to log them
-- **Calendar Integration** — Map calendar events to projects; get prompted to start a session when a mapped event is active
-- **Streak System** — Daily streak tracking with loss-aversion mechanics: badge, at-risk warning at 5pm, flash reward on save
-- **Timeline** — Chronological view of sessions interleaved with calendar event markers
-- **Stats & AI Search** — On-device AI inference via ExecutorTorch for trend analysis, insights, and natural-language search
-- **Apple Watch** — Glanceable watch app showing active timer and focus ring
-- **Widgets** — iOS home screen widgets showing focus ring and timeline
-- **macOS Helper** — Native macOS companion app (`MacOS/ChronaHelper`) for ActivityWatch stream bridging
+- **Auto-Tracking** — User-defined rules (app name + window-title keywords) match live app-usage events from the macOS Chrona Helper and auto-start/stop timers; unmatched app usage surfaces as an "untracked app" hint in the timer bar
+- **Calendar Integration** — Map calendar events to projects; get a one-tap suggestion in the timer bar when a mapped event is active
+- **Streak Tracking** — Simple consecutive-day streak count shown on the Stats tab, no warnings or reward animations
+- **Timeline** — Chronological view of sessions interleaved with calendar event markers, with drag-to-merge
+- **Stats** — Timeframe-tabbed metrics: trend deltas, hourly bar chart, project distribution, streak, focus consistency
+- **Search** — Heuristic, keyword-based search over your own session data (streak/project/stats intent matching); no ML or on-device model inference
+- **Widgets** — iOS home screen widgets (`ChronaTimeWidget`, `TimelineWidget`) and a Live Activity for the active timer
+- **Chrona Helper** — Native macOS companion app (`ChronaHelper/`) that observes the frontmost app and window title and streams them to the iOS app over the local network (Bonjour, `_chrona._tcp`)
 
 ---
 
@@ -26,15 +24,16 @@ A minimal, dark-first time tracking app for people who want to be intentional ab
 
 | Layer | Choice |
 |---|---|
-| Framework | Expo SDK 55, React 19.2, React Native 0.83.2 |
+| Framework | Expo SDK 57, React 19.2, React Native 0.86 |
 | Routing | `expo-router` with `NativeTabs` (unstable-native-tabs) |
 | UI Components | `heroui-native` (default component library) |
 | Styling | `uniwind` (Tailwind v4 via `className`) |
 | State | Zustand 5 + MMKV (via `react-native-mmkv`) |
-| Animations | Reanimated v4 (60fps), Gesture Handler |
+| Animations | Reanimated v4, Gesture Handler |
 | Canvas | `@shopify/react-native-skia` (aurora shader background) |
-| On-device AI | `react-native-executorch` |
 | Calendar | `expo-calendar` |
+| Widgets | `expo-widgets` |
+| Local streaming | Custom native module `modules/chrona-stream` (Bonjour/NWListener bridge to Chrona Helper) |
 
 ---
 
@@ -44,60 +43,58 @@ A minimal, dark-first time tracking app for people who want to be intentional ab
 app/
 ├── _layout.tsx              # Root Stack + DarkTheme provider
 ├── timer.tsx                # Timer modal (start/review/save flow)
-├── recover.tsx              # Missed-time recovery modal
 ├── projects.tsx             # Project management
 ├── calendar-settings.tsx    # Calendar integration settings
 ├── settings.tsx             # App settings screen
 ├── tracking-rules.tsx       # Auto-tracking rules (app → project mapping)
+├── onboarding.tsx           # 4-slide onboarding (Welcome, Projects, Calendar, Ready)
 └── (tabs)/
-    ├── _layout.tsx          # NativeTabs (5 tabs, minimizeBehavior="onScrollDown")
-    ├── index/index.tsx      # Dashboard (FocusRing, streak badge, recent sessions)
+    ├── _layout.tsx          # NativeTabs (4 tabs + BottomAccessory TimerBar, minimizeBehavior="onScrollDown")
+    ├── index/index.tsx      # Dashboard (FocusRing, aurora background, optional constellation)
     ├── timeline/index.tsx   # Timeline (sessions + calendar events)
     ├── timeline/[id].tsx    # Session detail
-    ├── stats.tsx            # Statistics + AI insights
+    ├── stats.tsx            # Statistics (trends, chart, project distribution, streak)
     ├── settings.tsx         # Settings (integrations, data, preferences)
-    └── search.tsx           # AI-powered natural language search
+    └── search.tsx           # Keyword-based search over session data
 
 features/                    # Feature-colocated modules (stores, utils, components)
-├── activity-watch/          # AW API client, suggestions store, streaming transport
-├── analytics/               # Stats utils, trending insights, session constellation
-├── auto-track/              # Tracking rules store, matcher, auto-tracker orchestrator
-├── aurora/                  # Shader background, atmosphere detection, theme hook
-├── calendar/                # Calendar store, utilities, missed event detection
-├── projects/                # Projects store
-├── recovery/                # Missed time detection + recovery store
-├── search/                  # AI inference engine, component renderer, search generation
-├── sessions/                # Sessions store
-├── settings/                # Settings store
-├── timeline/                # Timeline utilities + components
-├── timer/                   # Focus ring, timer bar, timer store
-└── watch/                   # Watch sync hooks
+├── analytics/                # Stats utils (streak, consistency, hour buckets), stats components
+├── auto-track/               # Tracking rules store, matcher, auto-tracker, untracked-app hints
+├── aurora/                   # Shader background, atmosphere detection, theme hook
+├── calendar/                 # Calendar store, utilities, active-event suggestion
+├── idle/                     # Idle-state detection
+├── intelligence/             # Per-app dwell-time journal (feeds session "Apps" breakdown)
+├── onboarding/                # Onboarding slide components
+├── projects/                 # Projects store
+├── search/                   # Keyword/heuristic search: intent parsing, result specs, components
+├── sessions/                  # Sessions store
+├── settings/                  # Settings store
+├── stream/                    # chrona-stream connection store (Chrona Helper link)
+├── timeline/                  # Timeline utilities + components
+├── timer/                     # Focus ring, timer bar, timer store
+└── widgets/                   # Live Activity + iOS widget data sync
 
-components/
-├── timer-bar.tsx            # Persistent bottom bar (suggestions, recovery hint, streak)
-├── animated-header-scroll-view.tsx
-├── empty-state.tsx
-└── hero-overlay.tsx
+modules/
+└── chrona-stream/            # Native Expo module: Bonjour client for the Chrona Helper stream
 
-targets/
-├── watch/                   # Apple Watch target (SwiftUI)
-└── widget/                  # iOS widget + Live Activity target (SwiftUI)
+targets/widget (ios/ExpoWidgetsTarget/)
+└── ChronaTimeWidget, TimelineWidget (SwiftUI)
 
-MacOS/
-└── ChronaHelper/            # Native macOS companion (Swift, ActivityWatch bridge)
+ChronaHelper/
+└── ChronaHelper/             # Native macOS companion (Swift): AppObserver + BonjourServer
 
 storage/
-└── index.ts                 # MMKV adapter for Zustand persist
+└── index.ts                  # MMKV adapter for Zustand persist
 
 constants/
-└── theme.ts                 # Design tokens: Colors, Semantic, TextAlpha, Neutral
+└── theme.ts                  # Design tokens: Colors, Semantic, TextAlpha, Neutral
 ```
 
 ---
 
 ## Development
 
-> **Custom dev build required.** `expo-router/unstable-native-tabs`, `expo-calendar`, and native targets (Watch, Widget) all require a native build — they are not available in Expo Go.
+> **Custom dev build required.** `expo-router/unstable-native-tabs`, `expo-calendar`, `expo-widgets`, and the `chrona-stream` native module all require a native build — they are not available in Expo Go.
 
 ```bash
 # Install dependencies
@@ -131,38 +128,41 @@ bun run lint
 
 ### Critical dependency note
 
-`react-native-worklets` is pinned to `0.7.2` in both `dependencies` and `resolutions`. **Do not change this.** heroui-native ships `0.5.1` internally; the `resolutions` field forces `0.7.2` everywhere to match the compiled native binary.
+`react-native-worklets` is pinned in both `dependencies` and `resolutions` to match the version heroui-native was compiled against. Do not change this independently of heroui-native's internal pin.
 
 ---
 
 ## Architecture Notes
 
 ### Storage
-All persistent state uses Zustand with MMKV via the adapter in `storage/index.ts`. Recovery and streak-flash stores are ephemeral (no persist) — they reset on app restart by design.
+All persistent state uses Zustand with MMKV via the adapter in `storage/index.ts`.
 
 ### Feature Colocation
 Logic, stores, and components are colocated under `features/<domain>/` rather than split across a flat `stores/` directory. Each feature owns its state, utilities, and domain-specific components.
 
-### ActivityWatch Integration
-`features/activity-watch/activitywatch.ts` — `getAppUsage(startTime, endTime)` returns aggregated app usage with top 3 window titles per app. Used in the timer review screen and for missed-time detection. The macOS ChronaHelper bridges the ActivityWatch WebSocket stream to the iOS app.
-
-### Missed Time Detection
-`features/recovery/detectMissedTime.ts` — Looks back 8 hours, finds gaps >= 15 minutes, skips gaps with < 10 minutes of AW data, applies a 5-minute end buffer. Returns the best gap with a project suggestion, or null.
+### Auto-Tracking
+`features/auto-track/matcher.ts` matches incoming app/window-title events (from `features/stream/`) against user-defined `TrackingRule`s (`app/tracking-rules.tsx`): rules match on exact app name, optionally requiring all `titleKeywords` to appear in the window title, with more-specific rules (more keywords) taking priority. `features/auto-track/auto-tracker.ts` drives auto-start/stop of timers from matches, with idle-timeout and app-switch grace-period handling. Unmatched app usage surfaces as an "untracked app" hint in the timer bar rather than being tracked automatically.
 
 ### TimerBar
 `features/timer/timer-bar.tsx` — Persistent element rendered as `BottomAccessory` in NativeTabs. Priority order of what it displays (highest to lowest):
-1. Streak flash reward (2s after saving a session)
-2. Streak at-risk warning (5pm+ with no session today)
-3. Missed time recovery hint (amber)
+1. Active auto-tracked session
+2. Active manual session
+3. Resumable interrupted session (30-minute TTL)
 4. Calendar event suggestion
-5. App-pattern suggestion (from learning store)
+5. Untracked-app hint
 6. Default "Tap to start" prompt
 
 ### Navigation
-Root is a single `Stack`. `(tabs)` is the only stack screen. Five tab triggers: Dashboard, Timeline, Stats, Settings, Search (icon-only, `role="search"`).
+Root is a single `Stack`. `(tabs)` is the only stack screen. Four tab triggers: Dashboard, Timeline, Stats, Search (icon-only, `role="search"`). Settings is not a tab — it's pushed via `/settings` from a gear icon on the Dashboard.
 
 ### Aurora Background
-`features/aurora/atmosphere.tsx` — Skia shader that shifts subtly based on the user's state (idle, active, streak at risk). Colors and transition logic live in `atmosphereColors.ts` and `atmosphereDetector.ts`.
+`features/aurora/atmosphere.tsx` — Skia shader background that shifts subtly based on session state. Colors and transition logic live alongside it in `features/aurora/`.
 
-### On-device AI
-`features/search/inference.ts` — Runs ExecutorTorch models on-device for natural-language search and trend insights. No data leaves the device.
+### Search
+`features/search/` is a heuristic, keyword-based search — not an ML or on-device inference feature. `query-intent.ts` matches substrings in the query (streak/project/stats intent), `use-search-query.ts` turns that into boolean display flags, and `search-generation.ts` formats a response from real session stats (`computeStreak`, `getHourBuckets`, etc.) using those flags. Everything runs synchronously on-device with plain string/array logic — there is no model inference or network call involved.
+
+### Chrona Helper
+`ChronaHelper/ChronaHelper/AppObserver.swift` watches for frontmost-app changes on macOS (via `NSWorkspace` notifications + a 1s poll) and reads window titles via the Accessibility API. `BonjourServer.swift` advertises an `NWListener` under the `_chrona._tcp` service type and streams `ChronaEvent`s to the iOS app over the local network. The iOS side connects via the `modules/chrona-stream` native module and `features/stream/stream-store.ts`.
+
+### Widgets & Live Activity
+`features/widgets/widget-sync.ts` syncs today's focus time and current session to `ChronaTimeWidget`, and today's session list to `TimelineWidget`. `features/widgets/live-activity.ts` starts/updates/ends an iOS Live Activity showing the active timer.
