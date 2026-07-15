@@ -15,21 +15,21 @@ bun run lint       # Run ESLint via expo lint
 
 ## Architecture
 
-**Expo SDK 55 / React Native 0.83.2 / React 19.2.0** with file-based routing via `expo-router`.
+**Expo SDK 57 / React Native 0.86 / React 19.2** with file-based routing via `expo-router`.
 
 ### Navigation
 
-The app uses `NativeTabs` from `expo-router/unstable-native-tabs` (not the JS `Tabs` component). Root layout is a single `Stack` with `(tabs)` as the only screen. The tab bar has 5 triggers: Dashboard, Timeline, Stats, Settings, and Search (icon-only, `role="search"`).
+The app uses `NativeTabs` from `expo-router/unstable-native-tabs` (not the JS `Tabs` component). Root layout is a single `Stack` with `(tabs)` as the only screen. The tab bar has 4 triggers: Dashboard, Timeline, Stats, and Search (icon-only, `role="search"`). A `BottomAccessory` on the tab bar renders `TimerBar` persistently across tabs. Settings is not a tab — it's pushed via `/settings` from a gear icon on the Dashboard.
 
 ```
 app/
   _layout.tsx          Root Stack + DarkTheme provider
+  settings.tsx         Settings (pushed, not a tab)
   (tabs)/
     _layout.tsx        NativeTabs with minimizeBehavior="onScrollDown"
-    index.tsx          Dashboard
-    timeline.tsx       Timeline
+    index/index.tsx    Dashboard
+    timeline/index.tsx Timeline
     stats.tsx          Stats
-    settings.tsx       Settings
     search.tsx         Search
 ```
 
@@ -67,7 +67,7 @@ heroui-native styling rules:
 
 ### Dependency Notes
 
-`react-native-worklets` is pinned to `0.7.2` in both `dependencies` and `resolutions`. Do not change this — heroui-native ships `0.5.1` internally and the `resolutions` field forces `0.7.2` everywhere to match the compiled native binary.
+`react-native-worklets` is pinned to a fixed version in both `dependencies` and `resolutions` to match the version heroui-native was compiled against. Do not bump this independently of heroui-native's internal worklets version — check `package.json` for the current pinned version before changing it.
 
 ### React Compiler
 
@@ -98,6 +98,6 @@ Like a high-end watch or a well-edited notebook. Nothing superfluous. Every elem
 
 3. **Precision over personality.** Exact spacing, exact alignment, exact timing on animations. Craft is felt even when it's not seen.
 
-4. **The atmosphere reflects the user.** Dynamic elements (aurora background, streak indicators, recovery hints) respond to the user's state — they're ambient feedback, not notifications.
+4. **The atmosphere reflects the user.** Dynamic elements (aurora background, streak count, timer-bar suggestions) respond to the user's state — they're ambient feedback, not notifications.
 
 5. **Dark surfaces, light interactions.** Deep backgrounds make focused foreground elements feel elevated. Color should feel like light emerging from darkness, not painted on top.

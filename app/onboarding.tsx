@@ -63,7 +63,7 @@ export default function OnboardingScreen() {
 
   const handleFinish = () => {
     markOnboardingComplete();
-    router.replace("/");
+    router.replace("/index");
   };
 
   const showDots = currentSlide > 0 && currentSlide < TOTAL_SLIDES - 1;
