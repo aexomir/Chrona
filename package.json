@@ -1,7 +1,7 @@
 {
   "name": "chrona",
   "main": "expo-router/entry",
-  "version": "1.0.41",
+  "version": "1.0.42",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -58,6 +58,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.10",
     "eslint": "^9.25.0",
