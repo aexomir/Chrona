@@ -13,6 +13,7 @@ import {
   buildSearchSpecs,
 } from "@/features/search/search-utils";
 import type { Session } from "@/features/sessions/sessions-store";
+import { captureError } from "@/lib/sentry";
 import { useState } from "react";
 
 const SEARCH_DELAY_MS = 10;
@@ -115,8 +116,9 @@ export function useSearchQuery(): UseSearchQueryReturn {
         query,
       );
       setSpecs(resultSpecs);
-    } catch {
+    } catch (error) {
       // Fallback if analysis fails (shouldn't happen)
+      captureError(error, "search", { query });
       const fallbackSpecs = buildFallbackSearchSpecs(
         query,
         queryTimeframe,

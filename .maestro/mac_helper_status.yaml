@@ -1,0 +1,38 @@
+# Tests that the Mac Helper status row appears in Settings → Integrations.
+# Run with the ChronaHelper macOS app running to see "Connected"; stop it to
+# see "Not Found" / "Searching…" instead. (This screen replaced the old
+# ActivityWatch "Activity Tracking" row, which no longer exists in the app.)
+#
+# Prerequisites:
+#   - App running on simulator via `bun run ios`
+#   - maestro installed: brew install maestro
+# Run: maestro test .maestro/mac_helper_status.yaml
+
+appId: com.aexomir.Chrona
+
+---
+- launchApp
+- waitForAnimationToEnd
+
+# Settings isn't a tab — it's pushed from the gear icon on the Dashboard.
+- tapOn:
+    text: "Settings"
+
+- waitForAnimationToEnd
+
+# Scroll to Integrations section
+- scrollUntilVisible:
+    element:
+      text: "Integrations"
+    direction: DOWN
+
+# Verify the Mac Helper row exists. The whole ListGroup.Item row (title +
+# status + refresh icon) is merged into a single accessibility node by
+# heroui-native, so this needs a partial-match regex rather than an exact
+# "Mac Helper" match.
+- assertVisible:
+    text: ".*Mac Helper.*"
+
+# Verify a status label is shown (one of: Off / Searching… / Connecting… / Connected / Not Found)
+- assertVisible:
+    id: "mac-helper-status"

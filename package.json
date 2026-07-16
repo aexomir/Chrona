@@ -1,7 +1,7 @@
 {
   "name": "chrona",
   "main": "expo-router/entry",
-  "version": "1.0.41",
+  "version": "1.0.52",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -10,7 +10,11 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "screenshots:ios": "bundle exec fastlane ios screenshots",
+    "screenshots:android": "bundle exec fastlane android screenshots",
+    "release:ios": "bundle exec fastlane ios beta",
+    "release:android": "bundle exec fastlane android beta"
   },
   "dependencies": {
     "@expo-google-fonts/pacifico": "^0.4.1",
@@ -18,12 +22,14 @@
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-community/datetimepicker": "9.1.0",
+    "@sentry/react-native": "~7.11.0",
     "@shopify/flash-list": "2.0.2",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "^57.0.0",
     "expo-blur": "~57.0.0",
     "expo-calendar": "~57.0.0",
     "expo-constants": "~57.0.3",
+    "expo-dev-client": "~57.0.6",
     "expo-font": "~57.0.0",
     "expo-glass-effect": "~57.0.0",
     "expo-haptics": "~57.0.0",
@@ -58,6 +64,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.10",
     "eslint": "^9.25.0",
@@ -76,5 +83,8 @@
     "hooks": {
       "pre-commit": "node ./scripts/bump-version.js"
     }
-  }
+  },
+  "trustedDependencies": [
+    "@sentry/cli"
+  ]
 }

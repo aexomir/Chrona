@@ -1,0 +1,17 @@
+# Captures the Stats tab for release screenshots.
+# Run: maestro test .maestro/screenshots/stats.yaml --test-output-dir <dir>
+
+appId: com.aexomir.Chrona
+
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: "Tap to start a timer"
+    timeout: 15000
+- openLink: "chrona://stats"
+- extendedWaitUntil:
+    visible:
+      text: "Week"
+    timeout: 20000
+- takeScreenshot: stats

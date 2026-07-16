@@ -68,7 +68,9 @@ function MacHelperStatus({ status }: { status: ConnectionStatus }) {
   return (
     <ListGroup.ItemSuffix className="flex-row items-center gap-2">
       <View style={[styles.statusDot, { backgroundColor: color }]} />
-      <Text style={[styles.statusText, { color }]}>{label}</Text>
+      <Text testID="mac-helper-status" style={[styles.statusText, { color }]}>
+        {label}
+      </Text>
       <Image source="sf:arrow.clockwise" style={styles.chevron} tintColor="#636366" />
     </ListGroup.ItemSuffix>
   );

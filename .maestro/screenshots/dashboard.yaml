@@ -1,0 +1,12 @@
+# Captures the Dashboard tab for release screenshots.
+# Run: maestro test .maestro/screenshots/dashboard.yaml --test-output-dir <dir>
+
+appId: com.aexomir.Chrona
+
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: "Tap to start a timer"
+    timeout: 15000
+- takeScreenshot: dashboard

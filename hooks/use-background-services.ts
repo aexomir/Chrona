@@ -5,6 +5,7 @@ import { startJournalTracker, stopJournalTracker } from "@/features/intelligence
 import { useProjects } from "@/features/projects/projects-store";
 import { useStreamStore } from "@/features/stream/stream-store";
 import { useTimerStore } from "@/features/timer/timer-store";
+import { trackEvent } from "@/lib/sentry";
 import { useEffect } from "react";
 
 function pushTimerState() {
@@ -35,6 +36,11 @@ export function useBackgroundServices() {
 
     const unsubTimer = useTimerStore.subscribe(() => pushTimerState());
     const unsubStream = useStreamStore.subscribe((state, prev) => {
+      if (state.status === prev.status) return;
+      trackEvent("mac_helper", "connection_status_changed", {
+        from: prev.status,
+        to: state.status,
+      });
       if (state.status === "connected" && prev.status !== "connected") {
         pushTimerState();
       }

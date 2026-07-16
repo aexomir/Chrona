@@ -10,6 +10,7 @@ import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { formatTime } from "@/features/timer/timer-utils";
+import { trackEvent } from "@/lib/sentry";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -40,16 +41,13 @@ export function TimerBar() {
     eventTitle: string;
     projectId: string;
   } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const hasCheckCalendarRef = useRef(false);
 
   useEffect(() => {
-    const source = isTracking ? startTimestamp : null;
-    if (!source) {
-      setElapsed(0);
-      return;
-    }
+    if (!isTracking || !startTimestamp) return;
     const tick = () => {
-      const e = Math.floor((Date.now() - new Date(source).getTime()) / 1000);
+      const e = Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000);
       setElapsed(e);
     };
     tick();
@@ -60,19 +58,21 @@ export function TimerBar() {
   useEffect(() => {
     if (isTracking || !calendarEnabled) {
       hasCheckCalendarRef.current = false;
-      setCalendarSuggestion(null);
       return;
     }
     if (hasCheckCalendarRef.current) return;
 
     hasCheckCalendarRef.current = true;
-    const suggestion = getActiveEventSuggestion();
-    if (suggestion) {
-      setCalendarSuggestion({
-        eventTitle: suggestion.event.title,
-        projectId: suggestion.projectId,
-      });
-    }
+    const check = () => {
+      const suggestion = getActiveEventSuggestion();
+      if (suggestion) {
+        setCalendarSuggestion({
+          eventTitle: suggestion.event.title,
+          projectId: suggestion.projectId,
+        });
+      }
+    };
+    check();
   }, [isTracking, calendarEnabled, getActiveEventSuggestion]);
 
   useEffect(() => {
@@ -83,14 +83,26 @@ export function TimerBar() {
     return () => clearInterval(interval);
   }, [calendarEnabled, isTracking, fetchCalendarEvents]);
 
-  const calendarProj = calendarSuggestion
-    ? projects.find((p) => p.id === calendarSuggestion.projectId)
+  useEffect(() => {
+    if (!interruptedSession || isTracking) return;
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, [interruptedSession, isTracking]);
+
+  // calendarEnabled/isTracking aren't reflected in cleared state (only in the
+  // effect above, which skips resetting to satisfy react-hooks/set-state-in-effect)
+  // so gate the display here instead — same effective behavior.
+  const activeCalendarSuggestion =
+    calendarEnabled && !isTracking ? calendarSuggestion : null;
+
+  const calendarProj = activeCalendarSuggestion
+    ? projects.find((p) => p.id === activeCalendarSuggestion.projectId)
     : null;
 
   const resumableSession =
     !isTracking &&
     interruptedSession !== null &&
-    Date.now() - new Date(interruptedSession.interruptedAt).getTime() < INTERRUPTED_SESSION_TTL_MS
+    now - new Date(interruptedSession.interruptedAt).getTime() < INTERRUPTED_SESSION_TTL_MS
       ? interruptedSession
       : null;
 
@@ -106,17 +118,30 @@ export function TimerBar() {
   function handleStopAutoSession() {
     const sessionData = stopTimer();
     if (sessionData) {
+      trackEvent("timer", "timer_stop", { auto: true, duration: sessionData.duration });
       const startMs = new Date(sessionData.startTime).getTime();
       const endMs = new Date(sessionData.endTime).getTime();
       const apps = getAppsForWindow(startMs, endMs);
       if (apps.length > 1) {
         usePendingReviewStore.getState().offer({ ...sessionData, apps });
+        trackEvent("session", "session_save", {
+          auto: true,
+          duration: sessionData.duration,
+          appCount: apps.length,
+          queuedForReview: true,
+        });
       } else {
         addSession({
           ...sessionData,
           id: Date.now().toString(),
           auto: true,
           ...(apps.length > 0 ? { apps } : {}),
+        });
+        trackEvent("session", "session_save", {
+          auto: true,
+          duration: sessionData.duration,
+          appCount: apps.length,
+          queuedForReview: false,
         });
       }
     }
@@ -130,9 +155,9 @@ export function TimerBar() {
           router.push("/timer");
           return;
         }
-        if (calendarSuggestion && calendarProj) {
+        if (activeCalendarSuggestion && calendarProj) {
           router.push(
-            `/timer?suggestProjectId=${calendarSuggestion.projectId}&suggestEventTitle=${encodeURIComponent(calendarSuggestion.eventTitle)}`,
+            `/timer?suggestProjectId=${activeCalendarSuggestion.projectId}&suggestEventTitle=${encodeURIComponent(activeCalendarSuggestion.eventTitle)}`,
           );
         } else {
           router.push("/timer");
@@ -223,7 +248,7 @@ export function TimerBar() {
             <Text className="text-white/50 text-sm font-semibold">×</Text>
           </Pressable>
         </View>
-      ) : calendarSuggestion ? (
+      ) : activeCalendarSuggestion ? (
         <View className="flex-row items-center justify-center gap-1.5">
           <Text className="text-white/50 text-sm shrink-0">Suggested:</Text>
           <View
@@ -231,7 +256,7 @@ export function TimerBar() {
             style={{ backgroundColor: calendarProj?.color ?? Neutral.z600 }}
           />
           <Text className="text-white text-sm shrink" numberOfLines={1}>
-            {calendarSuggestion.eventTitle}
+            {activeCalendarSuggestion.eventTitle}
           </Text>
           <Pressable
             onPress={(e) => {

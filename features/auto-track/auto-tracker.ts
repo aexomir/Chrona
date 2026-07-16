@@ -21,6 +21,7 @@ import { useSettingsStore } from "@/features/settings/settings-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 
 import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
+import { captureError, trackEvent } from "@/lib/sentry";
 import { matchRule } from "./matcher";
 import { usePendingReviewStore } from "./pending-review-store";
 import { IDLE_TIMEOUT_MS, SWITCH_GRACE_MS } from "./timing-config";
@@ -91,6 +92,7 @@ function stopAndSave() {
     const effectiveDuration = Math.floor(
       (effectiveEndMs - new Date(sessionData.startTime).getTime()) / 1000,
     );
+    trackEvent("timer", "timer_stop", { auto: true, duration: effectiveDuration });
     const minDuration = useSettingsStore.getState().autoTrackMinDurationSec;
     if (effectiveDuration >= minDuration) {
       const startMs = new Date(sessionData.startTime).getTime();
@@ -109,6 +111,12 @@ function stopAndSave() {
           projectId: sessionData.projectId,
           apps,
         });
+        trackEvent("session", "session_save", {
+          auto: true,
+          duration: effectiveDuration,
+          appCount: apps.length,
+          queuedForReview: true,
+        });
       } else {
         useSessionsStore.getState().addSession({
           ...sessionData,
@@ -117,6 +125,12 @@ function stopAndSave() {
           id: Date.now().toString(),
           auto: true,
           ...(apps.length > 0 ? { apps } : {}),
+        });
+        trackEvent("session", "session_save", {
+          auto: true,
+          duration: effectiveDuration,
+          appCount: apps.length,
+          queuedForReview: false,
         });
       }
     }
@@ -133,6 +147,7 @@ function startAutoTimer(rule: TrackingRule, event: ActivityEvent) {
   useTimerStore.getState().setAutoTracked(true);
   autoStartedRuleId = rule.id;
   autoStartedBundleId = event.bundleId;
+  trackEvent("timer", "timer_start", { auto: true, hasProject: !!rule.projectId });
 }
 
 function isCompanionApp(ruleId: string, bundleId: string): boolean {
@@ -289,7 +304,13 @@ export function startAutoTracker() {
 
   // Idempotent — tear down any existing subscription before re-attaching
   eventSub?.remove();
-  eventSub = emitter.addListener("onEvent", handleEvent);
+  eventSub = emitter.addListener("onEvent", (event: ActivityEvent) => {
+    try {
+      handleEvent(event);
+    } catch (error) {
+      captureError(error, "auto_tracker", { eventType: event.type });
+    }
+  });
 }
 
 export function stopAutoTracker() {
