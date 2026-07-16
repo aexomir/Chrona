@@ -1,0 +1,7 @@
+app_identifier("com.aexomir.Chrona")
+apple_id(ENV["APPLE_ID"])
+team_id("998C8ZCRMH")
+
+for_platform :android do
+  package_name("com.aexomir.Chrona")
+end

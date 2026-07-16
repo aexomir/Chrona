@@ -1,0 +1,17 @@
+# Captures the Timeline tab for release screenshots.
+# Run: maestro test .maestro/screenshots/timeline.yaml --test-output-dir <dir>
+
+appId: com.aexomir.Chrona
+
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: "Tap to start a timer"
+    timeout: 15000
+- openLink: "chrona://timeline"
+- extendedWaitUntil:
+    visible:
+      text: ".*Mon.*"
+    timeout: 20000
+- takeScreenshot: timeline

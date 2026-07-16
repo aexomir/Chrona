@@ -1,7 +1,7 @@
 {
   "name": "chrona",
   "main": "expo-router/entry",
-  "version": "1.0.48",
+  "version": "1.0.49",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -10,7 +10,11 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "screenshots:ios": "bundle exec fastlane ios screenshots",
+    "screenshots:android": "bundle exec fastlane android screenshots",
+    "release:ios": "bundle exec fastlane ios beta",
+    "release:android": "bundle exec fastlane android beta"
   },
   "dependencies": {
     "@expo-google-fonts/pacifico": "^0.4.1",

@@ -1,0 +1,81 @@
+require "json"
+require "fileutils"
+
+default_platform(:ios)
+
+ROOT_DIR = File.expand_path("..", __dir__)
+APP_JSON_PATH = File.join(ROOT_DIR, "app.json")
+MAESTRO_SCREENSHOTS_DIR = File.join(ROOT_DIR, ".maestro", "screenshots")
+
+def read_app_json
+  JSON.parse(File.read(APP_JSON_PATH))
+end
+
+def write_app_json(data)
+  File.write(APP_JSON_PATH, JSON.pretty_generate(data) + "\n")
+end
+
+desc "Run the Maestro screenshot flows for each tab and frame the iOS captures"
+private_lane :run_screenshot_flows do |options|
+  platform_name = options[:platform_name]
+  output_dir = File.join(ROOT_DIR, "fastlane", "screenshots", platform_name)
+  FileUtils.mkdir_p(output_dir)
+
+  Dir.glob(File.join(MAESTRO_SCREENSHOTS_DIR, "*.yaml")).sort.each do |flow|
+    sh("maestro", "test", flow, "--test-output-dir", output_dir)
+  end
+
+  if platform_name == "ios"
+    frameit(path: output_dir)
+  else
+    UI.message("Skipping frameit for #{platform_name} — device frames are iOS-only; raw captures are in #{output_dir}")
+  end
+end
+
+platform :ios do
+  desc "Bump the iOS build number in app.json"
+  lane :bump_build_number do
+    data = read_app_json
+    data["expo"]["ios"] ||= {}
+    next_build = data["expo"]["ios"]["buildNumber"].to_i + 1
+    data["expo"]["ios"]["buildNumber"] = next_build.to_s
+    write_app_json(data)
+    UI.success("iOS build number bumped to #{next_build}")
+  end
+
+  desc "Capture and frame the iOS release screenshots"
+  lane :screenshots do
+    run_screenshot_flows(platform_name: "ios")
+  end
+
+  desc "Bump the build number, build with EAS, and submit to TestFlight"
+  lane :beta do
+    bump_build_number
+    sh("eas build --profile production --platform ios --non-interactive --wait", chdir: ROOT_DIR)
+    sh("eas submit --profile production --platform ios --non-interactive", chdir: ROOT_DIR)
+  end
+end
+
+platform :android do
+  desc "Bump the Android version code in app.json"
+  lane :bump_build_number do
+    data = read_app_json
+    data["expo"]["android"] ||= {}
+    next_code = data["expo"]["android"]["versionCode"].to_i + 1
+    data["expo"]["android"]["versionCode"] = next_code
+    write_app_json(data)
+    UI.success("Android versionCode bumped to #{next_code}")
+  end
+
+  desc "Capture the Android release screenshots"
+  lane :screenshots do
+    run_screenshot_flows(platform_name: "android")
+  end
+
+  desc "Bump the version code, build with EAS, and submit to the Play Store"
+  lane :beta do
+    bump_build_number
+    sh("eas build --profile production --platform android --non-interactive --wait", chdir: ROOT_DIR)
+    sh("eas submit --profile production --platform android --non-interactive", chdir: ROOT_DIR)
+  end
+end

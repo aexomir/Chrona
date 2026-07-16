@@ -2,7 +2,7 @@
   "expo": {
     "name": "Chrona",
     "slug": "Chrona",
-    "version": "1.0.48",
+    "version": "1.0.49",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chrona",
@@ -11,6 +11,7 @@
       "appleTeamId": "998C8ZCRMH",
       "supportsTablet": true,
       "bundleIdentifier": "com.aexomir.Chrona",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCalendarsUsageDescription": "Chrona uses your calendar to suggest projects for upcoming events.",
         "NSLocalNetworkUsageDescription": "Chrona connects to Chrona Helper on your Mac to show which app you're currently using.",
@@ -30,6 +31,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.aexomir.Chrona",
+      "versionCode": 1,
       "permissions": [
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
