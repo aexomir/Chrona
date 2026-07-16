@@ -2,7 +2,7 @@
   "expo": {
     "name": "Chrona",
     "slug": "Chrona",
-    "version": "1.0.47",
+    "version": "1.0.48",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chrona",
@@ -15,8 +15,10 @@
         "NSCalendarsUsageDescription": "Chrona uses your calendar to suggest projects for upcoming events.",
         "NSLocalNetworkUsageDescription": "Chrona connects to Chrona Helper on your Mac to show which app you're currently using.",
         "NSBonjourServices": [
+          "_chrona._tcp",
           "_chrona._tcp"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +29,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.aexomir.Chrona"
+      "package": "com.aexomir.Chrona",
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "web": {
       "output": "static",
@@ -85,11 +91,36 @@
           ]
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "com.aexomir.Chrona.ExpoWidgetsTarget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.aexomir.Chrona"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "30ef324d-f1b3-464c-ab00-b822e7d52ebe"
+      }
+    },
+    "owner": "aexomir"
   }
 }
