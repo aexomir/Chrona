@@ -14,6 +14,7 @@ import { emitter } from '@/modules/chrona-stream';
 import type { ActivityEvent } from '@/modules/chrona-stream';
 
 import { useTimerStore } from '@/features/timer/timer-store';
+import { captureError } from '@/lib/sentry';
 import { create } from 'zustand';
 
 import { matchRule } from './matcher';
@@ -97,9 +98,13 @@ export const useUntrackedStore = create<UntrackedState>()((set) => ({
 
     // Idempotent
     eventSub?.remove();
-    eventSub = emitter.addListener('onEvent', (event: ActivityEvent) =>
-      handleEvent(event, set),
-    );
+    eventSub = emitter.addListener('onEvent', (event: ActivityEvent) => {
+      try {
+        handleEvent(event, set);
+      } catch (error) {
+        captureError(error, 'untracked_store', { eventType: event.type });
+      }
+    });
   },
 
   _stopWatching: () => {

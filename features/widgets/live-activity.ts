@@ -1,3 +1,4 @@
+import { trackEvent } from "@/lib/sentry";
 import chronaLiveActivity, {
   type ChronaLiveActivityProps,
 } from "@/widgets/chrona-live-activity";
@@ -15,7 +16,10 @@ export async function startActivity(props: ChronaLiveActivityProps): Promise<voi
     const existing = chronaLiveActivity.getInstances();
     await Promise.all(existing.map((instance) => instance.end("immediate")));
     activeActivity = chronaLiveActivity.start(props, "chrona://(tabs)/timeline");
-  } catch {
+  } catch (error) {
+    trackEvent("live_activity", "start_failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     activeActivity = null;
   }
 }

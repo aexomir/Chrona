@@ -22,6 +22,7 @@ import { emitter } from "@/modules/chrona-stream";
 import { forceStopForSystemIdle } from "@/features/auto-track/auto-tracker";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
+import { captureError, trackEvent } from "@/lib/sentry";
 
 type Sub = ReturnType<typeof emitter.addListener>;
 let eventSub: Sub | null = null;
@@ -36,6 +37,8 @@ function handleEvent(event: ActivityEvent) {
     ? Math.floor((Date.now() - new Date(startTimestamp).getTime()) / 1000)
     : 0;
 
+  trackEvent("timer", "timer_stop", { auto: isAutoTracked, reason: "system_idle" });
+
   if (isAutoTracked) {
     // Auto-tracked sessions must go through the auto-tracker's own save path
     // so the session is tagged `auto: true` and gets its app breakdown attached.
@@ -46,6 +49,11 @@ function handleEvent(event: ActivityEvent) {
       useSessionsStore.getState().addSession({
         ...sessionData,
         id: Date.now().toString(),
+      });
+      trackEvent("session", "session_save", {
+        auto: false,
+        duration: sessionData.duration,
+        appCount: 0,
       });
     }
   }
@@ -61,7 +69,13 @@ function handleEvent(event: ActivityEvent) {
 export function startIdleHandler() {
   if (process.env.EXPO_OS !== "ios") return;
   eventSub?.remove();
-  eventSub = emitter.addListener("onEvent", handleEvent);
+  eventSub = emitter.addListener("onEvent", (event: ActivityEvent) => {
+    try {
+      handleEvent(event);
+    } catch (error) {
+      captureError(error, "idle_handler", { eventType: event.type });
+    }
+  });
 }
 
 export function stopIdleHandler() {

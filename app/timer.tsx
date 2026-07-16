@@ -8,6 +8,7 @@ import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-st
 import { useTimerStore } from "@/features/timer/timer-store";
 import { formatTime } from "@/features/timer/timer-utils";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { trackEvent } from "@/lib/sentry";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
@@ -120,6 +121,10 @@ export default function TimerScreen() {
     if (!taskTitle.trim()) return;
     markTimerStart();
     startTimer(taskTitle.trim(), selectedProject?.value ?? null);
+    trackEvent("timer", "timer_start", {
+      auto: false,
+      hasProject: !!selectedProject,
+    });
     router.back();
   };
 
@@ -130,6 +135,10 @@ export default function TimerScreen() {
       router.back();
       return;
     }
+    trackEvent("timer", "timer_stop", {
+      auto: wasAutoTracked,
+      duration: session.duration,
+    });
     const startMs = new Date(session.startTime).getTime();
     const endMs = new Date(session.endTime).getTime();
     const apps = getAppsForWindow(startMs, endMs);
@@ -144,6 +153,11 @@ export default function TimerScreen() {
         ...session,
         ...(wasAutoTracked ? { auto: true } : {}),
       });
+      trackEvent("session", "session_save", {
+        auto: wasAutoTracked,
+        duration: session.duration,
+        appCount: 0,
+      });
       toast.show({ label: "Session logged", variant: "success" });
       router.back();
     }
@@ -156,6 +170,11 @@ export default function TimerScreen() {
       ...pendingSession.session,
       ...(selectedApps.length > 0 ? { apps: selectedApps } : {}),
     });
+    trackEvent("session", "session_save", {
+      auto: !!pendingSession.session.auto,
+      duration: pendingSession.session.duration,
+      appCount: selectedApps.length,
+    });
     toast.show({ label: "Session logged", variant: "success" });
     router.back();
   };
@@ -163,6 +182,11 @@ export default function TimerScreen() {
   const handleSkip = () => {
     if (!pendingSession) return;
     addSession({ id: Date.now().toString(), ...pendingSession.session });
+    trackEvent("session", "session_save", {
+      auto: !!pendingSession.session.auto,
+      duration: pendingSession.session.duration,
+      appCount: 0,
+    });
     toast.show({ label: "Session logged", variant: "success" });
     router.back();
   };

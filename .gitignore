@@ -49,3 +49,4 @@ MacOS/FocusHelper/build/*
 
 expo-env.d.ts
 # @end expo-cli
+.env

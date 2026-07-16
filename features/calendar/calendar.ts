@@ -1,3 +1,4 @@
+import { captureError } from "@/lib/sentry";
 import * as Calendar from "expo-calendar";
 
 export type CalendarInfo = { id: string; name: string };
@@ -27,7 +28,8 @@ export async function requestCalendarPermission(): Promise<
   try {
     const result = await Calendar.requestCalendarPermissionsAsync();
     return result.status === "granted" ? "granted" : "denied";
-  } catch {
+  } catch (error) {
+    captureError(error, "calendar", { operation: "requestCalendarPermission" });
     return "denied";
   }
 }
@@ -41,7 +43,8 @@ export async function getCalendarPermissionStatus(): Promise<CalendarPermissionS
     if (result.status === "granted") return "granted";
     if (result.status === "denied") return "denied";
     return "undetermined";
-  } catch {
+  } catch (error) {
+    captureError(error, "calendar", { operation: "getCalendarPermissionStatus" });
     return "undetermined";
   }
 }
@@ -58,7 +61,8 @@ export async function getCalendars(): Promise<CalendarInfo[]> {
       id: cal.id,
       name: cal.title || "Untitled Calendar",
     }));
-  } catch {
+  } catch (error) {
+    captureError(error, "calendar", { operation: "getCalendars" });
     return [];
   }
 }
@@ -112,14 +116,19 @@ export async function fetchCalendarEvents(
             notes: event.notes,
           });
         }
-      } catch {
+      } catch (error) {
         // Skip individual calendar errors
+        captureError(error, "calendar", {
+          operation: "fetchCalendarEvents.perCalendar",
+          calendarId: calendar.id,
+        });
         continue;
       }
     }
 
     return events;
-  } catch {
+  } catch (error) {
+    captureError(error, "calendar", { operation: "fetchCalendarEvents" });
     return [];
   }
 }

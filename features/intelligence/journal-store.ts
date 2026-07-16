@@ -15,6 +15,7 @@
  *   stopJournalTracker()  — call when tearing down
  */
 
+import { captureError } from "@/lib/sentry";
 import type { ActivityEvent } from "@/modules/chrona-stream";
 import { emitter } from "@/modules/chrona-stream";
 import { mmkvStorage } from "@/storage";
@@ -386,7 +387,13 @@ export function startJournalTracker() {
   if (process.env.EXPO_OS !== "ios") return;
   // Idempotent
   journalSub?.remove();
-  journalSub = emitter.addListener("onEvent", handleJournalEvent);
+  journalSub = emitter.addListener("onEvent", (event: ActivityEvent) => {
+    try {
+      handleJournalEvent(event);
+    } catch (error) {
+      captureError(error, "journal_tracker", { eventType: event.type });
+    }
+  });
 }
 
 export function stopJournalTracker() {
