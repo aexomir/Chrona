@@ -1,7 +1,7 @@
 {
   "name": "chrona",
   "main": "expo-router/entry",
-  "version": "1.0.54",
+  "version": "1.0.57",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
