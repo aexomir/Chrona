@@ -1,7 +1,7 @@
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { getAppsForWindow } from "@/features/intelligence/journal-store";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 
@@ -18,7 +18,7 @@ export default function StopScreen() {
         ...(apps.length > 0 ? { apps } : {}),
       });
     }
-    router.replace("/index");
+    router.replace("/" as Href);
   }, []);
 
   return <View />;

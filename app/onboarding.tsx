@@ -10,7 +10,7 @@ import { WelcomeSlide } from "@/features/onboarding/components/welcome-slide";
 import { markOnboardingComplete } from "@/features/onboarding/onboarding-storage";
 import { TOTAL_SLIDES } from "@/features/onboarding/onboarding-constants";
 import { useProjects } from "@/features/projects/projects-store";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -63,7 +63,7 @@ export default function OnboardingScreen() {
 
   const handleFinish = () => {
     markOnboardingComplete();
-    router.replace("/index");
+    router.replace("/" as Href);
   };
 
   const showDots = currentSlide > 0 && currentSlide < TOTAL_SLIDES - 1;
