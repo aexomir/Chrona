@@ -6,6 +6,7 @@
 
 import Cocoa
 import ServiceManagement
+import os.log
 
 final class StatusBarController {
 
@@ -16,6 +17,7 @@ final class StatusBarController {
     private var timerState: TimerStatePayload?
     private var startDate: Date?
     private var elapsedTimer: Timer?
+    private let log = Logger(subsystem: "com.chrona.helper", category: "StatusBarController")
 
     // MARK: - Init
 
@@ -224,7 +226,7 @@ final class StatusBarController {
                 try service.register()
             }
         } catch {
-            print("SMAppService toggle failed: \(error)")
+            log.error("SMAppService toggle failed: \(error.localizedDescription, privacy: .public)")
         }
         rebuildMenu()
     }

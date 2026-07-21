@@ -1,9 +1,9 @@
 Pod::Spec.new do |s|
   s.name           = 'ChronaStream'
   s.version        = '1.0.0'
-  s.summary        = 'A sample project summary'
-  s.description    = 'A sample project description'
-  s.author         = ''
+  s.summary        = 'Native bridge for streaming activity events from Chrona Helper over Bonjour/TCP'
+  s.description    = 'Discovers the Chrona Helper macOS app via Bonjour, maintains a TCP connection, and forwards app-activity, idle, and heartbeat events to the Chrona React Native app.'
+  s.author         = 'Chrona'
   s.homepage       = 'https://docs.expo.dev/modules/'
   s.platforms      = {
     :ios => '15.1',

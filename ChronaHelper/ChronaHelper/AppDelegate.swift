@@ -10,6 +10,7 @@
 import Cocoa
 import ApplicationServices
 import ServiceManagement
+import os.log
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -17,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var server:       BonjourServer!
     private var observer:     AppObserver!
     private var idleDetector: IdleDetector!
+    private let log = Logger(subsystem: "com.chrona.helper", category: "AppDelegate")
 
     // MARK: - Launch
 
@@ -84,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try service.register()
         } catch {
-            print("SMAppService registration failed: \(error)")
+            log.error("SMAppService registration failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }
