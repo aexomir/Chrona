@@ -10,7 +10,7 @@ then streams that information to the Chrona iOS app in real time over the local 
 - Reads the focused window title via the macOS Accessibility API
 - Advertises itself on Bonjour so the iOS app can discover it without IP configuration
 - Streams events as newline-delimited JSON over a TCP connection
-- Sends heartbeats every 30 s to keep the connection alive
+- Sends heartbeats every 10 s to keep the connection alive
 - Reconnects automatically on both sides if the connection drops
 
 ## Building
@@ -58,7 +58,20 @@ Framing: **newline-delimited JSON** — one UTF-8 JSON object per `\n`
 |--------------|---------------------------------------------------------|----------------|
 | `hello`      | Immediately after iOS client connects — current state.  | Yes            |
 | `app_change` | When frontmost app or window title changes.             | Yes            |
-| `heartbeat`  | Every 30 s when nothing has changed.                    | No (empty)     |
+| `heartbeat`  | Every 10 s when nothing has changed.                    | No (empty)     |
+| `pong`       | Response to a client `ping` message, confirming liveness. | No (empty)   |
+| `user_idle`  | Sent when no keyboard/mouse input is seen for the idle threshold. | No (empty) |
+| `user_active`| Sent when input resumes after a `user_idle` event.       | No (empty)     |
+
+### Client → server messages
+
+The iOS client can also send newline-delimited JSON messages to the helper over the same
+connection:
+
+| `type`        | Payload                                                                                                                    | Helper response                                                          |
+|---------------|-----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| `ping`        | `{"type": "ping"}`                                                                                                         | Replies with a `pong` event.                                              |
+| `timer_state` | `{"type": "timer_state", "isTracking": Bool, "projectId", "projectName", "projectColor", "timerTitle", "startTimestamp"}` | Updates the menu bar's live elapsed-time display and project-color dot.  |
 
 ---
 

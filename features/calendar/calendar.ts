@@ -26,7 +26,7 @@ export async function requestCalendarPermission(): Promise<
   Exclude<CalendarPermissionStatus, "undetermined">
 > {
   try {
-    const result = await Calendar.requestCalendarPermissionsAsync();
+    const result = await Calendar.requestCalendarPermissions();
     return result.status === "granted" ? "granted" : "denied";
   } catch (error) {
     captureError(error, "calendar", { operation: "requestCalendarPermission" });
@@ -39,7 +39,7 @@ export async function requestCalendarPermission(): Promise<
  */
 export async function getCalendarPermissionStatus(): Promise<CalendarPermissionStatus> {
   try {
-    const result = await Calendar.getCalendarPermissionsAsync();
+    const result = await Calendar.getCalendarPermissions();
     if (result.status === "granted") return "granted";
     if (result.status === "denied") return "denied";
     return "undetermined";
@@ -54,9 +54,7 @@ export async function getCalendarPermissionStatus(): Promise<CalendarPermissionS
  */
 export async function getCalendars(): Promise<CalendarInfo[]> {
   try {
-    const calendars = await Calendar.getCalendarsAsync(
-      Calendar.EntityTypes.EVENT,
-    );
+    const calendars = await Calendar.getCalendars(Calendar.EntityTypes.EVENT);
     return calendars.map((cal) => ({
       id: cal.id,
       name: cal.title || "Untitled Calendar",
@@ -75,9 +73,7 @@ export async function fetchCalendarEvents(
   daysForward = SYNC_DAYS_FORWARD,
 ): Promise<CalendarEvent[]> {
   try {
-    const calendars = await Calendar.getCalendarsAsync(
-      Calendar.EntityTypes.EVENT,
-    );
+    const calendars = await Calendar.getCalendars(Calendar.EntityTypes.EVENT);
 
     const now = new Date();
     const startDate = new Date(now);
@@ -89,11 +85,7 @@ export async function fetchCalendarEvents(
 
     for (const calendar of calendars) {
       try {
-        const calendarEvents = await Calendar.getEventsAsync(
-          [calendar.id],
-          startDate,
-          endDate,
-        );
+        const calendarEvents = await calendar.listEvents(startDate, endDate);
 
         for (const event of calendarEvents) {
           // Handle both Date and string formats (iOS vs Android)
