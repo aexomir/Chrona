@@ -95,8 +95,12 @@ public class ChronaStreamModule: Module {
 
     private func submitPairingCode(_ code: String) {
         currentToken = code.isEmpty ? nil : code
-        guard let conn = connection, let token = currentToken else { return }
-        sendAuth(token, on: conn)
+        guard let token = currentToken else { return }
+        if let conn = connection {
+            sendAuth(token, on: conn)
+        } else if isStarted {
+            attemptReconnect()
+        }
     }
 
     private func stopStream() {
