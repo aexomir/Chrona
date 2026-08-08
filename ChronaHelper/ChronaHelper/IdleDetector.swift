@@ -36,12 +36,15 @@ final class IdleDetector {
 
     func start() {
         checkTimer?.invalidate()
-        checkTimer = Timer.scheduledTimer(
+        let timer = Timer.scheduledTimer(
             withTimeInterval: kCheckInterval,
             repeats: true
         ) { [weak self] _ in
             self?.check()
         }
+        // .common so idle checks keep running while the status-bar menu is open.
+        RunLoop.main.add(timer, forMode: .common)
+        checkTimer = timer
     }
 
     func stop() {

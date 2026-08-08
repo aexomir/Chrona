@@ -21,6 +21,9 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SENTRY_DSN": "https://39a8b0caded3e5650b99de04b416cff7@o4511745046151168.ingest.de.sentry.io/4511745051590736"
       }
     },
     "production": {
@@ -29,10 +32,18 @@
       },
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_SENTRY_DSN": "https://39a8b0caded3e5650b99de04b416cff7@o4511745046151168.ingest.de.sentry.io/4511745051590736"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "rnj.amirhossein1@gmail.com",
+        "appleTeamId": "998C8ZCRMH"
+      }
+    }
   }
 }

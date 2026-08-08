@@ -97,9 +97,13 @@ final class StatusBarController {
     private func startOrStopElapsedTimer() {
         stopElapsedTimer()
         guard timerState?.isTracking == true else { return }
-        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.updateButton()
         }
+        // .common so the elapsed-time label keeps ticking while the status-bar
+        // menu is open, instead of freezing at the moment the user opens it.
+        RunLoop.main.add(timer, forMode: .common)
+        elapsedTimer = timer
     }
 
     private func stopElapsedTimer() {
@@ -148,6 +152,24 @@ final class StatusBarController {
         let statusItem  = NSMenuItem(title: statusTitle, action: nil, keyEquivalent: "")
         statusItem.isEnabled = false
         menu.addItem(statusItem)
+
+        menu.addItem(.separator())
+
+        let codeItem = NSMenuItem(
+            title: "Pairing Code: \(Pairing.currentCode)  (click to copy)",
+            action: #selector(copyPairingCode),
+            keyEquivalent: ""
+        )
+        codeItem.target = self
+        menu.addItem(codeItem)
+
+        let regenItem = NSMenuItem(
+            title: "Regenerate Pairing Code…",
+            action: #selector(regeneratePairingCode),
+            keyEquivalent: ""
+        )
+        regenItem.target = self
+        menu.addItem(regenItem)
 
         menu.addItem(.separator())
 
@@ -208,6 +230,23 @@ final class StatusBarController {
     @objc private func setIdleThreshold(_ sender: NSMenuItem) {
         guard let seconds = sender.representedObject as? Double else { return }
         IdleDetector.setThreshold(seconds)
+        rebuildMenu()
+    }
+
+    @objc private func copyPairingCode() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(Pairing.currentCode, forType: .string)
+    }
+
+    @objc private func regeneratePairingCode() {
+        let alert = NSAlert()
+        alert.messageText = "Regenerate Pairing Code?"
+        alert.informativeText = "Your iOS app will need to enter the new code to reconnect."
+        alert.addButton(withTitle: "Regenerate")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        Pairing.regenerate()
         rebuildMenu()
     }
 
