@@ -5,6 +5,7 @@ import { useCalendarStore } from "@/features/calendar/calendar-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { CalendarEventMarker } from "@/features/timeline/components/calendar-event-marker";
+import { DatePickerSheet } from "@/features/timeline/components/date-picker-sheet";
 import { DatePill } from "@/features/timeline/components/date-pill";
 import { GapSeparator } from "@/features/timeline/components/gap-separator";
 import { LiveSessionRow } from "@/features/timeline/components/live-session-row";
@@ -27,8 +28,6 @@ import {
   isSameDay,
 } from "@/features/timeline/timeline-utils";
 import { useTimerStore } from "@/features/timer/timer-store";
-import { DatePicker, Host } from "@expo/ui/swift-ui";
-import { datePickerStyle } from "@expo/ui/swift-ui/modifiers";
 import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { Stack } from "expo-router";
@@ -229,6 +228,7 @@ function TimelineContent() {
     if (idx !== -1 && stripWidthRef.current > 0) {
       circleX.set(circleXForIndexInWidth(idx, stripWidthRef.current));
     }
+    setShowPicker(false);
   }
 
   function handleWeekChange(delta: number) {
@@ -408,20 +408,7 @@ function TimelineContent() {
           <BottomSheet.Content
             backgroundStyle={{ backgroundColor: theme.modalSheet }}
           >
-            <Host matchContents>
-              <DatePicker
-                selection={selectedDate}
-                displayedComponents={["date"]}
-                onDateChange={(date) => applyDate(date)}
-                modifiers={[datePickerStyle("graphical")]}
-              />
-            </Host>
-            <Pressable
-              className="items-center py-4"
-              onPress={() => setShowPicker(false)}
-            >
-              <Text className="text-white font-semibold text-base">Done</Text>
-            </Pressable>
+            <DatePickerSheet selectedDate={selectedDate} onSelect={applyDate} />
           </BottomSheet.Content>
         </BottomSheet.Portal>
       </BottomSheet>

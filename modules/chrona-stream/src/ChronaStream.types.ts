@@ -3,7 +3,9 @@ export type ConnectionStatus =
   | 'scanning'
   | 'connecting'
   | 'connected'
-  | 'disconnected';
+  | 'disconnected'
+  | 'pairing_required'
+  | 'auth_failed';
 
 export type ActivityEventType = 'app_change' | 'heartbeat' | 'hello' | 'pong' | 'user_idle' | 'user_active';
 

@@ -29,10 +29,13 @@ public class ChronaStreamModule: Module {
     private var isStarted = false
     private var currentPathSatisfied = false
     private var reconnectAttempt = 0
+    private var currentToken: String?
+    private var authTimeoutItem: DispatchWorkItem?
 
     private let watchdogInterval: TimeInterval = 45
     private let pingInterval: TimeInterval = 15
     private let pongTimeout: TimeInterval = 5
+    private let authTimeout: TimeInterval = 6
     private let reconnectDelays: [TimeInterval] = [1, 2, 4, 8, 16, 30]
 
     public func definition() -> ModuleDefinition {
@@ -40,8 +43,8 @@ public class ChronaStreamModule: Module {
 
         Events("onStatusChanged", "onEvent")
 
-        Function("start") { [weak self] in
-            self?.startStream()
+        Function("start") { [weak self] (token: String) in
+            self?.startStream(token: token.isEmpty ? nil : token)
         }
 
         Function("stop") { [weak self] in
@@ -50,6 +53,10 @@ public class ChronaStreamModule: Module {
 
         Function("clearCachedEndpoint") { [weak self] in
             self?.clearCachedEndpoint()
+        }
+
+        Function("submitPairingCode") { [weak self] (code: String) in
+            self?.submitPairingCode(code)
         }
 
         Function("sendTimerState") { [weak self] (
@@ -77,12 +84,23 @@ public class ChronaStreamModule: Module {
 
     // MARK: - Lifecycle
 
-    private func startStream() {
+    private func startStream(token: String?) {
+        currentToken = token
         guard !isStarted else { return }
         isStarted = true
         reconnectAttempt = 0
         startPathMonitor()
         browse()
+    }
+
+    private func submitPairingCode(_ code: String) {
+        currentToken = code.isEmpty ? nil : code
+        guard let token = currentToken else { return }
+        if let conn = connection {
+            sendAuth(token, on: conn)
+        } else if isStarted {
+            attemptReconnect()
+        }
     }
 
     private func stopStream() {
@@ -180,10 +198,14 @@ public class ChronaStreamModule: Module {
                 self.directAttemptTimeoutItem = nil
                 self.reconnectAttempt = 0
                 self.cacheEndpoint(conn.endpoint)
-                self.emitStatus("connected")
-                self.resetWatchdog()
-                self.startPingCycle()
                 self.receive()
+                // Broadcast data and pings only start after the server
+                // acknowledges an "auth" message — see parse()/sendAuth().
+                if let token = self.currentToken {
+                    self.sendAuth(token, on: conn)
+                } else {
+                    self.emitStatus("pairing_required")
+                }
             case .failed, .cancelled:
                 self.handleDisconnect()
             default:
@@ -201,11 +223,33 @@ public class ChronaStreamModule: Module {
         pingItem = nil
         pongTimeoutItem?.cancel()
         pongTimeoutItem = nil
+        authTimeoutItem?.cancel()
+        authTimeoutItem = nil
         connection?.cancel()
         connection = nil
         buffer = Data()
         watchdogItem?.cancel()
         watchdogItem = nil
+    }
+
+    // MARK: - Auth handshake
+
+    private func sendAuth(_ token: String, on conn: NWConnection) {
+        let payload: [String: Any] = ["version": 1, "type": "auth", "token": token]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let jsonString = String(data: data, encoding: .utf8),
+              let sendData = (jsonString + "\n").data(using: .utf8) else { return }
+        conn.send(content: sendData, completion: .contentProcessed { _ in })
+
+        authTimeoutItem?.cancel()
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, self.connection === conn else { return }
+            // Server never responded — treat like a failed auth so the UI
+            // doesn't sit on "connecting" forever.
+            self.handleDisconnect()
+        }
+        authTimeoutItem = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + authTimeout, execute: timeout)
     }
 
     private func resetWatchdog() {
@@ -303,6 +347,25 @@ public class ChronaStreamModule: Module {
     private func parse(_ data: Data) {
         guard let event = try? JSONDecoder().decode(ChronaWireEvent.self, from: data),
               event.version <= 1 else { return }
+
+        switch event.type {
+        case "auth_ok":
+            authTimeoutItem?.cancel()
+            authTimeoutItem = nil
+            emitStatus("connected")
+            resetWatchdog()
+            startPingCycle()
+            return
+        case "auth_failed":
+            authTimeoutItem?.cancel()
+            authTimeoutItem = nil
+            currentToken = nil
+            emitStatus("auth_failed")
+            dropConnection()
+            return
+        default:
+            break
+        }
 
         sendEvent("onEvent", [
             "version": event.version,

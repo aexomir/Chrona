@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { SectionLabel } from "@/components/section-label";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { Neutral, Semantic } from "@/constants/theme";
@@ -13,7 +13,7 @@ import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
 import { ListGroup, PortalHost, Select, Separator, Switch } from "heroui-native";
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 type SelectOption = { value: string; label: string };
 
@@ -31,7 +31,26 @@ const MAC_STATUS_CONFIG: Record<ConnectionStatus, { label: string; color: string
   connecting: { label: "Connecting…", color: "#d97706" },
   connected: { label: "Connected", color: Semantic.success },
   disconnected: { label: "Not Found", color: Neutral.z600 },
+  pairing_required: { label: "Needs Pairing", color: "#d97706" },
+  auth_failed: { label: "Pairing Failed", color: Semantic.danger },
 };
+
+function promptForPairingCode(onSubmit: (code: string) => void) {
+  Alert.prompt(
+    "Pair with Chrona Helper",
+    "Enter the pairing code shown in the Chrona Helper menu on your Mac.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Pair",
+        onPress: (code?: string) => {
+          if (code && code.trim().length > 0) onSubmit(code.trim().toUpperCase());
+        },
+      },
+    ],
+    "plain-text"
+  );
+}
 
 const DEV_MODE_TAP_THRESHOLD = 5;
 const DEV_MODE_TAP_WINDOW_MS = 2000;
@@ -94,8 +113,10 @@ export default function SettingsScreen() {
   const currentEvent = useStreamStore((s) => s.currentEvent);
   const lastEventTime = useStreamStore((s) => s.lastEventTime);
   const lastHeartbeat = useStreamStore((s) => s.lastHeartbeat);
+  const needsPairing = useStreamStore((s) => s.needsPairing);
   const reconnect = useStreamStore((s) => s.reconnect);
   const clearEndpointCache = useStreamStore((s) => s.clearEndpointCache);
+  const submitPairingCode = useStreamStore((s) => s.submitPairingCode);
   const {
     auroraEnabled,
     setAuroraEnabled,
@@ -110,6 +131,16 @@ export default function SettingsScreen() {
   const currentMinDuration =
     MIN_DURATION_OPTIONS.find((o) => o.value === autoTrackMinDurationSec.toString()) ??
     MIN_DURATION_OPTIONS[2];
+
+  const hasAutoPrompted = useRef(false);
+  useEffect(() => {
+    if (needsPairing && !hasAutoPrompted.current) {
+      hasAutoPrompted.current = true;
+      promptForPairingCode(submitPairingCode);
+    } else if (!needsPairing) {
+      hasAutoPrompted.current = false;
+    }
+  }, [needsPairing, submitPairingCode]);
 
   const devTapCount = useRef(0);
   const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -172,7 +203,13 @@ export default function SettingsScreen() {
           <SectionLabel>Integrations</SectionLabel>
           <ListGroup className={theme.listGroupClassName}>
             <ListGroup.Item
-              onPress={reconnect}
+              onPress={() => {
+                if (needsPairing) {
+                  promptForPairingCode(submitPairingCode);
+                } else {
+                  reconnect();
+                }
+              }}
               onLongPress={() => {
                 clearEndpointCache();
                 reconnect();

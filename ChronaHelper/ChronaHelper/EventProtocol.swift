@@ -8,9 +8,15 @@
 // iOS client algorithm:
 //   1. Browse for `_chrona._tcp` on the local network.
 //   2. Connect to the resolved endpoint.
-//   3. Split incoming bytes on `\n`, decode each line as `ChronaEvent`.
-//   4. Ignore lines whose `version` field is higher than the client understands.
-//   5. Reconnect automatically if the connection drops (the helper will re-advertise).
+//   3. Immediately send `{"type":"auth","token":"<pairing code>"}` as the
+//      first message. The server sends nothing except `auth_ok`/`auth_failed`
+//      until it receives a valid `auth` message (see Pairing.swift) — this
+//      keeps window-title/app-name data from being readable by any device
+//      that merely discovers the Bonjour service.
+//   4. Split incoming bytes on `\n`, decode each line as `ChronaEvent`.
+//   5. Ignore lines whose `version` field is higher than the client understands.
+//   6. Reconnect automatically if the connection drops (the helper will re-advertise);
+//      re-send the stored pairing code as `auth` on every reconnect.
 //
 // Example line:
 //   {"version":1,"type":"app_change","appName":"Xcode","windowTitle":"AppDelegate.swift — ChronaHelper","bundleId":"com.apple.dt.Xcode","timestamp":1711234567.891}
@@ -53,7 +59,7 @@ struct ChronaEvent: Codable {
         /// the same app. Always carries populated `appName`, `windowTitle`, `bundleId`.
         case appChange = "app_change"
 
-        /// Sent every 30 seconds when no `app_change` has occurred.
+        /// Sent every 10 seconds when no `app_change` has occurred.
         /// All fields except `version`, `type`, and `timestamp` are empty strings.
         case heartbeat = "heartbeat"
 
@@ -71,6 +77,17 @@ struct ChronaEvent: Codable {
         /// Sent when the Mac detects user input after a `userIdle` event.
         /// All fields except `version`, `type`, and `timestamp` are empty strings.
         case userActive = "user_active"
+
+        /// Sent in response to a client's `auth` message when the submitted
+        /// pairing code matches. All fields except `version`, `type`, and
+        /// `timestamp` are empty strings. Only after this does the server
+        /// start sending `app_change`/`heartbeat`/etc. on this connection.
+        case authOk = "auth_ok"
+
+        /// Sent in response to a client's `auth` message when the submitted
+        /// pairing code does not match. The server closes the connection
+        /// shortly after sending this.
+        case authFailed = "auth_failed"
     }
 
     // MARK: - Factory

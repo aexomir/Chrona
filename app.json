@@ -2,7 +2,7 @@
   "expo": {
     "name": "Chrona",
     "slug": "Chrona",
-    "version": "1.0.58",
+    "version": "1.0.59",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chrona",
@@ -16,7 +16,6 @@
         "NSCalendarsUsageDescription": "Chrona uses your calendar to suggest projects for upcoming events.",
         "NSLocalNetworkUsageDescription": "Chrona connects to Chrona Helper on your Mac to show which app you're currently using.",
         "NSBonjourServices": [
-          "_chrona._tcp",
           "_chrona._tcp"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -61,7 +60,8 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "Chrona uses your calendar to suggest projects for upcoming events."
+          "calendarPermission": "Chrona uses your calendar to suggest projects for upcoming events.",
+          "remindersPermission": false
         }
       ],
       "@react-native-community/datetimepicker",
@@ -94,7 +94,13 @@
         }
       ],
       "@sentry/react-native",
-      "expo-secure-store"
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
+      "./plugins/withoutPushEntitlement"
     ],
     "experiments": {
       "typedRoutes": true,
