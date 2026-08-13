@@ -13,18 +13,40 @@
 //      until it receives a valid `auth` message (see Pairing.swift) — this
 //      keeps window-title/app-name data from being readable by any device
 //      that merely discovers the Bonjour service.
-//   4. Split incoming bytes on `\n`, decode each line as `ChronaEvent`.
+//   4. Split incoming bytes on `\n`, decode each line. Switch on `type` before
+//      decoding: most lines are `ChronaEvent`, but `usage_result` has its own
+//      shape (see UsageResult below).
 //   5. Ignore lines whose `version` field is higher than the client understands.
 //   6. Reconnect automatically if the connection drops (the helper will re-advertise);
 //      re-send the stored pairing code as `auth` on every reconnect.
 //
 // Example line:
-//   {"version":1,"type":"app_change","appName":"Xcode","windowTitle":"AppDelegate.swift — ChronaHelper","bundleId":"com.apple.dt.Xcode","timestamp":1711234567.891}
+//   {"version":2,"type":"app_change","appName":"Xcode","windowTitle":"AppDelegate.swift — ChronaHelper","bundleId":"com.apple.dt.Xcode","timestamp":1711234567.891}
+//
+// Two channels share this connection:
+//
+//   Live stream (server → client, unsolicited) — `app_change`, `hello`,
+//   `heartbeat`, `user_idle`, `user_active`, `pong`. Drives real-time UI and
+//   auto-tracking. Lossy by nature: nothing is buffered while no client is
+//   attached, and nothing needs to be.
+//
+//   Usage query (client → server, request/response) — the client sends
+//   `{"version":2,"type":"usage_query","requestId":"…","from":<sec>,"to":<sec>}`
+//   and the server answers with a matching `usage_result`. This is the
+//   authoritative source for per-app durations, served from the on-disk ledger
+//   (see ActivityLedger.swift), so it is correct even when the client was
+//   disconnected for the whole window being asked about.
+//
+// Timestamps are always Mac-clock Unix seconds. The client derives its offset
+// from the `timestamp` on `auth_ok` and translates its own window bounds into
+// Mac time before querying, so a phone with a skewed clock still gets the
+// right window.
 
 import Foundation
 
 /// Bump this when the schema changes incompatibly so iOS clients can gate on it.
-let kProtocolVersion = 1
+/// v2 added the `usage_query` / `usage_result` request-response pair.
+let kProtocolVersion = 2
 
 /// A single observation streamed from the Mac helper to the iOS client.
 struct ChronaEvent: Codable {
@@ -107,4 +129,38 @@ struct ChronaEvent: Codable {
             timestamp: Date().timeIntervalSince1970
         )
     }
+}
+
+// MARK: - Usage query response
+
+/// Total time attributed to one app within the queried window.
+struct UsageApp: Codable {
+    let bundleId: String
+    let appName: String
+    let seconds: Int
+    let titles: [String]
+}
+
+/// How the queried window breaks down. `observed` plus every gap reason plus
+/// `unknown` sums to the window length, so the client can show what it does
+/// *not* know rather than pretending the window was fully tracked.
+struct UsageCoverage: Codable {
+    let observed: Int
+    let idle: Int
+    let locked: Int
+    let asleep: Int
+    /// Time the helper itself was not running.
+    let offline: Int
+    let unknown: Int
+}
+
+/// Answer to a client's `usage_query`, correlated by `requestId`.
+struct UsageResult: Codable {
+    let version: Int
+    let type: String
+    let requestId: String
+    let from: Double
+    let to: Double
+    let apps: [UsageApp]
+    let coverage: UsageCoverage
 }

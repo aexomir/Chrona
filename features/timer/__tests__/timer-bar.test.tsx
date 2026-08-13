@@ -14,9 +14,13 @@ jest.mock("expo-image", () => {
   const { View } = require("react-native");
   return { Image: (props: any) => <View {...props} /> };
 });
-jest.mock("@/features/intelligence/journal-store", () => ({
-  getAppsForWindow: jest.fn(() => []),
-  markTimerStart: jest.fn(),
+jest.mock("@/features/intelligence/usage-query", () => ({
+  getAppsForWindow: jest.fn(async () => ({ status: "ok", apps: [] })),
+  INTERACTIVE_TIMEOUT_MS: 3000,
+  BACKFILL_TIMEOUT_MS: 8000,
+}));
+jest.mock("@/features/intelligence/pending-usage-store", () => ({
+  usePendingUsageStore: { getState: jest.fn(() => ({ enqueue: jest.fn() })) },
 }));
 
 jest.mock("@/features/timer/timer-store", () => ({ useTimerStore: jest.fn() }));

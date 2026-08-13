@@ -20,7 +20,8 @@ import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 
-import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
+import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { captureError, trackEvent } from "@/lib/sentry";
 import { matchRule } from "./matcher";
 import { usePendingReviewStore } from "./pending-review-store";
@@ -80,69 +81,81 @@ function scheduleIdleTimer() {
 
   idleTimer = setTimeout(() => {
     if (autoStartedRuleId !== null) {
-      stopAndSave();
+      stopAndSaveSafely();
     }
   }, timeoutMs);
 }
 
-function stopAndSave() {
+async function stopAndSave() {
   const sessionData = useTimerStore.getState().stopTimer();
-  if (sessionData) {
-    const effectiveEndMs = appLeftAt ?? new Date(sessionData.endTime).getTime();
-    const effectiveDuration = Math.floor(
-      (effectiveEndMs - new Date(sessionData.startTime).getTime()) / 1000,
-    );
-    trackEvent("timer", "timer_stop", { auto: true, duration: effectiveDuration });
-    const minDuration = useSettingsStore.getState().autoTrackMinDurationSec;
-    if (effectiveDuration >= minDuration) {
-      const startMs = new Date(sessionData.startTime).getTime();
-      const apps = getAppsForWindow(startMs, effectiveEndMs);
-      const endTime = new Date(effectiveEndMs).toISOString();
-      if (apps.length > 1) {
-        // More than one app touched during the window — queue for review
-        // instead of silently baking every distraction into the breakdown.
-        // The review sheet drains this whenever the app is next foregrounded,
-        // whether that's immediately or after a long system-idle absence.
-        usePendingReviewStore.getState().offer({
-          startTime: sessionData.startTime,
-          endTime,
-          duration: effectiveDuration,
-          title: sessionData.title,
-          projectId: sessionData.projectId,
-          apps,
-        });
-        trackEvent("session", "session_save", {
-          auto: true,
-          duration: effectiveDuration,
-          appCount: apps.length,
-          queuedForReview: true,
-        });
-      } else {
-        useSessionsStore.getState().addSession({
-          ...sessionData,
-          endTime,
-          duration: effectiveDuration,
-          id: Date.now().toString(),
-          auto: true,
-          ...(apps.length > 0 ? { apps } : {}),
-        });
-        trackEvent("session", "session_save", {
-          auto: true,
-          duration: effectiveDuration,
-          appCount: apps.length,
-          queuedForReview: false,
-        });
-      }
-    }
-  }
+  // Reset up front: the await below yields, and an event arriving in the
+  // meantime must not see this session as still auto-tracked.
+  const effectiveEndMs =
+    appLeftAt ?? (sessionData ? new Date(sessionData.endTime).getTime() : Date.now());
   appLeftAt = null;
   autoStartedRuleId = null;
   autoStartedBundleId = null;
+
+  if (!sessionData) return;
+
+  const startMs = new Date(sessionData.startTime).getTime();
+  const effectiveDuration = Math.floor((effectiveEndMs - startMs) / 1000);
+  trackEvent("timer", "timer_stop", { auto: true, duration: effectiveDuration });
+
+  const minDuration = useSettingsStore.getState().autoTrackMinDurationSec;
+  if (effectiveDuration < minDuration) return;
+
+  const { status, apps } = await getAppsForWindow(startMs, effectiveEndMs);
+  const endTime = new Date(effectiveEndMs).toISOString();
+
+  if (apps.length > 1) {
+    // More than one app touched during the window — queue for review
+    // instead of silently baking every distraction into the breakdown.
+    // The review sheet drains this whenever the app is next foregrounded,
+    // whether that's immediately or after a long system-idle absence.
+    usePendingReviewStore.getState().offer({
+      startTime: sessionData.startTime,
+      endTime,
+      duration: effectiveDuration,
+      title: sessionData.title,
+      projectId: sessionData.projectId,
+      apps,
+    });
+    trackEvent("session", "session_save", {
+      auto: true,
+      duration: effectiveDuration,
+      appCount: apps.length,
+      queuedForReview: true,
+    });
+    return;
+  }
+
+  const id = Date.now().toString();
+  useSessionsStore.getState().addSession({
+    ...sessionData,
+    endTime,
+    duration: effectiveDuration,
+    id,
+    auto: true,
+    ...(apps.length > 0 ? { apps } : {}),
+  });
+  if (status === "unreachable") {
+    usePendingUsageStore.getState().enqueue(id, startMs, effectiveEndMs);
+  }
+  trackEvent("session", "session_save", {
+    auto: true,
+    duration: effectiveDuration,
+    appCount: apps.length,
+    queuedForReview: false,
+  });
+}
+
+function stopAndSaveSafely() {
+  stopAndSave().catch((error) => captureError(error, "auto_tracker_stop"));
 }
 
 function startAutoTimer(rule: TrackingRule, event: ActivityEvent) {
   const title = rule.defaultTitle ?? event.appName;
-  markTimerStart();
   useTimerStore.getState().startTimer(title, rule.projectId);
   useTimerStore.getState().setAutoTracked(true);
   autoStartedRuleId = rule.id;
@@ -221,7 +234,7 @@ function handleEvent(event: ActivityEvent) {
       clearSwitchGraceTimer();
 
       if (elapsed < minDurationMs) {
-        stopAndSave();
+        stopAndSaveSafely();
         startAutoTimer(match, event);
         clearIdleTimer();
         onTrackedApp = true;
@@ -234,7 +247,7 @@ function handleEvent(event: ActivityEvent) {
           pendingRule = null;
           pendingEvent = null;
           switchGraceTimer = null;
-          stopAndSave();
+          stopAndSaveSafely();
           startAutoTimer(rule, evt);
           clearIdleTimer();
         }, SWITCH_GRACE_MS);
@@ -294,7 +307,7 @@ export function forceStopForSystemIdle() {
   clearIdleTimer();
   clearSwitchGraceTimer();
   if (autoStartedRuleId !== null) {
-    stopAndSave();
+    stopAndSaveSafely();
   }
   lastEventWasTracked = false;
 }
@@ -326,7 +339,7 @@ export function stopAutoTracker() {
   // If an auto-tracked session is in progress, save it before stopping.
   // appLeftAt is reset inside stopAndSave; clear it here for the no-session case.
   if (autoStartedRuleId !== null) {
-    stopAndSave();
+    stopAndSaveSafely();
   } else {
     appLeftAt = null;
   }

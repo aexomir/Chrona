@@ -2,13 +2,13 @@
   "expo": {
     "name": "Chrona",
     "slug": "Chrona",
-    "version": "1.0.59",
+    "version": "1.0.61",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "chrona",
     "userInterfaceStyle": "dark",
     "ios": {
-      "appleTeamId": "998C8ZCRMH",
+      "appleTeamId": "VBPPP58SGD",
       "supportsTablet": true,
       "bundleIdentifier": "com.aexomir.Chrona",
       "buildNumber": "1",

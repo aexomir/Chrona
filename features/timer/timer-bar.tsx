@@ -5,7 +5,8 @@ import {
 } from "@/features/calendar/calendar-store";
 import { usePendingReviewStore } from "@/features/auto-track/pending-review-store";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
-import { getAppsForWindow } from "@/features/intelligence/journal-store";
+import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
@@ -115,36 +116,42 @@ export function TimerBar() {
     startTimer(resumableSession.title, resumableSession.projectId, resumableSession.elapsedSeconds);
   }
 
-  function handleStopAutoSession() {
+  async function handleStopAutoSession() {
     const sessionData = stopTimer();
-    if (sessionData) {
-      trackEvent("timer", "timer_stop", { auto: true, duration: sessionData.duration });
-      const startMs = new Date(sessionData.startTime).getTime();
-      const endMs = new Date(sessionData.endTime).getTime();
-      const apps = getAppsForWindow(startMs, endMs);
-      if (apps.length > 1) {
-        usePendingReviewStore.getState().offer({ ...sessionData, apps });
-        trackEvent("session", "session_save", {
-          auto: true,
-          duration: sessionData.duration,
-          appCount: apps.length,
-          queuedForReview: true,
-        });
-      } else {
-        addSession({
-          ...sessionData,
-          id: Date.now().toString(),
-          auto: true,
-          ...(apps.length > 0 ? { apps } : {}),
-        });
-        trackEvent("session", "session_save", {
-          auto: true,
-          duration: sessionData.duration,
-          appCount: apps.length,
-          queuedForReview: false,
-        });
-      }
+    if (!sessionData) return;
+
+    trackEvent("timer", "timer_stop", { auto: true, duration: sessionData.duration });
+    const startMs = new Date(sessionData.startTime).getTime();
+    const endMs = new Date(sessionData.endTime).getTime();
+    const { status, apps } = await getAppsForWindow(startMs, endMs);
+
+    if (apps.length > 1) {
+      usePendingReviewStore.getState().offer({ ...sessionData, apps });
+      trackEvent("session", "session_save", {
+        auto: true,
+        duration: sessionData.duration,
+        appCount: apps.length,
+        queuedForReview: true,
+      });
+      return;
     }
+
+    const id = Date.now().toString();
+    addSession({
+      ...sessionData,
+      id,
+      auto: true,
+      ...(apps.length > 0 ? { apps } : {}),
+    });
+    if (status === "unreachable") {
+      usePendingUsageStore.getState().enqueue(id, startMs, endMs);
+    }
+    trackEvent("session", "session_save", {
+      auto: true,
+      duration: sessionData.duration,
+      appCount: apps.length,
+      queuedForReview: false,
+    });
   }
 
   return (
@@ -183,7 +190,7 @@ export function TimerBar() {
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
-              handleStopAutoSession();
+              void handleStopAutoSession();
             }}
             hitSlop={8}
           >

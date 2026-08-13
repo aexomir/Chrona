@@ -4,4 +4,7 @@ export type {
   ActivityEvent,
   ActivityEventType,
   StatusChangedPayload,
+  UsageApp,
+  UsageCoverage,
+  UsageQueryResult,
 } from './src/ChronaStream.types';

@@ -19,6 +19,13 @@ final class StatusBarController {
     private var elapsedTimer: Timer?
     private let log = Logger(subsystem: "com.chrona.helper", category: "StatusBarController")
 
+    // MARK: - Debug hooks
+
+    /// Returns the same answer the iOS app would get for the last hour. Makes
+    /// the ledger verifiable from the Mac alone, without pairing a phone.
+    var usageSnapshotProvider: (() -> UsageResult?)?
+    var logDirectoryProvider: (() -> URL?)?
+
     // MARK: - Init
 
     init() {
@@ -215,6 +222,30 @@ final class StatusBarController {
 
         menu.addItem(.separator())
 
+        let diagnosticsMenu = NSMenu()
+
+        let copyUsageItem = NSMenuItem(
+            title: "Copy Last Hour of Usage",
+            action: #selector(copyLastHourUsage),
+            keyEquivalent: ""
+        )
+        copyUsageItem.target = self
+        diagnosticsMenu.addItem(copyUsageItem)
+
+        let revealItem = NSMenuItem(
+            title: "Reveal Activity Log in Finder",
+            action: #selector(revealActivityLog),
+            keyEquivalent: ""
+        )
+        revealItem.target = self
+        diagnosticsMenu.addItem(revealItem)
+
+        let diagnosticsItem = NSMenuItem(title: "Diagnostics", action: nil, keyEquivalent: "")
+        diagnosticsItem.submenu = diagnosticsMenu
+        menu.addItem(diagnosticsItem)
+
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(
             title: "Quit Chrona Helper",
             action: #selector(NSApplication.terminate(_:)),
@@ -248,6 +279,25 @@ final class StatusBarController {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         Pairing.regenerate()
         rebuildMenu()
+    }
+
+    @objc private func copyLastHourUsage() {
+        guard let result = usageSnapshotProvider?() else { return }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(result),
+              let json = String(data: data, encoding: .utf8) else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(json, forType: .string)
+    }
+
+    @objc private func revealActivityLog() {
+        guard let directory = logDirectoryProvider?() else { return }
+        NSWorkspace.shared.selectFile(
+            directory.appendingPathComponent("spans.ndjson").path,
+            inFileViewerRootedAtPath: directory.path
+        )
     }
 
     @objc private func openAccessibilitySettings() {

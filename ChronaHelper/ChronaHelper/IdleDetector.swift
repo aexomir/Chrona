@@ -29,7 +29,11 @@ private let kCheckInterval: TimeInterval = 10
 
 final class IdleDetector {
 
-    var onIdleChanged: ((Bool) -> Void)?
+    /// `(isIdle, idleSeconds)` — the second value is how long input had already
+    /// been absent at the moment the transition was noticed. Callers use it to
+    /// back-date the idle boundary to when input actually stopped, since the
+    /// 10 s poll can only ever notice late.
+    var onIdleChanged: ((Bool, TimeInterval) -> Void)?
 
     private var checkTimer: Timer?
     private var isIdle = false
@@ -63,6 +67,13 @@ final class IdleDetector {
         UserDefaults.standard.set(seconds, forKey: kIdleThresholdKey)
     }
 
+    /// Re-evaluates immediately instead of waiting for the next tick. Called on
+    /// wake and unlock, where the answer has usually just changed and waiting up
+    /// to 10 s would mean crediting that time to an app the user isn't using.
+    func refresh() {
+        check()
+    }
+
     // MARK: - Poll
 
     private func check() {
@@ -71,7 +82,7 @@ final class IdleDetector {
         if threshold < 0 {
             if isIdle {
                 isIdle = false
-                onIdleChanged?(false)
+                onIdleChanged?(false, 0)
             }
             return
         }
@@ -82,6 +93,6 @@ final class IdleDetector {
         let nowIdle      = idleSeconds >= threshold
         guard nowIdle != isIdle else { return }
         isIdle = nowIdle
-        onIdleChanged?(isIdle)
+        onIdleChanged?(isIdle, idleSeconds)
     }
 }

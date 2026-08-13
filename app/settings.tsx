@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SectionLabel } from "@/components/section-label";
 import { AnimatedHeaderScrollView } from "@/components/animated-header-scroll-view";
 import { Neutral, Semantic } from "@/constants/theme";
@@ -6,9 +6,12 @@ import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
+import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useSettingsStore } from "@/features/settings/settings-store";
 import { useStreamStore } from "@/features/stream/stream-store";
 import type { ConnectionStatus } from "@/modules/chrona-stream";
+import { native } from "@/modules/chrona-stream";
 import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
 import { ListGroup, PortalHost, Select, Separator, Switch } from "heroui-native";
@@ -54,6 +57,13 @@ function promptForPairingCode(onSubmit: (code: string) => void) {
 
 const DEV_MODE_TAP_THRESHOLD = 5;
 const DEV_MODE_TAP_WINDOW_MS = 2000;
+
+const LEDGER_PROBE_WINDOW_MS = 60 * 60 * 1000;
+
+function formatCoverage(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}h${m % 60}m` : `${m}m`;
+}
 
 const styles = StyleSheet.create({
   chevron: {
@@ -117,6 +127,8 @@ export default function SettingsScreen() {
   const reconnect = useStreamStore((s) => s.reconnect);
   const clearEndpointCache = useStreamStore((s) => s.clearEndpointCache);
   const submitPairingCode = useStreamStore((s) => s.submitPairingCode);
+  const pendingBackfills = usePendingUsageStore((s) => s.queue.length);
+  const [ledgerProbe, setLedgerProbe] = useState<string | null>(null);
   const {
     auroraEnabled,
     setAuroraEnabled,
@@ -156,6 +168,31 @@ export default function SettingsScreen() {
     devTapTimer.current = setTimeout(() => {
       devTapCount.current = 0;
     }, DEV_MODE_TAP_WINDOW_MS);
+  };
+
+  const handleLedgerProbe = async () => {
+    setLedgerProbe("Querying…");
+    const now = Date.now();
+    const started = now;
+    const { status, apps, coverage } = await getAppsForWindow(
+      now - LEDGER_PROBE_WINDOW_MS,
+      now,
+    );
+    const ms = Date.now() - started;
+    if (status === "unreachable") {
+      setLedgerProbe(`unreachable (${ms}ms)`);
+      return;
+    }
+    const parts = [`${apps.length} apps`, `${ms}ms`];
+    if (coverage) {
+      parts.push(
+        `tracked ${formatCoverage(coverage.observed)}`,
+        `idle ${formatCoverage(coverage.idle)}`,
+        `asleep ${formatCoverage(coverage.asleep + coverage.locked)}`,
+        `off ${formatCoverage(coverage.offline)}`,
+      );
+    }
+    setLedgerProbe(parts.join(" · "));
   };
 
   return (
@@ -333,6 +370,36 @@ export default function SettingsScreen() {
                 <ListGroup.ItemSuffix>
                   <Text className="text-neutral-400 text-sm font-mono">{formatTimestamp(lastHeartbeat)}</Text>
                 </ListGroup.ItemSuffix>
+              </ListGroup.Item>
+              <Separator className="mx-4" />
+              <ListGroup.Item>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Clock Offset</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix>
+                  <Text className="text-neutral-400 text-sm font-mono">
+                    {`${native.getClockOffset().toFixed(2)}s`}
+                  </Text>
+                </ListGroup.ItemSuffix>
+              </ListGroup.Item>
+              <Separator className="mx-4" />
+              <ListGroup.Item>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Pending Backfills</ListGroup.ItemTitle>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix>
+                  <Text className="text-neutral-400 text-sm font-mono">{pendingBackfills}</Text>
+                </ListGroup.ItemSuffix>
+              </ListGroup.Item>
+              <Separator className="mx-4" />
+              <ListGroup.Item onPress={handleLedgerProbe}>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Probe Last Hour</ListGroup.ItemTitle>
+                  <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={2}>
+                    {ledgerProbe ?? "Tap to query the Mac's ledger"}
+                  </Text>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix />
               </ListGroup.Item>
               {currentEvent && (
                 <>
