@@ -1,0 +1,90 @@
+name: Mac helper won't connect
+description: The iOS app can't find, pair with, or stay connected to Chrona Helper.
+labels: ["bug", "area:mac-helper"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [Troubleshooting page](https://github.com/aexomir/Chrona/wiki/Troubleshooting)
+        first — it covers the common causes.
+
+        Most of what's needed to diagnose this is in the app's hidden debug panel:
+        **Settings → tap "Chrona" at the very bottom five times → a DBG section appears.**
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where does it break?
+      options:
+        - The app never finds the Mac at all
+        - It finds the Mac but pairing fails
+        - It pairs, then disconnects and won't come back
+        - It connects, but app breakdowns are always empty
+        - It connects, but window titles are missing
+    validations:
+      required: true
+
+  - type: input
+    id: dbg-status
+    attributes:
+      label: "DBG → Status"
+      description: One of idle, scanning, connecting, connected, disconnected, pairing_required, auth_failed.
+      placeholder: "scanning"
+    validations:
+      required: true
+
+  - type: input
+    id: dbg-network
+    attributes:
+      label: "DBG → Network"
+      placeholder: "satisfied"
+    validations:
+      required: true
+
+  - type: input
+    id: dbg-clock
+    attributes:
+      label: "DBG → Clock Offset"
+      description: A large offset means the two clocks disagree, which breaks usage queries.
+      placeholder: "0.02s"
+
+  - type: input
+    id: dbg-probe
+    attributes:
+      label: "DBG → Probe Last Hour"
+      description: Tap it and paste the result.
+      placeholder: "4 apps · 180ms · tracked 42m · idle 12m · asleep 0m · off 6m"
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Things you've already checked
+      options:
+        - label: The iPhone and the Mac are on the same Wi-Fi network
+        - label: Chrona Helper is running (its icon is in the Mac's menu bar)
+        - label: Chrona Helper has Accessibility permission
+        - label: Local Network permission was granted on both sides
+        - label: I tried regenerating the pairing code and entering it again
+
+  - type: input
+    id: network-setup
+    attributes:
+      label: Network setup
+      description: Anything unusual — client isolation, a VPN, a guest network, iCloud Private Relay, separate 2.4/5 GHz SSIDs.
+      placeholder: "Home router, both on the same 5 GHz SSID, no VPN"
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "15.2"
+    validations:
+      required: true
+
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS version
+      placeholder: "26.1"
+    validations:
+      required: true

@@ -9,8 +9,8 @@
 
 <div align="center">
 
-[![CI](https://github.com/aexomir/FoCus/actions/workflows/ci.yml/badge.svg)](https://github.com/aexomir/FoCus/actions/workflows/ci.yml)
-![expo](https://img.shields.io/github/package-json/dependency-version/aexomir/FoCus/expo?label=expo)
+[![CI](https://github.com/aexomir/Chrona/actions/workflows/ci.yml/badge.svg)](https://github.com/aexomir/Chrona/actions/workflows/ci.yml)
+![expo](https://img.shields.io/github/package-json/dependency-version/aexomir/Chrona/expo?label=expo)
 ![iOS](https://img.shields.io/badge/iOS-17%2B-lightgrey)
 ![macOS](https://img.shields.io/badge/macOS-13%2B-lightgrey)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -159,7 +159,7 @@ Building this takes about twenty minutes, most of which is Xcode compiling.
 ### 1. Build the iOS app
 
 ```bash
-git clone https://github.com/aexomir/FoCus.git
+git clone https://github.com/aexomir/Chrona.git
 cd FoCus
 bun install
 cp .env.example .env
@@ -409,6 +409,20 @@ up in every capture.
   real release.
 
 ---
+
+## Contributing
+
+Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers setup, the
+conventions that matter, and how to verify a change. Version history is in
+[`CHANGELOG.md`](CHANGELOG.md).
+
+Security vulnerabilities go through
+[private reporting](https://github.com/aexomir/Chrona/security/advisories/new) rather than
+public issues — see [`SECURITY.md`](SECURITY.md).
+
+Longer-form documentation lives in the
+[wiki](https://github.com/aexomir/Chrona/wiki): architecture, the full wire protocol,
+writing auto-tracking rules, building from source, and troubleshooting.
 
 ## License
 

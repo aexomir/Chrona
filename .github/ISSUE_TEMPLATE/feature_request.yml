@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest something Chrona should do.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Chrona's design leans hard on restraint — calm, precise, minimal, and deliberately
+        not a gamified productivity app. Proposals that add streaks-with-rewards, badges,
+        nagging notifications, or social features are unlikely to land. Everything else is
+        fair game.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: Describe the situation you're in, not the solution you have in mind.
+      placeholder: "At the end of the week I want to know how much of my Work time was actually meetings, but the app breakdown groups all of Zoom together."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part does this touch?
+      multiple: true
+      options:
+        - iOS app
+        - Mac helper (ChronaHelper)
+        - Widgets or Live Activity
+        - Auto-tracking rules
+        - Calendar integration
+        - Stats and insights
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you've already tried
+      description: Workarounds, other apps that do this well, or approaches you've ruled out.

@@ -52,76 +52,31 @@ No Screen Recording permission is needed. The App Sandbox is deliberately disabl
 
 ## Wire Protocol
 
-Transport: **TCP** discovered via **Bonjour** service type `_chrona._tcp`
-Framing: **newline-delimited JSON** — one UTF-8 JSON object per `\n`
-Version: **2**
+| | |
+|---|---|
+| Transport | TCP, discovered via Bonjour service type `_chrona._tcp` |
+| Framing | Newline-delimited JSON — one UTF-8 object per `\n` |
+| Version | **2** |
+| Port | OS-assigned and advertised over Bonjour; there is no fixed port |
 
-The listener takes an OS-assigned port and advertises it over Bonjour, so there is no
-fixed port number to configure.
+The server sends nothing on a connection until the client presents the six-character pairing
+code as an `auth` message. That gate is the only thing stopping any device on the network
+from reading the user's window titles.
 
-### Authentication
+Two channels share the connection. The **live stream** (`app_change`, `hello`, `heartbeat`,
+`user_idle`, `user_active`, `pong`) drives real-time UI and is lossy by design — nothing is
+buffered while no client is attached. The **usage query** (`usage_query` / `usage_result`) is
+a request-response pair served from the on-disk ledger, and is authoritative for per-app
+durations even across long disconnections.
 
-The helper sends nothing until the client authenticates. On every connection — including
-every reconnect — the client's first message must be:
+**The full specification** — every event type, both message directions, the coverage model,
+and the rules for changing the protocol — is on the
+[Wire Protocol wiki page](https://github.com/aexomir/Chrona/wiki/Wire-Protocol).
 
-```json
-{"version": 2, "type": "auth", "token": "K7QM2X"}
-```
-
-The token is the 6-character pairing code shown in the helper's menu bar menu
-(`Pairing.swift`; alphabet excludes `0/O` and `1/I/L`, compared in constant time). The
-helper replies with `auth_ok` or `auth_failed`, and closes the connection shortly after
-`auth_failed`.
-
-The `timestamp` on `auth_ok` is the Mac's clock. The client stores the difference against
-its own clock and uses it to translate window bounds before querying, so a phone with a
-skewed clock still asks about the right window.
-
-Regenerating the code on the Mac invalidates every paired device.
-
-### ChronaEvent schema
-
-```json
-{
-  "version":     2,
-  "type":        "app_change",
-  "appName":     "Xcode",
-  "windowTitle": "AppDelegate.swift — ChronaHelper",
-  "bundleId":    "com.apple.dt.Xcode",
-  "timestamp":   1711234567.891
-}
-```
-
-| Field         | Type   | Description                                                          |
-|---------------|--------|----------------------------------------------------------------------|
-| `version`     | Int    | Protocol version, currently `2`. Ignore lines with a higher version. |
-| `type`        | String | See event types below.                                               |
-| `appName`     | String | Localised display name of the frontmost app, e.g. `"Safari"`.        |
-| `windowTitle` | String | Title of the focused window. Empty if unavailable.                   |
-| `bundleId`    | String | Bundle identifier, e.g. `"com.apple.Safari"`.                        |
-| `timestamp`   | Double | Mac-clock Unix seconds, millisecond precision.                       |
-
-### Event types
-
-| `type`        | When sent                                                        | Has app fields |
-|---------------|------------------------------------------------------------------|----------------|
-| `auth_ok`     | The submitted pairing code matched. Streaming starts after this.  | No             |
-| `auth_failed` | The pairing code did not match. Connection closes shortly after.  | No             |
-| `hello`       | Immediately after a client authenticates — current state.         | Yes            |
-| `app_change`  | The frontmost app or the focused window title changed.            | Yes            |
-| `heartbeat`   | Every 10 s when nothing has changed.                              | No             |
-| `pong`        | Response to a client `ping`, confirming liveness.                 | No             |
-| `user_idle`   | No keyboard or mouse input for the idle threshold (default 5 min).| No             |
-| `user_active` | Input resumed after a `user_idle`.                                | No             |
-
-### Client → server messages
-
-| `type`        | Payload                                                                                                              | Response                                             |
-|---------------|----------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| `auth`        | `{"version":2,"type":"auth","token":"K7QM2X"}`                                                                       | `auth_ok` or `auth_failed`. Required first.           |
-| `ping`        | `{"type":"ping"}`                                                                                                    | A `pong` event.                                       |
-| `timer_state` | `{"type":"timer_state","isTracking":Bool,"projectId","projectName","projectColor","timerTitle","startTimestamp"}`     | None. Updates the menu bar's live elapsed display.    |
-| `usage_query` | `{"version":2,"type":"usage_query","requestId":"…","from":<sec>,"to":<sec>}`                                          | A `usage_result` with the matching `requestId`.       |
+**The authoritative source is [`EventProtocol.swift`](ChronaHelper/EventProtocol.swift)** in
+this directory. Its header comment documents the format; keep it correct when you change the
+types, and remember that any protocol change is a two-sided change —
+`modules/chrona-stream/` has to move with it.
 
 ---
 

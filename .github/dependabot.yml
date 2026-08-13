@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["area:ci", "dependencies"]
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: ["minor", "patch"]
+      production-minor-patch:
+        dependency-type: production
+        update-types: ["minor", "patch"]
+    ignore:
+      # Pinned in both dependencies and resolutions to match the version
+      # heroui-native was compiled against. Bumping it independently breaks the
+      # build — see .claude/conventions/code-style.md.
+      - dependency-name: react-native-worklets
+
+      # The Expo SDK moves as a set. These must be updated together with
+      # `bunx expo install --fix`, not one package at a time.
+      - dependency-name: expo
+      - dependency-name: expo-*
+      - dependency-name: react-native
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: "@expo/*"
+      - dependency-name: react-native-screens
+      - dependency-name: react-native-gesture-handler
+      - dependency-name: react-native-reanimated
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels: ["area:ci", "dependencies"]
+    groups:
+      actions:
+        update-types: ["minor", "patch"]

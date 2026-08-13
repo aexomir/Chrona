@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in the app or the Mac helper doesn't work the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If the Mac helper won't connect or won't pair, use the
+        [Mac helper connection](?template=helper_connection.yml) form instead — it asks for
+        the specific readings needed to diagnose that.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does this happen?
+      options:
+        - iOS app
+        - Mac helper (ChronaHelper)
+        - Widgets or Live Activity
+        - Building from source
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start a timer on the Work project
+        2. Switch to Safari for a few minutes
+        3. Stop the timer
+        4. The app breakdown is empty
+    validations:
+      required: true
+
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS version
+      placeholder: "26.1"
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "15.2"
+
+  - type: input
+    id: chrona-version
+    attributes:
+      label: Chrona version
+      description: Shown at the bottom of Settings.
+      placeholder: "1.1.0"
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Running on
+      options:
+        - Physical iPhone
+        - iOS Simulator
+        - Both
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, a screen recording, or console output. Drag files in directly.
