@@ -6,7 +6,7 @@ import {
   useTrackingRulesStore,
   type TrackingRule,
 } from "@/features/auto-track/tracking-rules-store";
-import { useJournalStore } from "@/features/intelligence/journal-store";
+import { useAppCatalogStore } from "@/features/intelligence/app-catalog";
 import { useProjects } from "@/features/projects/projects-store";
 import { useStreamStore } from "@/features/stream/stream-store";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -183,7 +183,7 @@ export default function TrackingRulesScreen() {
   const toast = useAppToast();
   const { projects } = useProjects();
   const { rules, addRule, updateRule, removeRule } = useTrackingRulesStore();
-  const { nameIndex } = useJournalStore();
+  const nameIndex = useAppCatalogStore((s) => s.nameIndex);
   const currentEvent = useStreamStore((s) => s.currentEvent);
 
   const [sheetMode, setSheetMode] = useState<"hidden" | "add" | "edit">(

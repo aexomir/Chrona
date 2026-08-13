@@ -4,14 +4,19 @@
 appId: com.aexomir.Chrona
 
 ---
-- launchApp
+- launchApp:
+    clearState: false
 - extendedWaitUntil:
     visible:
-      text: "Tap to start a timer"
-    timeout: 15000
+      text: "TODAY"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
 - openLink: "chrona://stats"
 - extendedWaitUntil:
     visible:
       text: "Week"
     timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 2000
 - takeScreenshot: stats

@@ -1,18 +1,23 @@
-# Captures the Search tab for release screenshots. Search has no tab-bar
-# label (icon-only trigger), so it's reached via deep link rather than tapOn.
+# Captures the Search tab for release screenshots. Search has no tab-bar label
+# (icon-only trigger), so it's reached via deep link rather than tapOn.
 # Run: maestro test .maestro/screenshots/search.yaml --test-output-dir <dir>
 
 appId: com.aexomir.Chrona
 
 ---
-- launchApp
+- launchApp:
+    clearState: false
 - extendedWaitUntil:
     visible:
-      text: "Tap to start a timer"
-    timeout: 15000
+      text: "TODAY"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
 - openLink: "chrona://search"
 - extendedWaitUntil:
     visible:
       text: "Ask about your focus..."
     timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 2000
 - takeScreenshot: search

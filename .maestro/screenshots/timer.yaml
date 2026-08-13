@@ -1,0 +1,31 @@
+# Captures the New Timer modal's project-first step.
+#
+# Runs last alphabetically so the modal it opens can't leak into the other
+# screenshot flows. It backs out without starting a timer, so no session is
+# created and the seeded data stays intact.
+#
+# Run: maestro test .maestro/screenshots/timer.yaml --test-output-dir <dir>
+
+appId: com.aexomir.Chrona
+
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      text: "TODAY"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    text: "Tap to start a timer"
+- extendedWaitUntil:
+    visible:
+      text: "New Timer"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: timer
+- tapOn:
+    text: "Cancel"
+    optional: true

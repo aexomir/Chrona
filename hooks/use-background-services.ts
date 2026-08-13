@@ -1,7 +1,8 @@
 import { startAutoTracker, stopAutoTracker } from "@/features/auto-track/auto-tracker";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
 import { startIdleHandler, stopIdleHandler } from "@/features/idle/idle-handler";
-import { startJournalTracker, stopJournalTracker } from "@/features/intelligence/journal-store";
+import { startAppCatalog, stopAppCatalog } from "@/features/intelligence/app-catalog";
+import { drainPendingUsage } from "@/features/intelligence/pending-usage-store";
 import { useProjects } from "@/features/projects/projects-store";
 import { useStreamStore } from "@/features/stream/stream-store";
 import { useTimerStore } from "@/features/timer/timer-store";
@@ -31,7 +32,7 @@ export function useBackgroundServices() {
     start();
     startAutoTracker();
     startIdleHandler();
-    startJournalTracker();
+    startAppCatalog();
     _startWatching();
 
     const unsubTimer = useTimerStore.subscribe(() => pushTimerState());
@@ -43,6 +44,9 @@ export function useBackgroundServices() {
       });
       if (state.status === "connected" && prev.status !== "connected") {
         pushTimerState();
+        // Sessions saved while the Mac was unreachable are still missing their
+        // app breakdown; the ledger has it, so fetch it now.
+        void drainPendingUsage();
       }
     });
 
@@ -51,7 +55,7 @@ export function useBackgroundServices() {
       unsubStream();
       stopAutoTracker();
       stopIdleHandler();
-      stopJournalTracker();
+      stopAppCatalog();
       _stopWatching();
       stop();
     };

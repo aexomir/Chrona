@@ -25,6 +25,10 @@ final class BonjourServer {
     var onClientConnected:    (() -> Void)?
     var onClientDisconnected: (() -> Void)?
     var onTimerStateReceived: ((TimerStatePayload) -> Void)?
+    /// `(requestId, from, to)` — the client asking which apps were used in a
+    /// window. Answered from the ledger, so it works even when the client was
+    /// disconnected for the entire window.
+    var onUsageQuery:         ((String, Double, Double) -> Void)?
 
     // MARK: - Private state
 
@@ -53,13 +57,22 @@ final class BonjourServer {
     // MARK: - Public: send an event
 
     func send(_ event: ChronaEvent) {
-        guard let conn = connection else { return }
         // Only auth responses are allowed before the client has proven it
         // knows the pairing code — nothing else (including heartbeats) leaks
         // to a connection that hasn't authenticated.
         guard isAuthenticated || event.type == .authOk || event.type == .authFailed else { return }
+        sendLine(event)
+    }
+
+    func sendUsageResult(_ result: UsageResult) {
+        guard isAuthenticated else { return }
+        sendLine(result)
+    }
+
+    private func sendLine<T: Encodable>(_ value: T) {
+        guard let conn = connection else { return }
         do {
-            var data = try encoder.encode(event)
+            var data = try encoder.encode(value)
             data.append(0x0A)
             conn.send(content: data, completion: .contentProcessed { [weak self] error in
                 if let error {
@@ -231,6 +244,9 @@ final class BonjourServer {
         let projectColor: String?
         let timerTitle: String?
         let startTimestamp: String?
+        let requestId: String?
+        let from: Double?
+        let to: Double?
     }
 
     private func handleClientMessage(_ data: Data) {
@@ -260,6 +276,10 @@ final class BonjourServer {
                 startTimestamp: msg.startTimestamp ?? ""
             )
             onTimerStateReceived?(payload)
+        case "usage_query":
+            guard let requestId = msg.requestId, !requestId.isEmpty,
+                  let from = msg.from, let to = msg.to else { return }
+            onUsageQuery?(requestId, from, to)
         default:
             break
         }

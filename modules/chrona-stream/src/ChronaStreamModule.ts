@@ -1,7 +1,11 @@
 import { requireNativeModule } from 'expo';
 import { NativeModule } from 'expo-modules-core';
 
-import type { ActivityEvent, StatusChangedPayload } from './ChronaStream.types';
+import type {
+  ActivityEvent,
+  StatusChangedPayload,
+  UsageQueryResult,
+} from './ChronaStream.types';
 
 declare class ChronaStreamNativeModule extends NativeModule<{
   onStatusChanged: (payload: StatusChangedPayload) => void;
@@ -32,6 +36,19 @@ declare class ChronaStreamNativeModule extends NativeModule<{
     timerTitle: string,
     startTimestamp: string
   ): void;
+  /**
+   * Ask the Mac which apps were frontmost between two instants. Answered from
+   * the helper's on-disk ledger, so it is correct even if this device was
+   * disconnected for the entire window.
+   *
+   * Bounds are iOS-clock milliseconds; the native side translates them into the
+   * Mac's clock before sending. Rejects with code `unreachable` when there is
+   * no authenticated connection, on timeout, or if the connection drops while
+   * the query is in flight.
+   */
+  queryUsage(fromMs: number, toMs: number, timeoutMs: number): Promise<UsageQueryResult>;
+  /** Mac clock minus this device's clock, in seconds. Zero until first authenticated. */
+  getClockOffset(): number;
 }
 
 const native = requireNativeModule<ChronaStreamNativeModule>('ChronaStream');

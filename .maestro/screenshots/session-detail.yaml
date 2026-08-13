@@ -1,0 +1,42 @@
+# Captures the session detail screen, which shows the per-app breakdown the Mac
+# helper attributes to a session.
+#
+# Requires seeded data — run "Seed Demo Data" from Settings → DBG first (see
+# features/dev/seed-demo-data.ts). The session card is tapped by position rather
+# than by title because the timeline rows expose no accessibility text; with the
+# seeded data, the second card of today is always "Auth refactor", the one that
+# carries an app breakdown and notes.
+#
+# Run: maestro test .maestro/screenshots/session-detail.yaml --test-output-dir <dir>
+
+appId: com.aexomir.Chrona
+
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      text: "TODAY"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
+- openLink: "chrona://timeline"
+- extendedWaitUntil:
+    visible:
+      text: "Mon, \\d+"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "60%,43%"
+- waitForAnimationToEnd:
+    timeout: 4000
+- swipe:
+    start: "50%,75%"
+    end: "50%,25%"
+- swipe:
+    start: "50%,75%"
+    end: "50%,30%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: session-detail

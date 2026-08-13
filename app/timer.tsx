@@ -2,7 +2,8 @@ import { AppReviewView } from "@/components/app-review-view";
 import type { Project } from "@/constants/projects";
 import { Neutral } from "@/constants/theme";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
-import { getAppsForWindow, markTimerStart } from "@/features/intelligence/journal-store";
+import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
 import { useTimerStore } from "@/features/timer/timer-store";
@@ -103,6 +104,7 @@ export default function TimerScreen() {
     apps: AppUsage[];
   };
   const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
+  const [isResolvingApps, setIsResolvingApps] = useState(false);
 
   useEffect(() => {
     if (!isTracking || !startTimestamp) return;
@@ -119,7 +121,6 @@ export default function TimerScreen() {
 
   const handleStart = () => {
     if (!taskTitle.trim()) return;
-    markTimerStart();
     startTimer(taskTitle.trim(), selectedProject?.value ?? null);
     trackEvent("timer", "timer_start", {
       auto: false,
@@ -128,7 +129,8 @@ export default function TimerScreen() {
     router.back();
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
+    if (isResolvingApps) return;
     const wasAutoTracked = isAutoTracked;
     const session = stopTimer();
     if (!session) {
@@ -139,28 +141,39 @@ export default function TimerScreen() {
       auto: wasAutoTracked,
       duration: session.duration,
     });
+
     const startMs = new Date(session.startTime).getTime();
     const endMs = new Date(session.endTime).getTime();
-    const apps = getAppsForWindow(startMs, endMs);
+
+    setIsResolvingApps(true);
+    const { status, apps } = await getAppsForWindow(startMs, endMs);
+    setIsResolvingApps(false);
+
     if (apps.length > 0) {
       setPendingSession({
         session: { ...session, ...(wasAutoTracked ? { auto: true } : {}) },
         apps,
       });
-    } else {
-      addSession({
-        id: Date.now().toString(),
-        ...session,
-        ...(wasAutoTracked ? { auto: true } : {}),
-      });
-      trackEvent("session", "session_save", {
-        auto: wasAutoTracked,
-        duration: session.duration,
-        appCount: 0,
-      });
-      toast.show({ label: "Session logged", variant: "success" });
-      router.back();
+      return;
     }
+
+    const id = Date.now().toString();
+    addSession({
+      id,
+      ...session,
+      ...(wasAutoTracked ? { auto: true } : {}),
+    });
+    if (status === "unreachable") {
+      // The Mac still has the answer — patch this session once it reconnects.
+      usePendingUsageStore.getState().enqueue(id, startMs, endMs);
+    }
+    trackEvent("session", "session_save", {
+      auto: wasAutoTracked,
+      duration: session.duration,
+      appCount: 0,
+    });
+    toast.show({ label: "Session logged", variant: "success" });
+    router.back();
   };
 
   const handleConfirm = (selectedApps: AppUsage[]) => {
@@ -279,8 +292,10 @@ export default function TimerScreen() {
             projects={projects}
           />
 
-          <Button variant="danger" onPress={handleStop}>
-            <Button.Label>Stop Timer</Button.Label>
+          <Button variant="danger" onPress={handleStop} isDisabled={isResolvingApps}>
+            <Button.Label>
+              {isResolvingApps ? "Collecting app usage…" : "Stop Timer"}
+            </Button.Label>
           </Button>
         </View>
       ) : (

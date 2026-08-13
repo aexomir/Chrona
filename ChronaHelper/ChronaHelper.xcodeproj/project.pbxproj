@@ -16,6 +16,8 @@
 		A1000006000000000000000A /* IdleDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009000000000000000A /* IdleDetector.swift */; };
 		A1000007000000000000000A /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = A200000A000000000000000A /* AppIcon.icns */; };
 		A100000B000000000000000A /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000B000000000000000A /* Pairing.swift */; };
+		A100000C000000000000000A /* ActivityLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000C000000000000000A /* ActivityLedger.swift */; };
+		A100000D000000000000000A /* SystemStateObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000D000000000000000A /* SystemStateObserver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +33,8 @@
 		A2000009000000000000000A /* IdleDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdleDetector.swift; sourceTree = "<group>"; };
 		A200000A000000000000000A /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		A200000B000000000000000A /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
+		A200000C000000000000000A /* ActivityLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityLedger.swift; sourceTree = "<group>"; };
+		A200000D000000000000000A /* SystemStateObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStateObserver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +67,8 @@
 				A2000005000000000000000A /* EventProtocol.swift */,
 				A2000009000000000000000A /* IdleDetector.swift */,
 				A200000B000000000000000A /* Pairing.swift */,
+				A200000C000000000000000A /* ActivityLedger.swift */,
+				A200000D000000000000000A /* SystemStateObserver.swift */,
 				A2000006000000000000000A /* Info.plist */,
 				A2000007000000000000000A /* ChronaHelper.entitlements */,
 				A200000A000000000000000A /* AppIcon.icns */,
@@ -155,6 +161,8 @@
 				A1000005000000000000000A /* EventProtocol.swift in Sources */,
 				A1000006000000000000000A /* IdleDetector.swift in Sources */,
 				A100000B000000000000000A /* Pairing.swift in Sources */,
+				A100000C000000000000000A /* ActivityLedger.swift in Sources */,
+				A100000D000000000000000A /* SystemStateObserver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
