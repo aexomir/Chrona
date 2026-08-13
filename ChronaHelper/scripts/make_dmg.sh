@@ -3,13 +3,13 @@ set -euo pipefail
 
 APP_PATH="$1"
 SCHEME="ChronaHelper"
+
+cd "$(dirname "$0")/.."
 BUILD_DIR="$(pwd)/build"
 DMG_PATH="$BUILD_DIR/$SCHEME.dmg"
 STAGING_DMG="$BUILD_DIR/staging.dmg"
 VOLUME_NAME="$SCHEME"
 VOLUME_PATH="/Volumes/$VOLUME_NAME"
-
-cd "$(dirname "$0")/.."
 
 # --- Background ---
 echo "→ Generating background..."

@@ -4,9 +4,9 @@ set -euo pipefail
 SCHEME="ChronaHelper"
 PROJECT="ChronaHelper.xcodeproj"
 CONFIGURATION="Release"
-BUILD_DIR="$(pwd)/build"
 
 cd "$(dirname "$0")/.."
+BUILD_DIR="$(pwd)/build"
 
 mkdir -p "$BUILD_DIR"
 

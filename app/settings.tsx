@@ -6,6 +6,7 @@ import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { useAuroraTheme } from "@/features/aurora/use-aurora-theme";
 import { calendarStatusLabel } from "@/features/calendar/calendar";
 import { useCalendarStore } from "@/features/calendar/calendar-store";
+import { clearAllSessions, seedDemoData } from "@/features/dev/seed-demo-data";
 import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
 import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useSettingsStore } from "@/features/settings/settings-store";
@@ -129,6 +130,7 @@ export default function SettingsScreen() {
   const submitPairingCode = useStreamStore((s) => s.submitPairingCode);
   const pendingBackfills = usePendingUsageStore((s) => s.queue.length);
   const [ledgerProbe, setLedgerProbe] = useState<string | null>(null);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
   const {
     auroraEnabled,
     setAuroraEnabled,
@@ -193,6 +195,29 @@ export default function SettingsScreen() {
       );
     }
     setLedgerProbe(parts.join(" · "));
+  };
+
+  const handleSeedDemoData = () => {
+    Alert.alert(
+      "Replace all sessions?",
+      "This deletes every session on this device and replaces them with a week of sample data. Used for capturing screenshots.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Replace",
+          style: "destructive",
+          onPress: () => setSeedResult(`Seeded ${seedDemoData()} sessions`),
+        },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: () => {
+            clearAllSessions();
+            setSeedResult("Cleared all sessions");
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -397,6 +422,16 @@ export default function SettingsScreen() {
                   <ListGroup.ItemTitle>Probe Last Hour</ListGroup.ItemTitle>
                   <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={2}>
                     {ledgerProbe ?? "Tap to query the Mac's ledger"}
+                  </Text>
+                </ListGroup.ItemContent>
+                <ListGroup.ItemSuffix />
+              </ListGroup.Item>
+              <Separator className="mx-4" />
+              <ListGroup.Item onPress={handleSeedDemoData}>
+                <ListGroup.ItemContent>
+                  <ListGroup.ItemTitle>Seed Demo Data</ListGroup.ItemTitle>
+                  <Text className="text-neutral-500 text-xs mt-0.5" numberOfLines={2}>
+                    {seedResult ?? "Replace sessions with sample data"}
                   </Text>
                 </ListGroup.ItemContent>
                 <ListGroup.ItemSuffix />

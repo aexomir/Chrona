@@ -1,12 +1,23 @@
 # Captures the Dashboard tab for release screenshots.
+#
+# The splash (components/chrona-splash.tsx) runs ~1.5s and the Dashboard then
+# fades in via heroProgress, so waiting on the timer-bar text is not enough —
+# that text is already in the accessibility tree while the splash still covers
+# the screen. Wait on "TODAY" (the FocusRing's own label, Dashboard-only), then
+# let waitForAnimationToEnd burn its timeout: the aurora shader never settles,
+# so this reliably holds until the fade-in has finished.
+#
 # Run: maestro test .maestro/screenshots/dashboard.yaml --test-output-dir <dir>
 
 appId: com.aexomir.Chrona
 
 ---
-- launchApp
+- launchApp:
+    clearState: false
 - extendedWaitUntil:
     visible:
-      text: "Tap to start a timer"
-    timeout: 15000
+      text: "TODAY"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
 - takeScreenshot: dashboard
