@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and publish (e.g. v1.1.0)"
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  mac-helper:
+    name: Build ChronaHelper.dmg
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Install Pillow
+        # ChronaHelper/scripts/create_background.py draws the DMG background with PIL.
+        run: python3 -m pip install --break-system-packages pillow
+
+      - name: Build and package
+        run: bash ChronaHelper/scripts/build.sh
+
+      - name: Rename for release
+        run: |
+          mv ChronaHelper/build/ChronaHelper.dmg \
+             "ChronaHelper-${{ needs.version.outputs.version }}.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-helper
+          path: ChronaHelper-*.dmg
+          if-no-files-found: error
+
+  ios-simulator:
+    name: Build iOS simulator app
+    needs: version
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+
+      - run: bun install --frozen-lockfile
+
+      - name: Prebuild
+        # /ios is gitignored, so the native project is generated here.
+        run: bunx expo prebuild --platform ios --no-install
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-
+
+      - name: Install pods
+        run: cd ios && pod install
+
+      - name: Build for simulator
+        # ARCHS covers both slices so the artifact also runs on Intel Macs, not
+        # just the Apple Silicon runner that built it.
+        run: |
+          xcodebuild build \
+            -workspace ios/Chrona.xcworkspace \
+            -scheme Chrona \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Zip the app bundle
+        run: |
+          cd build/Build/Products/Release-iphonesimulator
+          ditto -c -k --keepParent Chrona.app \
+            "$GITHUB_WORKSPACE/Chrona-Simulator-${{ needs.version.outputs.version }}.app.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator
+          path: Chrona-Simulator-*.app.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: [version, mac-helper, ios-simulator]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Build release notes
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          {
+            # Pull this version's section out of CHANGELOG.md, if it has one.
+            awk -v v="$VERSION" '
+              $0 ~ "^## \\[" v "\\]" { found=1; next }
+              found && /^## \[/ { exit }
+              found { print }
+            ' CHANGELOG.md
+            cat .github/release-notes-footer.md
+          } > notes.md
+          cat notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.tag }}
+          body_path: notes.md
+          files: artifacts/*
+          fail_on_unmatched_files: true
