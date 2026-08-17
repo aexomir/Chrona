@@ -78,7 +78,7 @@ jobs:
         run: bunx expo prebuild --platform ios --no-install
 
       - name: Cache CocoaPods
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ios/Pods
           key: pods-${{ hashFiles('ios/Podfile.lock') }}
