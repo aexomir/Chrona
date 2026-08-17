@@ -51,7 +51,7 @@ jobs:
           mv ChronaHelper/build/ChronaHelper.dmg \
              "ChronaHelper-${{ needs.version.outputs.version }}.dmg"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mac-helper
           path: ChronaHelper-*.dmg
@@ -108,7 +108,7 @@ jobs:
           ditto -c -k --keepParent Chrona.app \
             "$GITHUB_WORKSPACE/Chrona-Simulator-${{ needs.version.outputs.version }}.app.zip"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ios-simulator
           path: Chrona-Simulator-*.app.zip
