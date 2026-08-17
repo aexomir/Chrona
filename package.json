@@ -70,10 +70,10 @@
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.10",
     "eslint": "^9.25.0",
-    "eslint-config-expo": "~57.0.0",
+    "eslint-config-expo": "~57.0.1",
     "husky": "^9.1.7",
-    "jest-expo": "~57.0.1",
-    "lint-staged": "^17.0.8",
+    "jest-expo": "~57.0.4",
+    "lint-staged": "^17.3.0",
     "ts-node": "^10.9.2",
     "typescript": "~6.0.3"
   },
