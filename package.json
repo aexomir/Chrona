@@ -75,7 +75,7 @@
     "jest-expo": "~57.0.4",
     "lint-staged": "^17.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
   },
   "private": true,
   "resolutions": {
