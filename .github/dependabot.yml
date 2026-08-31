@@ -32,6 +32,13 @@ updates:
       - dependency-name: react-native-gesture-handler
       - dependency-name: react-native-reanimated
 
+      # eslint-plugin-react (pulled in via eslint-config-expo) caps its ESLint
+      # peer dep at ^9.7 — ESLint 10 removed context.getFilename(), which the
+      # plugin's react-version detection still calls, crashing `bun run lint`.
+      # Revisit once eslint-plugin-react ships ESLint 10 support.
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
