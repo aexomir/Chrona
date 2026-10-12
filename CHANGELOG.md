@@ -7,6 +7,17 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **On-device language model.** On iPhones with Apple Intelligence, Chrona uses Apple's
+  Foundation Models through `@react-native-ai/apple` and the AI SDK. Nothing leaves the
+  phone and there are no API keys. Without Apple Intelligence every feature below behaves
+  exactly as before.
+- **Search understands the question.** The model reads your question with a compact
+  summary of the period (totals, top projects, peak hour, streak) and picks the timeframe
+  and sections to show, with a one-line headline that only quotes those figures. Falls
+  back to keyword matching when the model is unavailable or declines.
+
 ## [1.1.0] — 2026-08-13
 
 The release that made Chrona a two-part app. A macOS companion now watches which app is in

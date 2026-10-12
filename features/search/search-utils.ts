@@ -103,6 +103,7 @@ export function buildSearchSpecs(
   projects: Project[],
   now: Date,
   query?: string,
+  useResultInsight = false,
 ): SearchResultSpec[] {
   const specs: SearchResultSpec[] = [];
 
@@ -111,10 +112,10 @@ export function buildSearchSpecs(
   const { start, end } = getRange(tf, now);
   const sessions = filterSessions(allSessions, start, end);
 
-  // Generate contextual headline if query provided
-  const { headline, tip } = query
-    ? generateContextualHeadline(query, queryTimeframe, sessions, projects)
-    : { headline: result.headline, tip: result.tip };
+  const { headline, tip } =
+    query && !useResultInsight
+      ? generateContextualHeadline(query, queryTimeframe, sessions, projects)
+      : { headline: result.headline, tip: result.tip };
 
   // 1. Always push insight_card at top
   specs.push({
