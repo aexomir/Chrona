@@ -21,6 +21,7 @@ import { useSettingsStore } from "@/features/settings/settings-store";
 import { useTimerStore } from "@/features/timer/timer-store";
 
 import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { retitleSession } from "@/features/intelligence/retitle-session";
 import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { captureError, trackEvent } from "@/lib/sentry";
 import { matchRule } from "./matcher";
@@ -141,6 +142,8 @@ async function stopAndSave() {
   });
   if (status === "unreachable") {
     usePendingUsageStore.getState().enqueue(id, startMs, effectiveEndMs);
+  } else {
+    void retitleSession(id);
   }
   trackEvent("session", "session_save", {
     auto: true,

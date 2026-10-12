@@ -17,6 +17,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   summary of the period (totals, top projects, peak hour, streak) and picks the timeframe
   and sections to show, with a one-line headline that only quotes those figures. Falls
   back to keyword matching when the model is unavailable or declines.
+- **Auto sessions name themselves.** An auto-tracked session that still carries its rule's
+  default title or the app name is renamed, in at most five words, from the window titles
+  of its busiest apps once its app breakdown arrives. A title you've edited is never
+  touched.
 
 ## [1.1.0] — 2026-08-13
 

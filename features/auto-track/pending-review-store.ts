@@ -10,6 +10,7 @@
  * long ago.
  */
 
+import { retitleSession } from "@/features/intelligence/retitle-session";
 import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
 import { mmkvStorage } from "@/storage";
 import { create } from "zustand";
@@ -56,6 +57,7 @@ export const usePendingReviewStore = create<PendingReviewState>()(
           ...(selectedApps.length > 0 ? { apps: selectedApps } : {}),
         });
         set((state) => ({ queue: state.queue.slice(1) }));
+        void retitleSession(head.id);
       },
 
       skip: () => {

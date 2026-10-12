@@ -3,6 +3,7 @@ import type { Project } from "@/constants/projects";
 import { Neutral } from "@/constants/theme";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { retitleSession } from "@/features/intelligence/retitle-session";
 import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
@@ -178,11 +179,13 @@ export default function TimerScreen() {
 
   const handleConfirm = (selectedApps: AppUsage[]) => {
     if (!pendingSession) return;
+    const id = Date.now().toString();
     addSession({
-      id: Date.now().toString(),
+      id,
       ...pendingSession.session,
       ...(selectedApps.length > 0 ? { apps: selectedApps } : {}),
     });
+    void retitleSession(id);
     trackEvent("session", "session_save", {
       auto: !!pendingSession.session.auto,
       duration: pendingSession.session.duration,
