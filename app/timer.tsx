@@ -14,7 +14,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { trackEvent } from "@/lib/sentry";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import {
@@ -60,6 +60,13 @@ const styles = StyleSheet.create({
   },
 });
 
+function commitTitle(taskTitle: string) {
+  const trimmed = taskTitle.trim();
+  const { isTracking, title, updateTitle } = useTimerStore.getState();
+  if (!isTracking || !trimmed || trimmed === title) return;
+  updateTitle(trimmed);
+}
+
 export default function TimerScreen() {
   const projects = useProjects((s) => s.projects);
   const isTracking = useTimerStore((s) => s.isTracking);
@@ -69,11 +76,11 @@ export default function TimerScreen() {
   const startTimestamp = useTimerStore((s) => s.startTimestamp);
   const startTimer = useTimerStore((s) => s.startTimer);
   const stopTimer = useTimerStore((s) => s.stopTimer);
-  const updateTitle = useTimerStore((s) => s.updateTitle);
   const updateProjectId = useTimerStore((s) => s.updateProjectId);
   const addSession = useSessionsStore((s) => s.addSession);
   const toast = useAppToast();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
     suggestProjectId?: string;
     suggestEventTitle?: string;
@@ -121,6 +128,11 @@ export default function TimerScreen() {
     return () => clearInterval(id);
   }, [isTracking, startTimestamp]);
 
+  useEffect(
+    () => navigation.addListener("beforeRemove", () => commitTitle(taskTitle)),
+    [navigation, taskTitle],
+  );
+
   const handleStart = () => {
     if (!taskTitle.trim()) return;
     startTimer(taskTitle.trim(), selectedProject?.value ?? null);
@@ -134,6 +146,7 @@ export default function TimerScreen() {
   const handleStop = async () => {
     if (isResolvingApps) return;
     const wasAutoTracked = isAutoTracked;
+    commitTitle(taskTitle);
     const session = stopTimer();
     if (!session) {
       router.back();
@@ -271,17 +284,12 @@ export default function TimerScreen() {
           <View className="gap-3">
             <TextInput
               value={taskTitle}
-              onChangeText={(v) => {
-                setTaskTitle(v);
-                updateTitle(v);
-              }}
+              onChangeText={setTaskTitle}
               onBlur={() => {
-                const trimmed = taskTitle.trim();
-                if (trimmed) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                commitTitle(taskTitle);
+                if (taskTitle.trim()) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              onSubmitEditing={() => {
-                if (taskTitle.trim()) updateTitle(taskTitle.trim());
-              }}
+              onSubmitEditing={() => commitTitle(taskTitle)}
               returnKeyType="done"
               placeholder="session title"
               placeholderTextColor="rgba(255,255,255,0.15)"
