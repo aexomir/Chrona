@@ -21,6 +21,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   default title or the app name is renamed, in at most five words, from the window titles
   of its busiest apps once its app breakdown arrives. A title you've edited is never
   touched.
+- **New Timer suggests a project.** If you start a timer with no project and leave the
+  title field, the model picks the project that title most likely belongs to. It is only a
+  pre-selection: change it freely, and nothing is saved until you tap Start.
 
 ## [1.1.0] — 2026-08-13
 

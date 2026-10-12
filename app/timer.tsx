@@ -7,6 +7,7 @@ import { retitleSession } from "@/features/intelligence/retitle-session";
 import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
+import { suggestProject } from "@/features/timer/suggest-project";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { formatTime } from "@/features/timer/timer-utils";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -15,7 +16,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -375,7 +376,7 @@ type NewTimerViewProps = {
   taskTitle: string;
   setTaskTitle: (t: string) => void;
   selectedProject: SelectOption | undefined;
-  setSelectedProject: (p: SelectOption | undefined) => void;
+  setSelectedProject: Dispatch<SetStateAction<SelectOption | undefined>>;
   projects: Project[];
   onStart: () => void;
 };
@@ -404,6 +405,14 @@ function ProjectFirstView({
   const handlePickProject = (p: Project | null) => {
     setSelectedProject(p ? { value: p.id, label: p.name } : undefined);
     setStep("title");
+  };
+
+  const handleTitleBlur = async () => {
+    if (selectedProject || !taskTitle.trim()) return;
+    const suggestedId = await suggestProject(taskTitle, projects);
+    const suggested = projects.find((p) => p.id === suggestedId);
+    if (!suggested) return;
+    setSelectedProject((current) => current ?? { value: suggested.id, label: suggested.name });
   };
 
   if (step === "pick") {
@@ -501,6 +510,7 @@ function ProjectFirstView({
         placeholder="What are you working on?"
         value={taskTitle}
         onChangeText={setTaskTitle}
+        onBlur={() => void handleTitleBlur()}
         onSubmitEditing={onStart}
         returnKeyType="go"
         autoFocus
