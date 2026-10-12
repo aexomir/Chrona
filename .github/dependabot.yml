@@ -28,6 +28,7 @@ updates:
       - dependency-name: react
       - dependency-name: react-dom
       - dependency-name: "@expo/*"
+      - dependency-name: jest-expo
       - dependency-name: react-native-screens
       - dependency-name: react-native-gesture-handler
       - dependency-name: react-native-reanimated
