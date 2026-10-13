@@ -29,7 +29,7 @@
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@ungap/structured-clone": "^1.4.0",
     "ai": "^6",
-    "expo": "^57.0.0",
+    "expo": "^57.0.28",
     "expo-blur": "~57.0.0",
     "expo-calendar": "~57.0.0",
     "expo-constants": "~57.0.3",

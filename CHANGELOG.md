@@ -25,6 +25,12 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   title field, the model picks the project that title most likely belongs to. It is only a
   pre-selection: change it freely, and nothing is saved until you tap Start.
 
+### Fixed
+
+- **The app launches when built with Xcode 27.** The iOS 27 SDK requires the UIScene life
+  cycle; `expo` moves to 57.0.28, which provides it, and a config plugin applies the scene
+  setup the SDK 57 prebuild template lacks.
+
 ## [1.1.0] — 2026-08-13
 
 The release that made Chrona a two-part app. A macOS companion now watches which app is in
