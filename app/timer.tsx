@@ -3,18 +3,20 @@ import type { Project } from "@/constants/projects";
 import { Neutral } from "@/constants/theme";
 import { StaticAuraBackground } from "@/features/aurora/static-aura-background";
 import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { retitleSession } from "@/features/intelligence/retitle-session";
 import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore, type AppUsage } from "@/features/sessions/sessions-store";
+import { suggestProject } from "@/features/timer/suggest-project";
 import { useTimerStore } from "@/features/timer/timer-store";
 import { formatTime } from "@/features/timer/timer-utils";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { trackEvent } from "@/lib/sentry";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { Button, Input, PortalHost, Select } from "heroui-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -58,6 +60,13 @@ const styles = StyleSheet.create({
   },
 });
 
+function commitTitle(taskTitle: string) {
+  const trimmed = taskTitle.trim();
+  const { isTracking, title, updateTitle } = useTimerStore.getState();
+  if (!isTracking || !trimmed || trimmed === title) return;
+  updateTitle(trimmed);
+}
+
 export default function TimerScreen() {
   const projects = useProjects((s) => s.projects);
   const isTracking = useTimerStore((s) => s.isTracking);
@@ -67,11 +76,11 @@ export default function TimerScreen() {
   const startTimestamp = useTimerStore((s) => s.startTimestamp);
   const startTimer = useTimerStore((s) => s.startTimer);
   const stopTimer = useTimerStore((s) => s.stopTimer);
-  const updateTitle = useTimerStore((s) => s.updateTitle);
   const updateProjectId = useTimerStore((s) => s.updateProjectId);
   const addSession = useSessionsStore((s) => s.addSession);
   const toast = useAppToast();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { suggestProjectId, suggestEventTitle } = useLocalSearchParams<{
     suggestProjectId?: string;
     suggestEventTitle?: string;
@@ -119,6 +128,11 @@ export default function TimerScreen() {
     return () => clearInterval(id);
   }, [isTracking, startTimestamp]);
 
+  useEffect(
+    () => navigation.addListener("beforeRemove", () => commitTitle(taskTitle)),
+    [navigation, taskTitle],
+  );
+
   const handleStart = () => {
     if (!taskTitle.trim()) return;
     startTimer(taskTitle.trim(), selectedProject?.value ?? null);
@@ -132,6 +146,7 @@ export default function TimerScreen() {
   const handleStop = async () => {
     if (isResolvingApps) return;
     const wasAutoTracked = isAutoTracked;
+    commitTitle(taskTitle);
     const session = stopTimer();
     if (!session) {
       router.back();
@@ -178,11 +193,13 @@ export default function TimerScreen() {
 
   const handleConfirm = (selectedApps: AppUsage[]) => {
     if (!pendingSession) return;
+    const id = Date.now().toString();
     addSession({
-      id: Date.now().toString(),
+      id,
       ...pendingSession.session,
       ...(selectedApps.length > 0 ? { apps: selectedApps } : {}),
     });
+    void retitleSession(id);
     trackEvent("session", "session_save", {
       auto: !!pendingSession.session.auto,
       duration: pendingSession.session.duration,
@@ -267,17 +284,12 @@ export default function TimerScreen() {
           <View className="gap-3">
             <TextInput
               value={taskTitle}
-              onChangeText={(v) => {
-                setTaskTitle(v);
-                updateTitle(v);
-              }}
+              onChangeText={setTaskTitle}
               onBlur={() => {
-                const trimmed = taskTitle.trim();
-                if (trimmed) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                commitTitle(taskTitle);
+                if (taskTitle.trim()) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              onSubmitEditing={() => {
-                if (taskTitle.trim()) updateTitle(taskTitle.trim());
-              }}
+              onSubmitEditing={() => commitTitle(taskTitle)}
               returnKeyType="done"
               placeholder="session title"
               placeholderTextColor="rgba(255,255,255,0.15)"
@@ -372,7 +384,7 @@ type NewTimerViewProps = {
   taskTitle: string;
   setTaskTitle: (t: string) => void;
   selectedProject: SelectOption | undefined;
-  setSelectedProject: (p: SelectOption | undefined) => void;
+  setSelectedProject: Dispatch<SetStateAction<SelectOption | undefined>>;
   projects: Project[];
   onStart: () => void;
 };
@@ -401,6 +413,14 @@ function ProjectFirstView({
   const handlePickProject = (p: Project | null) => {
     setSelectedProject(p ? { value: p.id, label: p.name } : undefined);
     setStep("title");
+  };
+
+  const handleTitleBlur = async () => {
+    if (selectedProject || !taskTitle.trim()) return;
+    const suggestedId = await suggestProject(taskTitle, projects);
+    const suggested = projects.find((p) => p.id === suggestedId);
+    if (!suggested) return;
+    setSelectedProject((current) => current ?? { value: suggested.id, label: suggested.name });
   };
 
   if (step === "pick") {
@@ -498,6 +518,7 @@ function ProjectFirstView({
         placeholder="What are you working on?"
         value={taskTitle}
         onChangeText={setTaskTitle}
+        onBlur={() => void handleTitleBlur()}
         onSubmitEditing={onStart}
         returnKeyType="go"
         autoFocus

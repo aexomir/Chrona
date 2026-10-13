@@ -12,6 +12,7 @@
 
 import { useSessionsStore } from "@/features/sessions/sessions-store";
 import { useStreamStore } from "@/features/stream/stream-store";
+import { retitleSession } from "@/features/intelligence/retitle-session";
 import { BACKFILL_TIMEOUT_MS, getAppsForWindow } from "@/features/intelligence/usage-query";
 import { captureError } from "@/lib/sentry";
 import { mmkvStorage } from "@/storage";
@@ -118,6 +119,7 @@ export async function drainPendingUsage() {
 
       if (apps.length > 0) {
         useSessionsStore.getState().updateSession({ ...session, apps });
+        void retitleSession(session.id);
       }
       _remove(entry.sessionId);
     }

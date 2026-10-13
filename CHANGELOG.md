@@ -7,6 +7,32 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **On-device language model.** On iPhones with Apple Intelligence, Chrona uses Apple's
+  Foundation Models through `@react-native-ai/apple` and the AI SDK. Nothing leaves the
+  phone and there are no API keys. Without Apple Intelligence every feature below behaves
+  exactly as before.
+- **Search understands the question.** The model reads your question with a compact
+  summary of the period (totals, top projects, peak hour, streak) and picks the timeframe
+  and sections to show, with a one-line headline that only quotes those figures. Falls
+  back to keyword matching when the model is unavailable or declines.
+- **Auto sessions name themselves.** An auto-tracked session that still carries its rule's
+  default title or the app name is renamed, in at most five words, from the window titles
+  of its busiest apps once its app breakdown arrives. A title you've edited is never
+  touched.
+- **New Timer suggests a project.** If you start a timer with no project and leave the
+  title field, the model picks the project that title most likely belongs to. It is only a
+  pre-selection: change it freely, and nothing is saved until you tap Start.
+
+### Fixed
+
+- **The app launches when built with Xcode 27.** The iOS 27 SDK requires the UIScene life
+  cycle; `expo` moves to 57.0.28, which provides it, and a config plugin applies the scene
+  setup the SDK 57 prebuild template lacks.
+- **No launch crash after the `expo` upgrade.** The other Expo packages move to matching
+  versions; mismatched precompiled frameworks made the app die in dyld at launch.
+
 ## [1.1.0] — 2026-08-13
 
 The release that made Chrona a two-part app. A macOS companion now watches which app is in

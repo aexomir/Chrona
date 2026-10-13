@@ -6,6 +6,7 @@ import {
 import { usePendingReviewStore } from "@/features/auto-track/pending-review-store";
 import { useUntrackedStore } from "@/features/auto-track/untracked-store";
 import { usePendingUsageStore } from "@/features/intelligence/pending-usage-store";
+import { retitleSession } from "@/features/intelligence/retitle-session";
 import { getAppsForWindow } from "@/features/intelligence/usage-query";
 import { useProjects } from "@/features/projects/projects-store";
 import { useSessionsStore } from "@/features/sessions/sessions-store";
@@ -145,6 +146,8 @@ export function TimerBar() {
     });
     if (status === "unreachable") {
       usePendingUsageStore.getState().enqueue(id, startMs, endMs);
+    } else {
+      void retitleSession(id);
     }
     trackEvent("session", "session_save", {
       auto: true,

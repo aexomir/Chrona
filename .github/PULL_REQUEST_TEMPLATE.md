@@ -19,7 +19,7 @@ Say what you actually ran, not what you intended to run. For example:
 
 - [ ] `bunx tsc --noEmit` passes
 - [ ] `bun run lint` introduces no new warnings
-- [ ] `bun test` passes
+- [ ] `bun run test` passes
 - [ ] Styling uses `className`, not `StyleSheet.create`
 - [ ] No hand-written `useMemo` / `useCallback` (React Compiler handles it)
 - [ ] Docs updated if behaviour changed — README, `ChronaHelper/README.md`, or the wiki

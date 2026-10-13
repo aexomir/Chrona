@@ -8,6 +8,7 @@ import {
   isProjectIntent,
   isStreakIntent,
 } from "@/features/search/query-intent";
+import { inferSearchIntent } from "@/features/search/search-intent";
 import {
   buildFallbackSearchSpecs,
   buildSearchSpecs,
@@ -103,19 +104,35 @@ export function useSearchQuery(): UseSearchQueryReturn {
     await new Promise((resolve) => setTimeout(resolve, SEARCH_DELAY_MS));
 
     try {
-      // Analyze query using rule-based logic
-      const result = analyzeQuery(query);
-
-      // Build specs based on analysis
-      const resultSpecs = buildSearchSpecs(
-        result,
+      const intent = await inferSearchIntent(
+        query,
         queryTimeframe,
         allSessions,
         projects,
         now,
-        query,
       );
-      setSpecs(resultSpecs);
+
+      // The model's headline quotes the facts it was given, which describe
+      // queryTimeframe. If it chose another period, keep its sections only.
+      const modelTextFits = intent?.timeframe === queryTimeframe;
+      const rules = analyzeQuery(query);
+      const result = !intent
+        ? rules
+        : modelTextFits
+          ? intent.result
+          : { ...intent.result, headline: rules.headline, body: rules.body };
+
+      setSpecs(
+        buildSearchSpecs(
+          result,
+          intent?.timeframe ?? queryTimeframe,
+          allSessions,
+          projects,
+          now,
+          query,
+          modelTextFits,
+        ),
+      );
     } catch (error) {
       // Fallback if analysis fails (shouldn't happen)
       captureError(error, "search", { query });

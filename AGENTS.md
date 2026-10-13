@@ -25,7 +25,7 @@ bun install
 npx expo run:ios          # native build — required after any native change
 bun start                 # dev server, once a native build exists
 bun run lint
-bun test
+bun run test              # Jest; plain `bun test` runs Bun's runner and fails
 bunx tsc --noEmit
 bun run screenshots:ios   # Maestro capture + fastlane frameit
 ```
@@ -33,7 +33,7 @@ bun run screenshots:ios   # Maestro capture + fastlane frameit
 **Expo Go does not work.** Native tabs, `expo-calendar`, `expo-widgets` and `chrona-stream`
 all require a custom dev build.
 
-Before declaring work done, `bunx tsc --noEmit`, `bun run lint` and `bun test` must all pass.
+Before declaring work done, `bunx tsc --noEmit`, `bun run lint` and `bun run test` must all pass.
 Lint has five pre-existing warnings — don't add more.
 
 ## Code style
@@ -89,7 +89,11 @@ assuming something belongs where it sits.
 - **`react-native-worklets` is pinned** in both `dependencies` and `resolutions` to match
   what heroui-native was compiled against. Do not bump it independently. Dependabot ignores
   it deliberately.
-- **Expo packages move as a set.** `bunx expo install --fix`, never one at a time.
+- **Expo packages move as a set.** Bump every `expo-*` / `@expo/*` package (and `jest-expo`)
+  to the versions in `node_modules/expo/bundledNativeModules.json` together, never one at a
+  time: several ship precompiled frameworks, and a mismatch builds fine then crashes in
+  dyld at launch. Don't run `bunx expo install --fix` — it also downgrades the third-party
+  packages this repo pins on purpose (Skia, Sentry, worklets, flash-list…).
 - **App usage durations come from the Mac, not the phone.** `features/intelligence/usage-query.ts`
   queries the helper's on-disk ledger asynchronously. There is no on-device accumulator — the
   old `journal-store.ts` was deleted. Sessions carry an optional `apps?: AppUsage[]`, rendered

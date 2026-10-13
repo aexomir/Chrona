@@ -1,3 +1,4 @@
+import "@/polyfills";
 import { AppReviewSheet } from "@/components/app-review-sheet";
 import { ChronaSplash } from "@/components/chrona-splash";
 import { hasCompletedOnboarding } from "@/features/onboarding/onboarding-storage";
