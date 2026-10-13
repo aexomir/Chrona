@@ -62,8 +62,8 @@ Use only numbers that appear in the facts. Never estimate or invent a figure.
 No emoji, no exclamation marks, no praise.
 Sentiment is positive when focus grew, cautionary when it dropped, otherwise neutral.`;
 
-function sessionCount(n: number): string {
-  return `${n} session${n === 1 ? "" : "s"}`;
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
 export function buildSearchFacts(
@@ -82,14 +82,14 @@ export function buildSearchFacts(
   } else {
     const totalSeconds = getTotalSeconds(sessions);
     lines.push(
-      `Total focus: ${formatFocusTime(totalSeconds)} across ${sessionCount(sessions.length)}`,
+      `Total focus: ${formatFocusTime(totalSeconds)} across ${plural(sessions.length, "session")}`,
     );
 
     if (tf !== "all") {
       const prev = getPrevRange(tf, now);
       const prevSessions = filterSessions(allSessions, prev.start, prev.end);
       lines.push(
-        `${PREVIOUS_PERIOD_LABEL[timeframe]}: ${formatFocusTime(getTotalSeconds(prevSessions))} across ${sessionCount(prevSessions.length)}`,
+        `${PREVIOUS_PERIOD_LABEL[timeframe]}: ${formatFocusTime(getTotalSeconds(prevSessions))} across ${plural(prevSessions.length, "session")}`,
       );
     }
 
@@ -110,7 +110,7 @@ export function buildSearchFacts(
   const streak = computeStreak(allSessions);
   lines.push(
     streak.current > 0
-      ? `Current streak: ${streak.current} days${streak.ongoing ? ", including today" : ""}`
+      ? `Current streak: ${plural(streak.current, "day")}${streak.ongoing ? ", including today" : ""}`
       : "Current streak: none",
   );
 
@@ -120,8 +120,6 @@ export function buildSearchFacts(
 export type SearchIntent = {
   result: SearchResult;
   timeframe: QueryTimeframe;
-  /** False when the model moved off the period its facts described, so its numbers don't apply. */
-  insightMatchesFacts: boolean;
 };
 
 export async function inferSearchIntent(
@@ -140,5 +138,5 @@ export async function inferSearchIntent(
   if (!intent) return null;
 
   const { timeframe, ...result } = intent;
-  return { result, timeframe, insightMatchesFacts: timeframe === factsTimeframe };
+  return { result, timeframe };
 }

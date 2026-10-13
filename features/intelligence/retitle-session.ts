@@ -1,15 +1,14 @@
 /**
- * Replaces an auto session's placeholder title — the rule's default title or
- * the app name — with one drawn from the window titles the Mac recorded.
+ * Replaces an auto session's placeholder title (the rule's default title or the
+ * app name) with one drawn from the window titles the Mac recorded.
  *
- * Fire and forget. Runs after the session is saved, never blocks saving, and
- * leaves the title alone if anything (usually the user) changed it while the
- * model was thinking.
+ * Fire and forget: it runs after the session is saved, and leaves the title
+ * alone if it changed while the model was thinking.
  */
 
 import { useTrackingRulesStore } from "@/features/auto-track/tracking-rules-store";
 import { generate } from "@/features/intelligence/on-device-model";
-import { useSessionsStore, type Session } from "@/features/sessions/sessions-store";
+import { useSessionsStore, type AppUsage, type Session } from "@/features/sessions/sessions-store";
 import { captureError } from "@/lib/sentry";
 import { z } from "zod";
 
@@ -44,31 +43,35 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function cleanWindowTitle(title: string, app: string): string {
-  const appName = escapeRegExp(app);
+/** "Notes.md — Visual Studio Code" → "Notes.md" */
+function stripAppName(title: string, app: string): string {
+  const name = escapeRegExp(app);
   return title
-    .replace(new RegExp(`\\s*[-–—|·:]\\s*${appName}\\s*$`, "i"), "")
-    .replace(new RegExp(`^\\s*${appName}\\s*[-–—|·:]\\s*`, "i"), "")
+    .replace(new RegExp(`\\s*[-–—|·:]\\s*${name}\\s*$`, "i"), "")
+    .replace(new RegExp(`^\\s*${name}\\s*[-–—|·:]\\s*`, "i"), "")
     .trim()
     .slice(0, MAX_TITLE_CHARS);
 }
 
+function windowTitles(usage: AppUsage): string[] {
+  const cleaned = (usage.titles ?? [])
+    .map((t) => stripAppName(t, usage.app))
+    .filter((t) => t && t.toLowerCase() !== usage.app.toLowerCase());
+  return [...new Set(cleaned)].slice(0, TITLES_PER_APP);
+}
+
 function buildPrompt(session: Session): string | null {
-  const blocks = [...(session.apps ?? [])]
+  const busiest = [...(session.apps ?? [])]
     .sort((a, b) => b.duration - a.duration)
-    .slice(0, TOP_APPS)
-    .map((a) => {
-      const titles = [
-        ...new Set(
-          (a.titles ?? [])
-            .map((t) => cleanWindowTitle(t, a.app))
-            .filter((t) => t && t.toLowerCase() !== a.app.toLowerCase()),
-        ),
-      ].slice(0, TITLES_PER_APP);
-      if (titles.length === 0) return null;
-      return `${a.app}, ${Math.round(a.duration / 60)} min:\n${titles.map((t) => `- ${t}`).join("\n")}`;
-    })
-    .filter((block) => block !== null);
+    .slice(0, TOP_APPS);
+
+  const blocks: string[] = [];
+  for (const usage of busiest) {
+    const titles = windowTitles(usage);
+    if (titles.length === 0) continue;
+    const minutes = Math.round(usage.duration / 60);
+    blocks.push(`${usage.app}, ${minutes} min:\n${titles.map((t) => `- ${t}`).join("\n")}`);
+  }
 
   if (blocks.length === 0) return null;
   return `Window titles, busiest app first:\n\n${blocks.join("\n\n")}`;

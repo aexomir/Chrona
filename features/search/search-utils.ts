@@ -103,7 +103,7 @@ export function buildSearchSpecs(
   projects: Project[],
   now: Date,
   query?: string,
-  useResultInsight = false,
+  useResultHeadline = false,
 ): SearchResultSpec[] {
   const specs: SearchResultSpec[] = [];
 
@@ -113,7 +113,7 @@ export function buildSearchSpecs(
   const sessions = filterSessions(allSessions, start, end);
 
   const { headline, tip } =
-    query && !useResultInsight
+    query && !useResultHeadline
       ? generateContextualHeadline(query, queryTimeframe, sessions, projects)
       : { headline: result.headline, tip: result.tip };
 
