@@ -42,7 +42,7 @@ Full detail, including common build failures, is on the
 ```bash
 bunx tsc --noEmit
 bun run lint
-bun test
+bun run test
 ```
 
 CI runs all three. Lint currently has five pre-existing warnings — don't add more.
@@ -88,7 +88,9 @@ version heroui-native was compiled against. Bumping it on its own breaks the bui
 Dependabot is configured to leave it alone; please do the same unless you're deliberately
 upgrading heroui-native at the same time.
 
-Expo packages move as a set — use `bunx expo install --fix`, never one at a time.
+Expo packages move as a set: bump every `expo-*` / `@expo/*` package to the versions in
+`node_modules/expo/bundledNativeModules.json` together. Avoid `bunx expo install --fix`; it also
+downgrades third-party packages this repo pins on purpose.
 
 ## Design
 

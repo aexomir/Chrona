@@ -30,6 +30,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **The app launches when built with Xcode 27.** The iOS 27 SDK requires the UIScene life
   cycle; `expo` moves to 57.0.28, which provides it, and a config plugin applies the scene
   setup the SDK 57 prebuild template lacks.
+- **No launch crash after the `expo` upgrade.** The other Expo packages move to matching
+  versions; mismatched precompiled frameworks made the app die in dyld at launch.
 
 ## [1.1.0] — 2026-08-13
 

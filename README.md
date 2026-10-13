@@ -109,6 +109,7 @@ Details in [`ChronaHelper/README.md`](ChronaHelper/README.md).
 | Stats, streaks, peak hours | ✅ | – |
 | Calendar events mapped to projects | ✅ | – |
 | Home screen widgets and Live Activity | ✅ | – |
+| On-device model: search answers, session titles, project suggestions | ✅ | – |
 | Live timer shown in the menu bar | – | ✅ |
 | Idle, sleep and screen-lock detection | – | ✅ |
 
@@ -139,6 +140,13 @@ timer bar offers to start it — one tap, title and project already filled in.
 **Widgets.** A small and medium widget for today's focus time and current project, a medium
 and large one for today's sessions, and a Live Activity while a timer is running.
 
+**On-device intelligence.** On an iPhone with Apple Intelligence, Apple's on-device model
+does three small jobs: it reads what a search is asking and picks what to show, renames
+auto-tracked sessions from their window titles ("Xcode" becomes "Timer bar refactor"), and
+pre-selects a project on New Timer from the title you typed. It runs on the phone, needs no
+account or key, and quotes only numbers Chrona computed. Without Apple Intelligence each of
+these quietly falls back to the rule-based behaviour, and nothing in the UI changes.
+
 **The background.** The Dashboard's aurora is a Skia shader that gets slowly more intense
 as you accumulate focus time, topping out around ten hours. It's ambient, not a
 notification. You can turn it off.
@@ -152,7 +160,9 @@ Building this takes about twenty minutes, most of which is Xcode compiling.
 ### What you need
 
 - A Mac with **Xcode 15+** — both halves are built here
-- An **iPhone on iOS 17+**, or just the simulator
+- An **iPhone on iOS 17+**, or just the simulator. The on-device model features need an
+  iPhone 15 Pro or newer on iOS 26 with Apple Intelligence turned on; everything else works
+  without it.
 - **[Bun](https://bun.sh)** 1.3+
 - An Apple ID. The free tier works; builds signed with it expire after seven days.
 
@@ -233,7 +243,8 @@ Worth being specific, since the app reads window titles.
 
 - **Nothing leaves your devices.** There is no account, no backend, no analytics, and no
   sync service. The only network traffic is between your phone and your Mac, over your
-  local network.
+  local network. The language model behind search, session titles and project suggestions
+  is Apple's on-device model: prompts and answers never leave the phone.
 - **On the phone**, sessions, projects, rules and settings are stored in MMKV encrypted
   with AES-256. The key is generated on first launch and kept in the iOS Keychain. The Mac
   pairing code lives in the Keychain too, not in the store.
@@ -262,6 +273,7 @@ Worth being specific, since the app reads window titles.
 | Animation | Reanimated 4, Gesture Handler |
 | Graphics | `@shopify/react-native-skia` for the aurora shader |
 | Widgets | `expo-widgets` — widgets authored in TypeScript under `widgets/` |
+| On-device model | `@react-native-ai/apple` with the AI SDK (`ai` v6) on Apple Foundation Models |
 | Mac link | `modules/chrona-stream`, a local Expo module wrapping `NWBrowser`/`NWConnection` |
 | Helper | Swift, AppKit, Network.framework |
 
@@ -270,6 +282,8 @@ or `useCallback`.
 
 `react-native-worklets` is pinned in both `dependencies` and `resolutions` to match what
 heroui-native was compiled against. Don't bump it on its own.
+
+`ai` stays on v6: `@react-native-ai/apple` 0.12 doesn't support AI SDK v7.
 
 ### Layout
 
@@ -327,7 +341,7 @@ bun install
 npx expo run:ios          # native build — needed after any native change
 bun start                 # dev server, once a native build exists
 bun run lint
-bun test
+bun run test              # Jest (plain `bun test` runs Bun's own runner instead)
 bun run screenshots:ios   # Maestro capture + fastlane frameit
 bun run release:ios       # bump build number, EAS build, TestFlight
 ```
@@ -365,9 +379,16 @@ of the window was observed, idle, locked, asleep, offline, or unknown. Those sum
 window length, so the app can show what it doesn't know instead of implying full coverage.
 When the Mac is unreachable, `pending-usage-store.ts` queues the window and retries.
 
-**Search** is keyword matching over your own data, not a model. `query-intent.ts` looks for
-substrings, `search-generation.ts` formats an answer from real session stats. It's all
-synchronous and local, with no inference and no network call.
+**On-device model.** `features/intelligence/on-device-model.ts` wraps Foundation Models
+behind `generate(schema, prompt, system)`, which never throws: no model, an 8-second
+timeout, an answer that doesn't fit the schema, or a refusal all return `null`, and the
+caller falls back to its rule-based path. Requests run one at a time. Prompts carry
+aggregates, never raw session lists, because the context window is about 4K tokens.
+
+**Search** sends the question plus a short summary of the period (totals, top projects,
+peak hour, streak) to the model, which picks the sections to show and writes a headline
+using only those numbers (`search-intent.ts`). Without the model, `query-intent.ts` matches
+keywords and `search-generation.ts` formats the answer from real session stats.
 
 **Wire protocol** between the phone and the Mac is documented in
 [`ChronaHelper/README.md`](ChronaHelper/README.md).
@@ -375,7 +396,9 @@ synchronous and local, with no inference and no network call.
 ### Testing
 
 Jest suites cover `stats-utils`, `timer-utils`, `timer-bar`, `focus-ring`, the auto-track
-`matcher`, and calendar helpers. Maestro flows in `.maestro/` cover the new-session flow,
+`matcher`, calendar helpers, and the on-device model features (the wrapper, search intent,
+session titles, project suggestions). Model tests use the `@react-native-ai/apple` mock
+through `features/intelligence/__tests__/fake-model.ts`, so they say what the model answers. Maestro flows in `.maestro/` cover the new-session flow,
 the stop flow, and the Mac helper status row. CI runs typecheck, lint and tests on every
 pull request and on `main`.
 
@@ -405,6 +428,8 @@ up in every capture.
 - **No sync.** Two phones means two separate sets of data.
 - **The helper needs Accessibility permission**, which is a broad grant. It's the only way
   to read window titles from another process, and it's why the sandbox is off.
+- **`plugins/withSceneLifecycle.js` is a stopgap.** Xcode 27 requires the UIScene life
+  cycle, which the SDK 57 prebuild template lacks. Delete the plugin when moving to SDK 58.
 - **`eas.json` and `app.json` disagree** on `appleTeamId` — worth reconciling before any
   real release.
 
