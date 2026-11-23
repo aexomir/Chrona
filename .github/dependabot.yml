@@ -20,6 +20,12 @@ updates:
       # build — see .claude/conventions/code-style.md.
       - dependency-name: react-native-worklets
 
+      # 1.1 rewrote BottomSheet on top of @lodev09/react-native-true-sheet (a
+      # new native peer dep) and removed Portal, Overlay and the gorhom-style
+      # Content props we use. Stay on 1.0.x until that migration is done.
+      - dependency-name: heroui-native
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+
       # The Expo SDK moves as a set. These must be updated together with
       # `bunx expo install --fix`, not one package at a time.
       - dependency-name: expo
